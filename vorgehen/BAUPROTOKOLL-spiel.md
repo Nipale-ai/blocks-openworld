@@ -1,4 +1,4 @@
-# BLOCKS — open world, phase 1 graybox (+ round 2: police, camera, dynamism · round 3: the blue-hour look · round 4: the real assets · round 5: radio and screens) handover notes
+# BLOCKS — open world, phase 1 graybox (+ round 2: police, camera, dynamism · round 3: the blue-hour look · round 4: the real assets · round 5: radio and screens · round 6: the baked lightmaps applied) handover notes
 
 A folder since round 4: `game.html` (three r180 inlined) plus `assets/` next to it (six compressed GLB families, KTX2 textures,
 base64 sidecars for `file://`). Runs from `file://` (double-click) and over http. Built 2026-09-01/02 on the Mac; the Blender
@@ -676,3 +676,102 @@ calls), `ui.js` + `template.html` (the station line under the speedo, "R radio" 
   numbers above are the audio graph, not "no exception".
 - Known limits: Safari decodes neither Vorbis nor VP9 (radio → NO SIGNAL, screens → MP4 over http, dark from file://);
   `decodeAudioData` keeps 20 MB per station; the radio has one owner (the player) — AI cars have no radios.
+
+
+## 11. ROUND 6 — the baked lightmaps applied (2026-09-02, 14:12–14:45)
+
+The phase-3 bakes (`phase3-lightmaps/out/`, recipe in `phase3-lightmaps/NOTES-lightmaps.md` §3) are wired into the game. Buildings and the
+city floor now take their sky light and every **static** artificial light — direct **with shadows** plus all bounce — from the KTX2 atlases;
+the key light (dynamic shadows), the dynamic grid lights (headlights, tail lights, beacons, flashes, muzzle), the emissive layer, glow
+sprites, headlight pools, blob shadows, fog and the post chain are untouched. Cars, people, props and weapons keep the round-3 real-time
+path (hemisphere + env + grid). Gameplay code was not touched. System A / the GPU were not used — everything below ran on the Mac.
+
+### 11.1 What changed, file by file
+- **`pack-assets.mjs`** — the two building families are read from `phase3-lightmaps/out/assets-uv2/` (the phase-2 GLBs with the repacked
+  TEXCOORD_1) and **keep `TEXCOORD_1`**: only `TANGENT` is dropped for them, and `prune()` runs with `keepAttributes: true` for them
+  (with `false`, gltf-transform prunes every TEXCOORD no texture references — it would have thrown the channel away again after the
+  explicit drop was removed). The packer verifies per primitive that TEXCOORD_1 survived and throws otherwise (report field `texcoord1`).
+  The eight KTX2 maps are copied next to the GLBs, get `.b64.js` sidecars and manifest entries, and `lm-layout.json` is slimmed
+  (index / kind / x / z / rot / rect per building, districts, `lm_scale`, `districtOfTemplate`) into `assets/lm-layout.js` — a plain
+  script like `manifest.js`, so it loads from `file://` too. `~/bin/ktx-4.4.2` is on the packer's PATH as a fallback for `/tmp/ktxbin`.
+  Cost: buildings_city 1 196 → 1 245 KB, buildings_industrial 463 → 468 KB (the quantised 14-bit UV1); the maps 25.8 MB on disk,
+  their sidecars 34 MB. Other families are byte-identical to round 5 (`--only=buildings_city,buildings_industrial` was used).
+- **`src/loader.js`** — loads `assets/lm-layout.js`; if it exists and all eight maps are in the manifest, the maps are fetched like the
+  GLBs (streaming over http, sidecars from `file://`) and parsed with the same `KTX2Loader` (`parse()` on the bytes; UASTC → ASTC 4×4 on
+  this Mac, ETC1S AO → the same). `_lm` textures are forced to `SRGBColorSpace` (the file's DFD says so already — the decode is part of the
+  encoding), `_ao` to `NoColorSpace`, anisotropy 4, `flipY` false. `ASSETS.lightmaps = { districts: {downtown|midtown|industrial:
+  {lm, ao, scale}}, ground: {lm, ao, scale}, byIndex: Map(world.buildings index → {district, kind, x, z, rot, rect}), districtOfTemplate }`,
+  or `null` when nothing is shipped — then the whole game runs exactly as in round 5. Progress bar and file count include the maps.
+- **`src/world.js`** — `instanceBuildings()` groups by **(kind, district)** instead of by kind: the 15 placed kinds → 17 `InstancedMesh`es (only `shop_small` and `fountain` span two districts)
+  (`Buildings_<kind>_<district>`), each with a geometry that shares the prototype's vertex buffers and owns one `lmRect`
+  `InstancedBufferAttribute` (vec4 `[u0, v0, su, sv]` in glTF UV space, from the layout by index — verified against kind, x, z, rot;
+  a mismatch falls back to the template's district and warns; 141 / 141 matched). The family material is cloned once per (family,
+  district) (`lmMaterial()`, 5 clones), `vertexColors` off, `userData.lightmap = { mode: 'instance', lm, ao, scale, district }`. Tints are
+  drawn in the old list order before grouping, so the RNG sequence — and every tint the bake was lit with — is unchanged.
+  `buildingMeshes` stays keyed by kind: `{ list, meshes, matrixAt(i, m) }`, and every building record carries `im` + `slot`
+  (`lighting.js` and `screens.js` read `b.im.getMatrixAt(b.slot, …)` now). Road, slabs, lane marks and crosswalks get
+  `userData.lightmap = { mode: 'world', … }` from `groundLM()` — the terrain outside ±255 m is not in the map and stays real-time.
+- **`src/lighting.js`** — `patch(mat, { road, lm })`: for a lightmapped material the vertex shader writes `vLmUv` (instance: `uv1 *
+  lmRect.zw + lmRect.xy`; world: `((x + 255) / 510, (255 − z) / 510)` from the world position the patch already computes), the fragment
+  shader replaces `<lights_fragment_maps>` by `irradiance += texture2D(uLM, vLmUv).rgb * uLMScale` and `radiance += getIBLRadiance(…) *
+  texture2D(uAO, vLmUv).r` (env diffuse gone, env specular occluded by the baked AO), the hemisphere term is neutralised, and the grid
+  loop stops at the first static id (`lgIdF < lgStatic` → `break`; a cell lists its dynamic ids first, so the dynamic lights keep working
+  on lightmapped surfaces; `lgStatic` is a new shared uniform = `staticCount` = 596). `LM_MODE_INSTANCE` is a material define, `uv1` is
+  declared only when three has not (`#ifndef USE_UV1`). Program cache keys: `lgLinstance`, `lgRLworld` (road), `lgLworld`. The AO skirts
+  are not built when the bake is present (the ground map carries the plinth contact); blob shadows stay.
+- **`src/assets.js`** — `makeBuilding(kind, rng, { baked })`: with `baked` the vertex-colour AO ramp is not applied and no COLOR attribute
+  is added (the bake has the contact darkening); `screens.js` — one line (matrix lookup).
+- **The one thing the recipe got wrong, and why it matters:** `NOTES-lightmaps.md` §3.5 removes the hemisphere with a regex on
+  `shader.fragmentShader` inside `onBeforeCompile`. At that point the shader is still the unexpanded template — the hemisphere line lives
+  inside the chunk `<lights_fragment_begin>` — so the regex never matches and the hemisphere (1.05 × #40608f / #1a1826, i.e. the whole
+  blue-hour ambient) stays on top of the bake. `preview/viewer.mjs` has the same no-op, so its `out/verify/*_lm.png` shots are
+  hemisphere-double-lit. The game inlines `THREE.ShaderChunk.lights_fragment_begin` with that line neutralised instead (`LOOP_FRAG_LM`),
+  and warns at module load if the line is not found. First build with the no-op: spawn mean 73.7 / 18.4 % dark; fixed: 73.5 / 18.7 % —
+  the difference is small because the hemisphere is weak next to the lamps, but it was the wrong kind of small.
+
+### 11.2 Verified (minified build, MacBook GPU via Metal, headless Chrome 1280×720)
+`node test/look.mjs --out=shots/lm` — same viewpoints as `shots/ov_*.png`; the side-by-side strips are `shots/lm/compare_<view>.png`
+(round 5 left, round 6 right) and `shots/lm/crop_{shops,gas,street}.png` at full resolution. 60 fps, 0 console errors, 0 warnings
+after the hemisphere fix (`lights 596 dyn 15`).
+
+| view | round 5 mean / % near-black | round 6 mean / % near-black | what changed in the picture |
+|---|---|---|---|
+| 01_spawn | 66.2 / 22.3 | 73.5 / 18.7 | tower facades sky-lit with a gradient instead of flat; lamp pools soft with post shadows |
+| ov_shops | 86.2 / 18.7 | 77.5 / 25.7 | neon halo on the wall above the sign, orange spill of the next shop on the wall and pavement; the unshadowed magenta pool on the road is gone (see 11.3) |
+| ov_street | 36.9 / 52.2 | 43.9 / 40.7 | lamp pools along both kerbs with the pavement lit, tree and post shadows in them |
+| ov_gas | 80.6 / 12.9 | 71.1 / 24.1 | canopy underside lit (the V-flip tell-tale), pump island bright, cars in it; the canopy's white pools on the road gone (specular, 11.3) |
+| ov_plaza | 67.5 / 24.1 | 85.6 / 20.1 | plaza bright like the Cycles target (`phase3-lightmaps/out/verify/compare_ov_plaza.png`), monument shadow |
+| ov_downtown | 75.5 / 36.7 | 83.2 / 25.6 | towers blue-lit from the sky with bounce off the plaza — matches the full-GI Cycles panel |
+| ov_industrial | 69.7 / 42.0 | 71.3 / 33.7 | sodium wall packs light the warehouse walls with falloff |
+| ov_residential | 71.2 / 21.8 | 72.1 / 20.6 | shop-sign spill on the walls, softer corners |
+| ov_park | 61.5 / 46.8 | 64.0 / 38.5 | the apartment block reads as a volume (lit corners, floor bands) instead of a black slab |
+| ov_birdseye | 42.9 / 55.2 | 42.9 / 54.8 | unchanged at this distance |
+| 05_drive | 51.9 / 36.1 | 49.4 / 39.4 | headlight pools, tail-light glow and blob shadow still on the lightmapped road (dynamic lights work) |
+
+Nothing is blown out and nothing is black; no district is scrambled (every wall's light sits where its lamp is — the rects and the
+packed uv1 agree). The brightness lands in the same range as round 5 (the bake replaces, it does not add). Gate
+`pruefe_openworld.mjs`: **GREEN**, mean 71.7 / 18.6 % near-black (limit 33 %), 0 console errors. `node test/quick.mjs --http`: load
+1.1 s, 60 fps, 0 errors — the fetch path serves the KTX2 files too. Runtime check (`node test/lmcheck.mjs`):
+`lgStatic` = 596 = `staticCount`, 17 district meshes over 15 kinds, uv1 + lmRect on all of them, 0 zero-width rects, 5 lightmapped
+building materials + 4 ground materials, no skirts, ground map 4096² `COMPRESSED_SRGB8_ALPHA8_ASTC_4x4` with 13 mips, AO linear ASTC,
+KTX2 transcode 125–410 ms per map in the workers, 0 page errors.
+Cost: draws 329–412 in the look views (round 5: 300–495 — the 2 extra district meshes are within noise, the skirts' draw is gone);
+frame 16.7 ms at 60 fps throughout; textures 74 (was 61–63); assets 31.1 MB in 0.8–1.1 s from `file://` (was 5.9 MB in 0.3 s) —
+the KTX2 transcode of the 4096² maps is what costs, 100–400 ms each in the workers; ≈ 75 MB more VRAM with mips.
+
+### 11.3 Left undone / consequences to know about
+- **No specular from the static lights on the wet road any more.** The bake is diffuse irradiance; the static grid entries are skipped on
+  lightmapped materials as the recipe demands. The lamp / neon / canopy *smears* on the wet asphalt of round 3 (GGX from the grid lights)
+  are therefore gone — the road reads matter at night; only the env-specular of the sky remains. The fix is small (a second, specular-only
+  pass over the static ids for the road material: `RE_Direct` with `material.diffuseColor = 0`, ~10 lines in `LOOP_FRAG_LM`) but it is an
+  improvement beyond this round's brief, so it was not started.
+- **Props, cars, people, weapons** are not lightmapped (hemisphere + env + unshadowed grid, as before) — a car parked next to a lit shop
+  wall is lit slightly differently from the wall. Light probes for the dynamic objects are the phase-3 wish list.
+- **The terrain outside ±255 m** (`Ground`) is real-time; at the city edge the field meets the lightmapped road with a visible but
+  distant seam.
+- **`preview/viewer.mjs` keeps the hemisphere** (11.1) — its verify shots are slightly over-lit; not fixed (outside the game).
+- **Load size:** `assets/` is 31 MB (+ 43 MB of sidecars); `file://` start went from 0.3 s to ~1 s. ETC1S for the `_lm` files would
+  quarter that at visible cost (§2 of the lightmap notes). Not changed.
+- **A world change needs a re-bake** (`NOTES-lightmaps.md` §6: `dump_world.mjs` → System A → `encode_ktx.sh` → `node pack-assets.mjs`).
+  `dump_world.mjs` still runs: with the stub registry `ASSETS.lightmaps` is null and `world.js` takes the old per-kind path.
+- Round 5's `shots/ov_*.png` are kept as the "before"; the new set lives in `shots/lm/`.

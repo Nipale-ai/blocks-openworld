@@ -35,6 +35,8 @@ measurements.
 | Wiring the assets in, compression | green, first try | 21 min | $12.22 |
 | Radio and video | green, first try | 32 min | — |
 | Wiring the media in | green, first try | 26 min | $11.91 |
+| Baking lightmaps in Cycles | green, first try | 85 min | $29.10 |
+| Applying the baked lighting | green, first try | 18 min | $11.15 |
 
 **Every round passed on the first attempt.** Costs are list-price equivalents
 reported by the API, not what was actually billed.
@@ -50,6 +52,9 @@ them there:
 - **ComfyUI** — 73 PBR texture sets; photographic base textures via Z-Image-Turbo
 - **ACE-Step** — four radio tracks, checked against spectrograms before use
 - **LTX-2.5** — the clips playing on the billboards
+- **Cycles** — baked indirect light and ambient occlusion for the whole city,
+  per district, shipped as KTX2. Neon now tints the wall opposite; the roads
+  carry light instead of showing isolated pools under each lamp.
 
 Rendering time and token cost are decoupled: the model writes a script, the card
 runs it, waiting costs nothing.
@@ -58,8 +63,8 @@ runs it, waiting costs nothing.
 
 - **The character model** — tube arms with a visible shoulder seam, stub hands.
   It is the asset that got the least attention and it shows.
-- **Baked lighting is missing.** Indirect light — neon colouring the wall
-  opposite — was still being computed when this was published.
+- The character is also the only asset that would need a full rebuild rather
+  than a fix.
 - The `POLICE` lettering was mirrored in one round because a numeric check
   passed while nobody looked at the image. It was found by looking.
 

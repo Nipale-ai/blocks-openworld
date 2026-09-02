@@ -1,0 +1,41 @@
+Apply the baked lighting to the game.
+
+The game is in this directory. The bakes are in `phase3-lightmaps/out/` as KTX2
+texture sets per district, plus `lm-layout.json`.
+**`phase3-lightmaps/NOTES-lightmaps.md` documents exactly how to load and apply
+them** — which UV channel, which material slot, how to combine with the existing
+real-time lights. It was written for this task. Read it first and follow it.
+
+**⛔ DO NOT USE THE GPU.** System A belongs to another job.
+
+## What to do
+
+1. **Load and apply the lightmaps** as documented. Ground uses a world-XZ
+   projection, buildings use per-instance rectangles in the district atlas via
+   the `lmRect` instance attribute.
+2. **Do not double-light the scene.** The bakes already contain sky light and
+   the static artificial lights, direct and indirect. For lightmapped materials
+   the hemisphere and environment diffuse must be dropped and the static grid
+   lights skipped — the notes state this precisely. The key light stays
+   real-time because it casts dynamic shadows.
+3. **Keep TEXCOORD_1.** The packing script `pack-assets.mjs` currently discards
+   the second UV channel; the bakes are painted onto exactly that channel.
+   Fix the packer, do not work around it.
+4. **Apply the ambient occlusion** as documented, for environment specular
+   occlusion.
+
+## Verify — briefly, not exhaustively
+
+Budget is tight. Verify what actually decides whether this worked:
+
+- Screenshot the running game from the **same viewpoints as the existing
+  `shots/ov_*.png`** and **look at them side by side with the old ones**.
+  Indirect light must be visible: neon tinting nearby walls, softer corners,
+  light bouncing off the road. If it looks the same, it did not apply.
+- Nothing may be double-lit (blown out) or black.
+- Brightness gate as always: under a third of the frame near-black.
+- 60 fps, zero console errors.
+
+Then stop. Do not start further improvements.
+
+Update NOTES.md with what you changed, and note anything left undone.

@@ -1,0 +1,67 @@
+Bake lighting for the city of an open-world game that already exists and runs.
+
+You work in `phase3-lightmaps/`. The game is one directory up and is **live** —
+another process may be editing `../src/`.
+
+**⛔ DO NOT TOUCH `../src/`, `../game.html`, `../build.mjs`, `../assets/`.**
+Read them, write only into `phase3-lightmaps/`. Someone else wires your output
+in afterwards.
+
+**⛔ SYSTEM A IS SHARED — bake in sections, never in one block.**
+    systema-belegen "model-research" "<section>" <minutes>
+    ... bake ...
+    systema-frei "model-research"
+Another session needs the card for ~5-minute renders between your sections.
+**Take it for 20–30 minutes at a time, release between every section**, and
+give honest durations. Never hold it for an hour straight.
+
+## Why this round exists
+
+The city is lit at dusk with real-time lights: street lamps, headlights, lit
+windows, neon. What real-time lighting cannot do is **indirect light** — the
+red glow a neon sign throws on the wall opposite, light bouncing off the road
+into the underside of a car, the soft darkening where two walls meet. Cycles
+computes exactly that. Baked into textures it costs the player nothing.
+
+This is the single biggest visual upgrade still available.
+
+## What to do
+
+1. **Read the world first.** `../src/world.js` places the city — the street
+   grid, blocks, districts, buildings. `../NOTES.md` documents dimensions and
+   districts, `../phase2-assets/NOTES-assets.md` the building assets. Rebuild
+   that layout in Blender exactly, from the same data, so the bake lines up
+   with the game world.
+2. **Match the game's dusk lighting.** Read how `../src/main.js` sets sky, sun,
+   ambient and fog, and reproduce it in Cycles. A bake lit differently from the
+   game looks worse than no bake at all.
+3. **Bake per district, in sections** — downtown, midtown/residential,
+   industrial/park. Release the lock between sections. Bake indirect light and
+   ambient occlusion into the second UV channel the assets were built with.
+4. **Denoise, and use sane sample counts.** A noisy bake is worse than none.
+   Report samples, times and what you settled on.
+5. **Compress the output**: KTX2 via `npx @gltf-transform/cli@latest` or
+   `toktx`. These are large textures; uncompressed they will not ship.
+
+## Verify
+
+- Render the baked result and **look at it**. Compare against a screenshot of
+  the running game from the same angle. It must be recognisably the same place,
+  visibly better lit — not a different city, not blotchy, no seams, no light
+  leaking through walls.
+- Check that nothing went black, that no district got skipped, and that the
+  texel density is even enough that a wall does not look blurrier than the
+  pavement.
+
+## Deliver
+
+Into `phase3-lightmaps/out/`: the baked texture sets, compressed, named per
+district. Plus `NOTES-lightmaps.md` with:
+- one line per file: district, resolution, size, what it covers
+- **exact instructions for how the game should load and apply them** — which
+  UV channel, which material slot, how to combine with the existing real-time
+  lights without double-lighting the scene
+- samples, bake times, what you would improve with more time.
+
+Also write the Blender scripts you used into `phase3-lightmaps/` so it can be
+repeated after a world change.
