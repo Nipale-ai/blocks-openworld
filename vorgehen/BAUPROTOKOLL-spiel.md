@@ -1,4 +1,4 @@
-# BLOCKS — open world, phase 1 graybox (+ round 2: police, camera, dynamism · round 3: the blue-hour look · round 4: the real assets · round 5: radio and screens · round 6: the baked lightmaps applied) handover notes
+# BLOCKS — open world, phase 1 graybox (+ round 2: police, camera, dynamism · round 3: the blue-hour look · round 4: the real assets · round 5: radio and screens · round 6: the baked lightmaps applied · round 7: shrill audio, stiff character, new character meshes) handover notes
 
 A folder since round 4: `game.html` (three r180 inlined) plus `assets/` next to it (six compressed GLB families, KTX2 textures,
 base64 sidecars for `file://`). Runs from `file://` (double-click) and over http. Built 2026-09-01/02 on the Mac; the Blender
@@ -17,6 +17,16 @@ source GLBs into six families, drops what the game never reads, compresses geome
 and instanced prototypes stay exact), textures with KTX2/Basis (UASTC normals and hero albedos, ETC1S the rest, full mip chains) and
 writes `assets/` (20.2 MB → 5.9 MB) plus base64 sidecars so the same bytes load from `file://`. `src/loader.js` streams them with byte
 progress before the city is built; a click during loading starts the game the moment it is ready. Section 9.
+
+**Round 7 (2026-09-02, two named faults + the rebuilt characters) in one paragraph:** the owner named two things — the car sound and the
+siren are too shrill, the character moves too stiffly — and exactly those two were changed, in `src/audio.js` and `src/player.js`, plus
+`assets/characters.glb` repacked from the rebuilt GLBs (fingers, soft shoulder). The engine's chain no longer ends in the clipper that
+put every removed harmonic back; it ends in filters, has a real sub layer that rises with load and a lowpass that closes with distance;
+the siren is a sine through a narrow band that follows the sweep. Measured, not hoped: siren centroid 1 592 → 897 Hz with the energy
+above 4 kHz down 48 dB, engine centroid at full throttle 453 → 164 Hz (sedan), low end below 120 Hz from 6 % to 46 % of the energy
+(muscle car), and engine + siren now sit under the radio and 12 dB under a pistol shot (section 12). The character has phase offsets,
+follow-through, per-bone damping, a foot-plant bob, lean and a living idle, verified in frame strips and bone telemetry. Nothing else
+— lighting, assets, gameplay balance — was touched; the pedestrians keep their old walk (12.5).
 
 **Round 3 (2026-09-02, look only) in one paragraph:** the city moved from flat daylight to the blue hour. A new module
 `src/lighting.js` carries every artificial light in two float textures and a world-space cell grid that every
@@ -40,6 +50,7 @@ against 5.6 ms in round 2) because the eight three.js point lights of round 2 we
   - **`node test/media.mjs [--http]`** — round 5: radio + screens (analysers on the audio graph per station, leave / re-enter, mute, radio under the engine, both clips decoding and advancing, HUD screenshots into `shots/media/`). Exit 1 on any failed check.
   - `node test/drive.mjs` · `node test/feel.mjs` · `node test/audio.mjs` · `node test/overview.mjs` · `node test/npcfire.mjs` — as in phase 1 (vehicle telemetry, uncapped frame time / camera jitter / props, offline audio render, composition shots, hostile sanity).
   - **`node test/look.mjs [--only=name,…]`** — the round-3 look check: spawn view, a look to the left, the free-cam overviews (`ov_*`), a shop street, the gas station, driving + braking, an explosion flash; every shot is measured like the gate (mean luminance, % near-black) and console errors fail it. `shots/before/` holds the round-2 daylight versions of the same viewpoints for the before/after.
+  - **Round 7:** `node test/shrill.mjs [--before=<src dir>] [--after=src]` — offline render of every engine voice and the siren for two source trees with spectral centroid / energy above 4 kHz / energy below 120 Hz (section 12.1); `node test/levels.mjs [--html=…] [--tag=…]` — bus RMS in the running game: engine at idle and full throttle against the radio, siren at 5 m and 60 m, a pistol burst; `node test/anim.mjs [--html=…] [--tag=before|after]` — frame strips of idle / walk / jog / sprint / stop / turn + bone telemetry into `shots/anim/` (`compare_*.png` once both tags exist); `node test/chars.mjs [--html=…] [--tag=…]` — close-ups of the player, the free hand, the shoulder line, a pedestrian and an officer into `shots/characters-runde7/`.
   - `node test/beacon.mjs` — close-ups of a cruiser's light bar into `shots/beacon_*.png` (the "darkened" variant is moot now — the scene is dusk); `node test/chasetrace.mjs` — per-cruiser diagnostics during a chase (mode, lane edge, stuck timers, the obstacle in front) for tuning the pursuit driver; `node test/perf5.mjs` — uncapped per-frame timing percentiles during a 5★ chase.
 - Debug API in the page: `window.__dbg` (`state()`, `teleport(x,z,yaw)`, `enter(type)`, `exit()`, `select(i)`, `god(on)`, `spawnHostile(d)`, `aimAtNearestNpc()`, `freeCam([x,y,z,tx,ty,tz])`, `traffic()`, `key(code,down)`, `look(dx,dy)`, **`wanted(n)`** sets the star level, **`police()`** dumps the wanted state, cruisers and officers, **`crime(kind)`** reports a crime at the player), `window.__G` (the game context), `window.THREE`.
 
@@ -775,3 +786,190 @@ the KTX2 transcode of the 4096² maps is what costs, 100–400 ms each in the wo
 - **A world change needs a re-bake** (`NOTES-lightmaps.md` §6: `dump_world.mjs` → System A → `encode_ktx.sh` → `node pack-assets.mjs`).
   `dump_world.mjs` still runs: with the stub registry `ASSETS.lightmaps` is null and `world.js` takes the old per-kind path.
 - Round 5's `shots/ov_*.png` are kept as the "before"; the new set lives in `shots/lm/`.
+
+## 12. ROUND 7 — the shrill audio, the stiff character, the rebuilt character meshes (2026-09-02, 17:30–18:10)
+
+Two faults named by the owner, fixed exactly and nothing else: **the car sound and the police siren are too shrill** (`src/audio.js`)
+and **the character's movements are too stiff** (`src/player.js`). Plus the rebuilt `phase2-assets/out/character_*.glb` repacked into
+`assets/characters.glb`. Lighting, assets, gameplay balance, NPC animation, the packer and the loader are untouched; System A and the
+GPU were not used — everything ran on the Mac (headless Chrome via Metal for the tests, `OfflineAudioContext` for the audio).
+Before/after material: `shots/audio/shrill.json` + `levels_{before,after}.json`, `shots/anim/compare_*.png` + `*_telemetry.json`,
+`shots/characters-runde7/`. The "before" is the round-6 snapshot (`stand-20260902-1726/`, byte-identical sources) with the round-4
+character pack (kept in `../../gh-blocks-openworld/spiel/assets/`).
+
+### 12.1 Audio — what was shrill, what changed, what the numbers say
+**Cause.** The engine chain was `oscillators → lowpass → waveshaper → out`: the clipper (tanh, drive up to 2.6) regenerated every
+harmonic the lowpass had just removed, and nothing filtered after it. On top: a second sawtooth at 2 f at almost the level of the
+fundamental (0.45 vs 0.5), an intake-noise band that tracked 9 f up to 6 kHz, the tone cutoff opened to 2.4 kHz by the throttle alone,
+no filter that reacted to distance, and a square sub at f/2 that sits at 13 Hz for a sedan at idle — no weight where it could be heard.
+The siren was a sawtooth + square + triangle (full harmonic series) through a *wide* bandpass (Q 0.7, fixed at 1.6 f) and a clipper,
+with a triangular (hard-cornered) yelp sweep — centroid 1.6 kHz, 1.2 % of its energy above 4 kHz, at any distance.
+
+**Engine (`EngineVoice`)** — the chain now ends in filters:
+`saw(f) + tri(f/2) + saw(2f, 0.12–0.2) + tri(1.5f) + noise (bandpass 6 f, capped at 2.2 kHz) → tone lowpass → soft clip → body lowpass
+→ −8 dB highshelf above 1.8 kHz → air lowpass → burble AM → voice`. The tone cutoff is `cutBase + rpm·cutRpm + load·cutLoad +
+throttle·cutThr` (80–2 600 Hz) — the **load** term is new and the throttle term is a fifth of what it was, so revving without load stays
+dull; the body lowpass rides at `1.15 × tone + 120 Hz` and caps what the clipper regenerates; the air lowpass closes with distance
+(6.5 kHz beside the car → 450 Hz at 110 m, from `sys.dist(p)`) and opens 15 % under load. **Sub layer:** three sines at f, f/2, f/4,
+each windowed into 45–110 Hz (`subWindow`: silent below 25 / above 150 Hz), so whichever octave of the firing frequency falls into the
+felt range carries — plus brown noise through a 90 Hz lowpass; the layer's gain is `subMix × (0.3 + 0.7·load)` and the rumble
+`rumble × (0.25 + 0.75·load)` — weight rises with load, not only with rpm. Tyre squeal: through an extra 2.6 kHz lowpass, Q 3.5 → 2.5,
+gain 0.34 → 0.2. Drive per character 0.6/2.6/1.2 → 0.5/1.6/0.9. Per-engine cost: 13 sources instead of 9 (no measurable frame cost;
+the audio graph runs on its own thread).
+
+**Siren (`SirenVoice`)** — `sine(f, 0.62) + triangle(f, 0.16) + sine(2f, 0.1) → bandpass (Q 1.8, centre 1.05 f, following the sweep)
+→ air lowpass (5 kHz at 0 m → 600 Hz at 240 m) → voice`. No sawtooth, no square, no clipper; the yelp is a cosine sweep like the wail
+(3.4 Hz / 0.44 Hz), 620 → 1 200 Hz. Same spatialisation (ref 20 m, max 520 m), same doppler, same per-frame mode switch.
+
+**Level balance (the owner: engine and siren under the radio and the gunfire, not over them).** Before, the engine sat 4.8 dB over
+the radio at idle and 16.8 dB over it at full throttle, the siren 9 dB over the radio at 5 m. Changed: engine bus 0.62 → **0.2**,
+`gainFull` 0.55/0.75/0.55 → 0.4/0.5/0.4 (the idle→full span is 8 dB instead of 11, so full throttle stays under too), siren voice
+0.5 → **0.18**, `RADIO_TRACK_GAIN` 0.55 → **0.85** (+3.8 dB — the knob section 10.2 documents for exactly this). `test/media.mjs`'s
+check was turned round accordingly (it asserted "radio under the engine"; it now asserts "engine under the radio").
+
+**Measured offline** (`test/shrill.mjs`: each voice rendered through an `OfflineAudioContext` from the before and the after source
+tree, `update()` driven per 1/60 s via `suspend/resume`, Hann-windowed 8 192-point FFT averaged over the last 1.6 s; listener at the
+origin, source 3 m / 5 m in front unless noted; RMS in dBFS; ">4 kHz" = share of the energy above 4 kHz; "<120 Hz rel" = level of the
+band below 120 Hz relative to the whole sound — the weight *inside* the sound, independent of the overall gain):
+
+| sound | RMS dB before → after | centroid Hz | > 4 kHz % | > 4 kHz dB | < 120 Hz % of energy | < 120 Hz rel. to total dB |
+|---|---|---|---|---|---|---|
+| sedan idle | −28.4 → −39.7 | 67 → 51 | 0 → 0 | −88 → −103 | 87 → 91 | −0.6 → −0.4 |
+| sedan mid (3 500 rpm, load 0.5) | −22.1 → −33.7 | 289 → 158 | 0.01 → 0 | −61 → −95 | 42 → 68 | −3.8 → −1.6 |
+| sedan full (5 500 rpm, load 1) | −17.5 → −27.9 | **453 → 165** | 0.15 → 0 | −46 → −75 | **22 → 69** | −6.6 → −1.6 |
+| muscle idle | −20.7 → −33.0 | 71 → 64 | 0 → 0 | −67 → −77 | 80 → 90 | −1.0 → −0.5 |
+| muscle mid | −14.2 → −29.1 | 319 → 280 | 0.05 → 0.02 | −47 → −67 | 55 → 39 | −2.6 → −4.1 |
+| muscle full (5 300 rpm, load 1) | −10.5 → −22.4 | **455 → 245** | 0.25 → 0.06 | **−37 → −55** | **6 → 46** | **−12.1 → −3.4** |
+| van full (3 600 rpm, load 1) | −15.9 → −26.8 | 203 → 121 | 0.01 → 0 | −58 → −71 | 55 → 76 | −2.6 → −1.1 |
+| muscle full at 40 m | −25.6 → −38.5 | 455 → 254 | 0.24 → 0.06 | −52 → −71 | 6 → 45 | −12.1 → −3.5 |
+| muscle full at 100 m | −33.7 → −46.0 | **455 → 201** | 0.24 → 0.06 | −60 → −79 | 6 → 48 | −12.1 → −3.2 |
+| muscle 5 300 rpm, throttle 1, load 0 | −14.4 → −28.3 | 455 → 369 | 0.25 → 0.21 | −41 → −55 | 6 → 14 | −12.2 → −8.5 |
+| tyre squeal (sedan, slip 1) | −22.8 → −33.4 | 357 → 156 | 0.06 → 0.01 | −55 → −76 | 42 → 73 | −3.8 → −1.4 |
+| **siren wail at 5 m** | −17.2 → −23.8 | **1 592 → 897** | **1.18 → 0.00** | **−37 → −86** | 0 → 0 | — |
+| siren yelp at 5 m | −17.2 → −23.8 | 1 593 → 901 | 1.22 → 0.00 | −36 → −86 | 0 → 0 | — |
+| siren wail at 80 m | −30.1 → −36.3 | 1 593 → 904 | 1.17 → 0.00 | −49 → −110 | 0 → 0 | — |
+| siren wail at 250 m | −40.2 → −50.9 | **1 593 → 738** | 1.17 → 0.00 | −60 → −140 | 0 → 0 | — |
+| pistol at 3 m (reference, untouched) | −38.9 → −38.9 | 142 → 143 | 0.15 → 0.13 | −67 → −68 | 42 → 39 | — |
+
+Reading it: the siren's centroid dropped by an octave and its energy above 4 kHz by ~50 dB (it was 1.2 % of the sound, now
+unmeasurable); before, the siren was equally bright at 5 m and at 250 m, now it dulls to 738 Hz two blocks away. The engines'
+centroids at full throttle dropped 2.7× (sedan) / 1.9× (muscle) and the energy above 4 kHz by 13–29 dB; the low end is now the
+dominant part of a car under load (6 → 46 % of the energy for the muscle car, −12 → −3.4 dB relative to the whole) and it dulls with
+distance (centroid 455 → 254 → 201 Hz at 3 / 40 / 100 m; before: 455 at every distance). The absolute low-end level (not in the table:
+−22.6 → −25.8 dBFS for the muscle car at full throttle) is lower than before *only* because the whole engine is 12 dB quieter by the
+balance decision — inside the sound the weight went up 5–9 dB. The one row that moved the other way, muscle mid (55 → 39 % below
+120 Hz), is the old square sub sitting exactly at 117 Hz; the new sub at 3 500 rpm is an octave lower and the saw fundamental at 233 Hz
+now carries more of the (much smaller) total.
+
+**Measured in the game** (`test/levels.mjs`, RMS per bus after the bus gains, minified build, muscle car, station 1 playing):
+
+| | before | after |
+|---|---|---|
+| engine at idle vs radio (inside the car) | **+4.8 dB** | **−10.3 dB** |
+| engine at full throttle (4 290 rpm, 83 km/h) vs radio | **+16.8 dB** | **−1.3 dB** |
+| siren at 5 m (on foot, engine off) vs radio | **+9.0 dB** | **−1.2 dB** |
+| engine at full throttle vs pistol (peak RMS of a burst) | +2.1 dB | −11.9 dB |
+| siren at 5 m vs pistol | −5.1 dB | −11.6 dB |
+| siren at 60 m, sfx bus RMS | 0.026 | 0.012 |
+
+Run-to-run variance of these is about ±1 dB (radio loop position, siren sweep phase) — that is why the siren was taken to 0.18 after
+0.22 measured +0.7 dB in one run and −0.4 dB in another.
+
+### 12.2 Animation — what was stiff, what changed, what the numbers and the strips say
+**Cause.** One sine (`sin(phase)`) drove thighs, arms, hip twist and chest twist at the same instant; one damping rate (λ 18) for all
+sixteen bones; the "bob" was `|sin 2ph| · 2.5 cm · amp` (1.5 cm at a jog, peaking a quarter-stride after the foot plant); no lean into
+acceleration or turns; the sprint lean was a switch (0.22 rad on/off); the idle was a 0.5 rad/s head sweep and a 2 cm breath; turning
+was a λ 12 yaw damp with nothing in the body.
+
+**Changed (`poseFoot`, `applyPose`, the facing damp, all in `player.js`):**
+- **Per-bone settle rates** (`BONE_RATE`): hips 24, thighs 20, shins 17, feet 15, spine 15, upper arms 14, chest 12, forearms 10,
+  head / hands 8 per second. While aiming the arm, chest and head rates are pulled toward 24 so the weapon still snaps to the crosshair.
+  Seated / dead / airborne poses keep one rate (12 / 8 / 10) as before.
+- **Gait blend:** four weights (idle / walk / run / sprint) from overlapping smoothstep ramps over the actual ground speed
+  (0.25–1.1 / 2.4–4.0 / 5.2–6.8 m/s), each damped at λ 7 (~0.3 s). Every amplitude, lean and bob is a mix of them: thigh swing
+  0.45 / 0.7 / 1.0 rad, arm swing 0.3 / 0.6 / 0.85, forward lean 0.03 / 0.10 / 0.24, bob 2 / 4.5 / 6 cm.
+- **Phase offsets:** hips on the beat (`sin ph`), chest twist and tilt at `ph − 0.4`, forearm bend at `ph − 0.5`, head at `ph − 0.8`
+  and counter-rotated against the sum of hip and chest twist (it keeps looking where the body goes), head nod on `cos(2ph − 0.6)`.
+- **Follow-through:** the arm swing goes through an underdamped spring (ω 22 rad/s, ζ 0.5 → 40–60° behind the legs, 13 % overshoot at
+  a jog, and when the stride stops the arms swing past the rest and settle back over ~15 frames). The weapon arm in the low-ready pose
+  bobs with the stride a beat behind the hips instead of being frozen.
+- **Weight:** the root sits lowest at every foot plant (`(cos 2ph − 1)/2 × bob`, the double-support instant) and highest as the legs
+  pass; the spine leans into forward acceleration (up to +0.2 rad) and back against braking (−0.16), banks into lateral acceleration
+  (±0.12) and into turns; a hard turn drops the body a centimetre; the landing drop stays.
+- **Turning:** the facing damp is `14 − 6·speed01` per second (14 at a walk, 8 at a sprint) so a run arcs into a turn instead of
+  pivoting; head (0.16 × yaw rate) and chest (0.08 ×) look into the turn before the body is round it; the spine banks against it.
+- **Idle:** breathing through chest / spine / shoulders / head (0.24 Hz, phase-shifted), a hip-to-hip weight shift (17 s period, spine
+  counters), a 4–6 mm root sway, forearm fidgets, and glances: every 2–5 s a new head target (yaw ±0.4, pitch ±0.12, 45 % back to
+  centre) eased in at λ 4, the chest turning a quarter of it. All of it scales with the idle weight and fades as the walk fades in.
+- The velocity / yaw history is reset on vehicle exit and respawn so no phantom lean appears; `dt = 0` (weapon wheel at time scale 0)
+  is guarded.
+
+**Telemetry** (`test/anim.mjs`, bone rotations sampled per frame from the live rig at 60 fps, same scripted inputs on both builds):
+
+| | before | after |
+|---|---|---|
+| jog: vertical bob range | 1.5 cm | 4.5 cm |
+| sprint: vertical bob range | 3.4 cm | 6.0 cm |
+| walk / jog / sprint: hips→chest twist lag (frames, cross-correlation) | 0 / 0 / 0 | 6 / 3 / 3 |
+| jog: thigh→arm swing lag (frames) | 0 | 3 |
+| jog: hip roll (rad, range) | 0 | 0.062 |
+| jog: head yaw range while running | 0 | 0.019 (counter-rotation) |
+| sprint: thigh swing amplitude | 1.01 rad (58°) | 0.77 rad |
+| start: spine lean peak / largest one-frame step | 0.048 / 0.0055 | 0.166 / 0.025 rad (smooth, over 7 frames) |
+| stop: spine lean minimum (against braking) | 0 | −0.074 |
+| stop: arm swing peak after the feet stop / frames to settle | 0.065 / 5 | 0.314 / 15 (overshoot + settle) |
+| turn (90° at a jog): max head yaw into the turn / max spine bank | 0 / 0 | 0.27 / 0.14 rad |
+| idle 5 s: hip roll range / spine roll / root sway | 0 / 0 / 0 mm | 0.016 / 0.010 rad / 5.8 mm |
+| idle 5 s: chest pitch range (breath) / head yaw range | 0.040 / 0.204 (one slow sweep) | 0.050 / 0.16 (glances with holds) |
+
+**Strips** (`shots/anim/compare_{idle,walk,jog,sprint,stop,turn}.png`, before on top, after below; side camera re-aimed at the player per
+frame, 12 frames 70–80 ms apart): the after-jog and after-sprint rows show a forward lean that changes with the beat, the arms
+past the hips, the body lower on the plant frames; the stop row shows the legs still settling and the free arm swinging through
+after the feet have stopped (before: frozen from frame 3); the turn row (three-quarter from behind) shows the shoulders and head
+turned into the corner before the hips; the idle row shows different head angles and a slightly shifted stance across the ten
+frames (before: ten identical frames). Frame cost: none measurable — the same 16-bone loop, a handful of sines and one spring more.
+
+### 12.3 The rebuilt character meshes
+`node pack-assets.mjs --only=characters` on the rebuilt `phase2-assets/out/character_{player,officer,civ0..5}.glb` (17:22): 8 rigs,
+same 16 contract bones + `WeaponSocket`, 12 KTX2 textures (UASTC albedo + normal), 3 594 KB → **422 KB** (`assets/characters.glb`,
+was 374 KB; manifest and the `.b64.js` sidecar regenerated; every other family byte-identical). Per figure **3 396 triangles**
+(officer 3 554) instead of 2 360 — the fingers. In the game (`test/chars.mjs`, `shots/characters-runde7/{before,after}_sheet.png`
+and `compare_hand_shoulders.png`): the free left hand has separate fingers instead of a mitten, the sleeve runs into the arm without
+the step / protruding block at the shoulder; the pedestrian and the officer close-ups come from the same registry
+(`ASSETS.characters`, `SkeletonUtils.clone` per spawn), so every NPC shows the new mesh too. `player.rig` reports one skinned mesh of
+3 396 triangles at runtime.
+
+### 12.4 Verified (final minified build `game.html` 1 061 KB, MacBook GPU via Metal, headless Chrome 1280×720)
+- Gate `pruefe_openworld.mjs`: **GREEN**, mean 71.7 / 18.6 % near-black — the same numbers as round 6 (the brightness gate is
+  unchanged; nothing in the light path was touched), 0 console errors.
+- `test/quick.mjs` file://: load 1.2 s, **60 fps**, 346 draws, 0 errors; `--http`: load 0.8 s, 60 fps, 0 errors. Spawn 89 / 17.6 %,
+  identical to the round-6 shots.
+- `test/play.mjs --gpu` (walk, sprint, jump, enter / drive / handbrake / exit, weapon wheel, pistol / MG / rocket, under fire): **60 fps
+  in every state**, 389 draws, 0 errors, 0 warnings.
+- `test/levels.mjs`: the balance table in 12.1. `test/shrill.mjs`: the spectral table in 12.1.
+- `test/media.mjs` (file://): all 41 checks pass — four stations, off / wrap, **engine (0.051) under the radio (0.070) at full throttle**,
+  leave / walk away / come back, mute, both screen clips decoding; 60 fps, 0 console errors.
+- `test/vehicles-shots.mjs`: sedan / muscle / van / cruiser driven, player / weapons / pedestrian / officer / lamp / tree close-ups, both
+  police doors — 0 console errors, 60 fps, 348 draws (the `sirens 0` in its last line is its own Q press switching a pursuit-spawned
+  cruiser's siren *off*; `play.mjs` shows 1–4 siren voices during its chase and `levels.mjs` one at 5 m).
+- `test/anim.mjs` (after, final build): the telemetry in 12.2 reproduced (bob 2.0 / 4.5 / 6.0 cm, hips→chest lag 6 / 4 / 3 frames,
+  arm peak after the stop 0.314, head into the turn 0.27, spine bank 0.14), 0 errors; its own fps readout says 58 because it is
+  taken right after a screenshot burst (each screenshot stalls a frame) — `quick`, `play` and `media` read 60 in the same build.
+- `test/chars.mjs` (after): 60 fps, 0 errors.
+
+### 12.5 Left as it is / consequences to know about
+- **The pedestrians and officers keep their old walk** (`npcs.js` `animate()`: one sine, one rate, no lean). The brief named the
+  character; the NPCs were not touched. Next to the player they now read as the stiffer ones — the same recipe (per-bone rates, phase
+  offsets, foot-plant bob, the arm spring) ports to `npcs.js` in an hour, but it is a change beyond this round's two faults.
+- **The horn** (`horn()`, two square waves through a 2.4 kHz lowpass) and the UI stings were not named and were not changed.
+- **Absolute loudness:** the engine is 11–15 dBFS quieter than before (the balance decision), the siren 6–11 dB. With the radio off
+  (the default) the car is a bed under the gunfire, not the loudest thing in the mix — that is the owner's stated intent; if it ends up
+  too quiet in the room, the knobs are the engine bus in `init()` (0.2) and `SirenVoice.update` (0.18); the spectral fixes are
+  independent of them.
+- **Arm responsiveness:** the forearm / hand rates (10 / 8 per second) make the weapon kick a touch softer than at λ 18; while aiming
+  the arm bones run at up to 24 per second, so the aim pose itself is as snappy as before.
+- **The footstep sound** still triggers at the legs-pass instant (`updateFoot`, unchanged); the visual plant is now a quarter stride
+  later. Audible only if you look for it; moving the trigger is a one-line change in `updateFoot` that was not in the brief.
+- **Facing at speed** turns at 8 per second instead of 12 (the arc into a turn); the movement direction itself is unchanged, so
+  nothing in the controls or the collision changed — only where the mesh (and the minimap arrow, the blob shadow) points during the
+  first ~0.2 s of a direction change.

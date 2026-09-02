@@ -37,6 +37,7 @@ measurements.
 | Wiring the media in | green, first try | 26 min | $11.91 |
 | Baking lightmaps in Cycles | green, first try | 85 min | $29.10 |
 | Applying the baked lighting | green, first try | 18 min | $11.15 |
+| Shrill audio, stiff animation, new characters | green, first try | 29 min | $14.94 |
 
 **Every round passed on the first attempt.** Costs are list-price equivalents
 reported by the API, not what was actually billed.
@@ -59,12 +60,26 @@ them there:
 Rendering time and token cost are decoupled: the model writes a script, the card
 runs it, waiting costs nothing.
 
+## Fixed after playing it
+
+The owner played the build and named three things. All three were measured, not
+guessed:
+
+- **The engine and siren were shrill.** Siren spectral centroid 1,592 → 897 Hz,
+  energy above 4 kHz down 48 dB; engine at full throttle 453 → 164 Hz, low end
+  below 120 Hz from 6 % to 46 % of total energy. Both now sit under the radio
+  and 12 dB under a pistol shot. A measurement tool for this shipped with it.
+- **The character moved stiffly.** Phase offsets between hips, chest, arms and
+  head, follow-through, per-limb damping, weight on the stride.
+- **The character mesh was crude.** Rebuilt: the shoulder now flows out of the
+  torso instead of stepping off it, and the hands have fingers.
+
 ## What is weak, honestly
 
-- **The character model** — tube arms with a visible shoulder seam, stub hands.
-  It is the asset that got the least attention and it shows.
-- The character is also the only asset that would need a full rebuild rather
-  than a fix.
+- **The character is stylised, not realistic.** It reads at gameplay distance
+  and no further. A first rebuild attempt made the shoulders worse — angular
+  blocks standing off the torso — which only showed up by opening the render.
+  The numeric contract check passed both times.
 - The `POLICE` lettering was mirrored in one round because a numeric check
   passed while nobody looked at the image. It was found by looking.
 

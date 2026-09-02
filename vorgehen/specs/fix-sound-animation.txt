@@ -1,0 +1,77 @@
+Two things in this game are wrong and the owner named them precisely. Fix
+exactly these two. Change nothing else.
+
+**⛔ DO NOT USE THE GPU.** Another job owns System A.
+**⛔ DO NOT TOUCH `phase2-assets/`, `phase3-lightmaps/`.**
+
+## 1. The vehicle and siren sounds are too shrill
+
+His words: the car sound and the police siren are too shrill. That is the most
+irritating thing in the build right now — it is the first thing anyone hears.
+
+The audio is synthesised in `src/audio.js`. Shrill almost always means the same
+things, so go through them:
+
+- **Too much energy in the upper harmonics.** Roll them off. A real engine is
+  dominated by its fundamental and the first few harmonics; the high ones sit
+  far below, not level with them.
+- **No low end.** An engine must be felt, not just heard. Put real weight below
+  120 Hz and let it rise with load, not only with RPM.
+- **No low-pass anywhere.** Add filtering that closes as the sound moves away
+  and opens when it is near, and make it react to load rather than staying static.
+- **The siren is a special case.** A real siren is loud but not piercing: its
+  tone is narrow-band and the sweep is smooth. Sawtooth or square waves with
+  full harmonics through a hard-edged sweep are exactly what hurts. Soften the
+  waveform, narrow the band, and make distance actually dull it.
+- Check the overall level balance too: engine and siren must sit under the
+  radio and the gunfire, not over them.
+
+**Verify by measuring, not by hoping:** render each sound through an
+`OfflineAudioContext`, compute the spectral centroid and the energy above
+4 kHz, and compare before and after. Shrillness is measurable — show that it
+went down. Also confirm the low end actually gained energy.
+
+## 2. The character animation is too stiff
+
+His words: the movements and animations of the character are too stiff.
+
+The animation is procedural, on the rig bones, in `src/player.js`. Stiffness in
+procedural animation comes from a small set of causes — work through them:
+
+- **Everything moves on the same beat.** Offset the phases: hips lead, chest
+  follows, arms trail, head last. Nothing in a body starts at the same instant.
+- **No secondary motion.** Add follow-through and overshoot: the chest twists
+  against the hips, arms swing past their target and settle back, the head
+  counter-rotates slightly against the torso.
+- **Damping constants all identical.** Different masses settle at different
+  rates — a head is not a forearm.
+- **No weight.** There should be a vertical bob tied to the stride, a slight
+  drop on the down-step, lean into acceleration and against deceleration.
+- **Transitions snap.** Blend between idle, walk, run and sprint over time
+  rather than switching, and let the blend follow actual speed.
+- **The idle is dead.** Standing still is never still: breathing, small weight
+  shifts, occasional glances.
+
+Also make turning readable — the body should rotate into a turn rather than
+pivoting on the spot.
+
+**Verify by looking:** record short headless captures of walking, running,
+sprinting, turning and standing idle, extract frames, and look at them in
+sequence. Stiffness is visible in a frame strip: identical poses, no
+overlap between limbs, no vertical movement.
+
+## 3. New character models are waiting
+
+`phase2-assets/out/character_*.glb` were rebuilt: softer shoulder transition
+(no more step or protruding block) and actual fingers instead of stubs. Same
+contract, same bone names, verified — `verify.py` passes on all of them.
+
+Re-pack the assets so the new characters reach the game, and check in a
+screenshot that the player and the pedestrians actually show the new mesh.
+
+## Rules
+
+- Nothing else changes. No lighting, no assets, no gameplay balance.
+- 60 fps, zero console errors, brightness gate unchanged.
+- Update NOTES.md with what you changed and the measured before/after numbers
+  for the audio.

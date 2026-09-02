@@ -1,25 +1,16 @@
 {
   "families": {
-    "buildings_city": {
-      "source": 2745148,
-      "packed": 1274764,
-      "files": 1,
-      "dropped": 13,
-      "seconds": "23.1",
-      "texcoord1": "13/13"
-    },
-    "buildings_industrial": {
-      "source": 1194136,
-      "packed": 478796,
-      "files": 1,
-      "dropped": 4,
-      "seconds": "7.4",
-      "texcoord1": "4/4"
+    "characters": {
+      "source": 3680432,
+      "packed": 432024,
+      "files": 8,
+      "dropped": 8,
+      "seconds": "4.1"
     }
   },
-  "sourceBytes": 3939284,
-  "packedBytes": 1753560,
-  "sidecarBytes": 44297614,
+  "sourceBytes": 3680432,
+  "packedBytes": 432024,
+  "sidecarBytes": 44362878,
   "lightmaps": {
     "files": 8,
     "bytes": 26417329,
