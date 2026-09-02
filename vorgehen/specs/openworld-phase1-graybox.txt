@@ -1,0 +1,88 @@
+Build the complete playable system for a third-person open-world action game.
+One self-contained HTML file, game.html, in the current working directory.
+Everything embedded — it runs offline from the file system, no server.
+
+READ THIS FIRST — WHAT THIS PHASE IS
+
+This is phase one of two. The render workstation is busy right now, so this
+phase is about the GAME, not the art. You are building what a studio calls a
+graybox: every system complete and tuned, with simple geometry standing in for
+final assets.
+
+**DO NOT SSH ANYWHERE. DO NOT USE ANY GPU. DO NOT TRY TO REACH systema, brain,
+spark, or ComfyUI.** That machine is in use by someone else and touching it is
+the one thing that ruins this run. Everything here is built locally with code.
+
+In phase two, a later session will replace your placeholder meshes with modelled
+assets from Blender, your flat colours with generated PBR textures, and bake
+lightmaps into the static world. **So build for that handover.** Keep asset
+creation in clearly named, isolated functions — `makePlayerMesh()`,
+`makeVehicleMesh(type)`, `makeWeaponMesh(type)`, `makeBuilding(...)` — each
+returning a THREE.Object3D with correct scale, correct origin, and correct
+attachment points. Someone must be able to swap the body of those functions for
+a GLTF load without touching a single line of gameplay code. Write down the
+expected dimensions and pivot of every one of them in NOTES.md.
+
+WHAT MUST WORK BY THE END OF THIS PHASE
+
+1. Third-person character on foot: walk, run, sprint, jump. A follow camera that
+   does not clip through geometry, does not jitter, and does not fight the
+   player. Tune this until it feels good — it is the thing everything else sits
+   on.
+2. Cars you get into and out of. Walk up, press a key, the character enters, the
+   camera becomes a driving camera, you drive, press again to exit. Driving must
+   have weight: acceleration curve, mass, grip, handbrake, suspension that
+   reacts to the road. This should feel like driving, not like sliding a box.
+3. Three vehicles that handle differently — a sedan, a muscle car, a van or
+   truck. Different mass, grip and acceleration, and different placeholder
+   silhouettes so they are already distinguishable.
+4. A weapon wheel held open on a key, slowing time, with pistol, machine gun and
+   rocket launcher. Each fires differently: rate, recoil, spread, projectile,
+   impact. Recoil must move the camera and the aim. The rocket launcher must
+   feel heavy and slow; the pistol must not. Hit feedback on everything you can
+   shoot.
+5. NPCs walking the world on their own, pathing around obstacles, reacting to
+   the player and to gunfire.
+6. A city block layout worth moving through: streets, junctions, buildings with
+   real volume, places that are interesting to drive between. Get the SHAPE of
+   the city right now — in phase two it gets its skin, and a bad layout cannot
+   be fixed with textures.
+7. Two more mechanics of your choosing, built properly. Things that make the
+   world feel alive, not things that add menus.
+8. Sound: synthesise everything in Web Audio — gunfire, impacts, engine note
+   following actual RPM, footsteps, tyre squeal. Layered transients, pitch
+   variation per shot, distance falloff, real low-end on the rocket launcher.
+   Do not generate audio files; there is no GPU in this phase. Leave a clearly
+   marked hook where generated radio music will be dropped in later.
+
+QUALITY BAR
+
+- **It must be bright enough to see.** Screenshot the running game, measure
+  actual pixel brightness, and confirm the ground and the geometry the player
+  moves through are clearly visible — not just the sky. If more than a third of
+  the frame is near-black, the lighting is wrong: fix it and measure again.
+- Even with placeholder geometry this should look deliberate: a coherent palette,
+  readable silhouettes, real-time lights and shadows tuned properly, ACES tone
+  mapping, bloom that is adjusted rather than switched on. Grayboxes can look
+  good. Make this one look good.
+- Instancing for anything repeated. Keep the frame budget healthy from the
+  start — it only gets more expensive in phase two.
+- Drive it headless (Playwright with real Chrome) and actually play it: walk,
+  enter a car, drive, open the wheel, fire all three weapons, get shot at.
+  Screenshot each state, look at the screenshots, fix what is wrong, repeat.
+- Target 60 fps and report what you measure, not what you hope. Zero console
+  errors.
+
+CONSTRAINTS
+
+- One file, game.html, everything inlined.
+- Work in files on disk and assemble at the end. Do not emit the whole game in
+  one response.
+- Keyboard and mouse. Show the controls in-game.
+- NOTES.md: what you built, how each system works, the exact dimensions and
+  pivots of every placeholder mesh, where the asset hooks are, what you measured,
+  what you would do with more time. This file is the handover to phase two —
+  write it for the person who has to swap your placeholders for real models.
+
+Take the time this needs. A tight, good-feeling graybox is worth far more than a
+rushed one with more features.

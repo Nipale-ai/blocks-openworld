@@ -1,0 +1,81 @@
+Continue the open-world game in this directory. The source is in `src/`, it
+builds with `node build.mjs` into `game.html`, and NOTES.md describes every
+system. The player has now played it and given feedback. This round is about
+acting on that feedback — not about starting anything over.
+
+**DO NOT SSH ANYWHERE. DO NOT USE ANY GPU. DO NOT TRY TO REACH systema, brain,
+spark, or ComfyUI.** That machine is in use by someone else. Better models,
+textures and baked lighting are a separate later phase; this round is systems
+and feel, built locally.
+
+His verdict on what exists: "looks very good already". So do not rewrite what
+works. Read the existing code, extend it, and keep everything that is good.
+
+## 1. Police, with a star system — the big one
+
+There is some `cop` handling and a `heat` value in there already. That is not
+enough and the name is wrong.
+
+Build a proper wanted system, the way the games this borrows from do it:
+
+- **Stars, one to five, shown as stars in the HUD.** Remove the word "heat" from
+  the interface entirely. Stars light up as you commit crimes and cool down over
+  time once you break line of sight.
+- Crimes escalate you: firing a weapon in public, hitting pedestrians, ramming
+  cars, killing, destroying vehicles. Bigger crimes, bigger jumps.
+- **Police that actually arrive.** Marked patrol cars that drive to you through
+  the street network with **sirens and flashing lights** — the siren is
+  synthesised in Web Audio, the lights are real emissive flashes that light the
+  street around them at night. You must hear them coming before you see them.
+- **Escalation per star level**, and make each level feel different:
+  one star a single car that follows and calls it in; two, several cars that try
+  to box you in; three, officers on foot who get out and shoot, roadblocks;
+  four and five, heavier response — more units, more aggressive driving, pursuit
+  that does not simply give up. Design the exact ladder yourself, but each step
+  must be recognisably harder than the last.
+- Officers on foot must use the existing NPC and weapon systems: cover, aim,
+  fire, take damage, die. They are not decoration.
+- Losing them must be a skill: break line of sight, get distance, stay out of
+  their search area, and the stars drop. Show the cooldown in the HUD so the
+  player understands what is happening.
+
+## 2. The driving camera is broken — fix it
+
+His words: while driving, the camera sometimes swings out so far that the car is
+no longer visible at all. That is the single worst thing in the build right now.
+
+Suspect: `camera.js` line ~83 lifts the pivot by up to 2.2 m when the camera is
+pushed close to the car (`lift = clamp((2.2 - curDist) * 1.1, 0, 2.2)`).
+Confirm it yourself before changing anything — do not just take my word for it.
+
+**The rule to hold: the player's own car is always clearly in frame while
+driving.** Whatever the camera does to avoid geometry, it never loses the car.
+Write a headless test that drives through tight streets, alleys, walls and
+collisions, samples where the car is in screen space every frame, and fails if
+the car leaves the frame or is occluded for more than a moment. Keep that test.
+
+## 3. Make it feel more dynamic
+
+He wants the game to feel more alive and more kinetic. Choose what serves that
+best, but the direction is: more speed, more reaction, more consequence.
+Things worth considering — sharper camera response to acceleration and impact,
+speed-driven FOV and shake, better hit and damage feedback, more traffic and
+pedestrians actually reacting, chases that create chaos in the streets, and
+readable but punchy screen effects. Nothing that adds menus.
+
+## Do not break what works
+
+The city, the vehicle physics, the weapon wheel, the character controller and
+the frame rate are good. Regressions there cost more than any new feature gains.
+
+## Quality bar — unchanged and still binding
+
+- **Bright enough to see.** Screenshot the running game, measure pixel
+  brightness, ground and geometry clearly visible. Under a third near-black.
+- Play it headless with real Chrome and look at the screenshots: drive through
+  a chase, take stars, get boxed in by police, fight officers on foot. Fix what
+  looks wrong and repeat.
+- Zero console errors. Hold 60 fps — police units and chases must not sink it.
+  Report what you measure.
+- Update NOTES.md: the star ladder, what you changed on the camera and why, what
+  you added for dynamism, and the phase-2 handover notes kept current.

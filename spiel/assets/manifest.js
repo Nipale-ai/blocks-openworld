@@ -1,0 +1,1 @@
+window.__ASSET_MANIFEST={"built":"2026-09-02T10:32:44.422Z","files":{"vehicles.glb":3399296,"characters.glb":383076,"weapons.glb":269992,"buildings_city.glb":1224512,"buildings_industrial.glb":473612,"props.glb":414636,"basis/basis_transcoder.js":57529,"basis/basis_transcoder.wasm":527333}};

@@ -1,0 +1,49 @@
+{
+  "families": {
+    "vehicles": {
+      "source": 11656716,
+      "packed": 3399296,
+      "files": 12,
+      "dropped": 114,
+      "seconds": "13.1"
+    },
+    "characters": {
+      "source": 3275984,
+      "packed": 383076,
+      "files": 8,
+      "dropped": 8,
+      "seconds": "16.3"
+    },
+    "weapons": {
+      "source": 1360272,
+      "packed": 269992,
+      "files": 3,
+      "dropped": 4,
+      "seconds": "13.6"
+    },
+    "buildings_city": {
+      "source": 2745144,
+      "packed": 1224512,
+      "files": 1,
+      "dropped": 26,
+      "seconds": "23.6"
+    },
+    "buildings_industrial": {
+      "source": 1194132,
+      "packed": 473612,
+      "files": 1,
+      "dropped": 8,
+      "seconds": "20.7"
+    },
+    "props": {
+      "source": 996504,
+      "packed": 414636,
+      "files": 1,
+      "dropped": 38,
+      "seconds": "17.2"
+    }
+  },
+  "sourceBytes": 21228752,
+  "packedBytes": 6165124,
+  "sidecarBytes": 9000292
+}

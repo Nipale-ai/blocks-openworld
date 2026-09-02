@@ -1,0 +1,89 @@
+Build the real 3D assets for an open-world game that already exists and works.
+
+You are working in `phase2-assets/`. The game itself is one directory up.
+
+**READ FIRST, DO NOT MODIFY: `../NOTES.md`, section 5 "ASSET HOOKS".** It
+documents every mesh the game expects — exact dimensions, pivots, orientations,
+bone names with rest positions, child object names that gameplay code reads by
+name. That document is the contract. Match it exactly and the assets drop in;
+deviate and they break.
+
+**⛔ DO NOT TOUCH `../src/`, `../game.html`, `../build.mjs` OR ANY FILE OUTSIDE
+`phase2-assets/`.** Another process is editing the game's source right now.
+Read whatever you need from it, write nothing. Everything you produce goes in
+`phase2-assets/`.
+
+## The machine is yours
+
+`ssh systema` — an RTX 5090, 32 GB, currently idle and fully free. Blender 5.2.1
+at `/usr/local/bin/blender`. ComfyUI can be started for texture work; docs and
+working examples in `~/pyriq/jarvis-mlops/comfy-raw-api/`. Free VRAM between
+jobs or the second model load fails.
+
+Use it hard. This is the whole point of this phase: everything so far was placed
+boxes, and the owner's verdict was that the models must look "significantly,
+significantly better".
+
+## What to build
+
+Work through these in order of visual impact. Finish each one properly before
+starting the next — three excellent assets beat eight rough ones.
+
+1. **The three player vehicles** — sedan, muscle car, van. Then the **police
+   cruiser**. Real car shapes: bodywork with panel definition, wheel arches,
+   glass, lights, bumpers, grille, mirrors, interior visible through the
+   windows. Keep every named child the contract requires (`body`, `lights`,
+   `brakeLights`, `wheel_FL/FR/RL/RR`, the `seat`/`exit_L`/`exit_R`/`exhaust`/
+   `headlight_L/R` empties, and on the cruiser `beacon_L`/`beacon_R`).
+2. **The three weapons** — pistol, machine gun, rocket launcher. These are seen
+   closest to camera, so they carry the most detail per triangle. Grip at the
+   origin, barrel down +Z, `muzzle` empty at the tip, `loadedRocket` on the
+   launcher.
+3. **The character rig** — player, civilians, officers. Same bone names, same
+   rest orientation, same joint positions as the contract. Real proportions and
+   clothing, not a box stack. Officers need a recognisable uniform, cap and belt.
+4. **Buildings** — the kinds listed in the contract. These are instanced across
+   the whole city, so they decide how the skyline reads. Facade relief, window
+   frames, ledges, roof detail. Keep footprints and heights exactly.
+5. **Street furniture and props** if time remains — lamps, signs, benches,
+   barriers, bins, hydrants.
+
+## How to build it
+
+- **Blender headless, scripted** (`blender -b -P script.py`). No clicking.
+  Keep every generator script in `phase2-assets/` so the work can be repeated.
+- **Export glTF/GLB per asset**, textures packed, Y up, +Z forward, correct
+  scale in metres. One file per asset, named clearly.
+- **Budget triangles like a real game does**: the weapons and the player car can
+  afford detail, buildings are instanced hundreds of times and must stay lean.
+  Normal maps carry detail that geometry should not. State your budgets and what
+  you hit in NOTES-assets.md.
+- **Materials as proper PBR sets** — base colour, roughness, metalness, normal.
+  Generate them in ComfyUI where that beats procedural work, and bake procedural
+  Blender materials to textures where that is better. Car paint needs real
+  metalness and low roughness; asphalt and concrete need the opposite.
+- **UV unwrap everything** you texture, and keep a second UV channel free on
+  static geometry so lightmaps can be baked into it later.
+
+## Verify your own work — this is where these runs fail
+
+- After every export, **load the GLB back** and render it: a turntable or three
+  fixed angles, on a neutral ground, lit plainly. **Open the images and look at
+  them.** Wrong scale, flipped normals, missing material, broken pivot and
+  inside-out geometry are all obvious in a render and invisible in a log.
+- **Check the contract numerically**: print each asset's bounding box, origin
+  offset, and the world positions of every named child, and compare them against
+  the table in NOTES.md. A wheel 4 cm off ruins the suspension.
+- Throw away and redo anything that does not look convincing. You have the GPU
+  and the time; a mediocre asset that ships is worse than one more iteration.
+
+## Deliverables in `phase2-assets/`
+
+- The GLB files, clearly named.
+- Every Blender and ComfyUI script used.
+- Render sheets of each asset (the images you checked).
+- `NOTES-assets.md`: what each file contains, its triangle count, its texture
+  set, the contract values you verified, what you would improve with more time,
+  and precise instructions for how `assets.js` should load each one.
+
+Do not modify the game. Someone else wires these in afterwards.

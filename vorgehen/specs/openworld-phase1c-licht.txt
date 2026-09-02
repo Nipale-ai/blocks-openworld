@@ -1,0 +1,73 @@
+Continue the open-world game in this directory. Source in `src/`, builds with
+`node build.mjs`, NOTES.md documents every system. This round is **purely about
+how the game looks**. Do not change the gameplay, the systems, or the feature
+set. Nothing new gets added — the existing world gets a new look.
+
+**DO NOT SSH ANYWHERE. DO NOT USE ANY GPU.** systema, brain, spark and ComfyUI
+are off limits — that machine belongs to someone else right now. Everything in
+this round is runtime rendering, written by hand.
+
+## The problem, stated honestly
+
+The game currently runs under flat daylight. Under an even overhead sun, simple
+geometry looks its worst: nothing is picked out, nothing is in shadow, every
+surface reads as the same matte plane. Compare it to interior scenes lit by
+practical lights and ours looks unfinished — not because the geometry is worse,
+but because the lighting does nothing for it.
+
+## Move the whole city to dusk
+
+Not full night — **the blue hour**. Sun just below the horizon, sky still
+carrying colour, everything else dark enough that artificial light reads.
+The city must still be legible: you have to see where you are driving.
+
+This is the change everything else depends on, so get the sky and the ambient
+level right first, then build the rest of the lighting on top.
+
+## What must appear once it is dark enough to matter
+
+- **Street lights that actually light the street** — visible pools of light on
+  the road with dark gaps between them, warm sodium against the cold sky.
+  Instanced, so hundreds of them stay affordable.
+- **Car headlights and tail lights.** Beams that fall on the road and on other
+  cars, brake lights that brighten. Traffic at dusk should read as strings of
+  moving light. Police lights must sweep the buildings around them.
+- **Windows lit in buildings** — not all of them, and not all the same colour.
+  A tower with a scattering of warm windows reads as inhabited.
+- **Neon and signage** — emissive faces on shops and hoardings, colours that
+  spill onto what is near them.
+- **Wet asphalt.** Roads should be visibly more reflective than pavements, so
+  the lights above them smear into the surface. This is a material property
+  (low roughness, correct metalness) plus screen-space reflections or a cheaper
+  approximation — pick what holds 60 fps.
+- **Shadows that anchor things.** Objects need contact shadows; without them
+  everything looks pasted onto the ground. Ambient occlusion at contacts,
+  cascaded shadow maps tuned so the near range is crisp.
+
+## Post-processing
+
+The composite pass exists in `postfx.js`. Bring it up:
+bloom tuned to the emissive sources rather than blanket glow, colour grading
+that separates cold sky from warm practicals, subtle vignette, and enough
+contrast that the frame has actual blacks. It should look graded, not filtered.
+
+## Rules that still bind
+
+- **It must remain playable and readable.** Dusk is not an excuse for a dark
+  screen. Measure the brightness of the running game as before: under a third of
+  the frame near-black, the road and the geometry the player moves through
+  clearly visible. This is the same gate that has been running all night and it
+  does not move.
+- **Hold 60 fps.** Report what you measure. If a lighting feature costs more
+  than it gives, drop it and say so in NOTES.md.
+- Zero console errors.
+- **Change nothing about gameplay.** No new mechanics, no rebalancing, no
+  feature work. If a system needs a small hook to expose its lights (headlights,
+  police beacons), add the hook and nothing more.
+- Screenshot the running game from the same viewpoints as the existing shots in
+  `shots/` so the before/after is directly comparable, and look at them. Keep
+  going until it looks like something worth showing.
+
+Update NOTES.md with what you changed, what you measured, what you dropped for
+performance, and which parts would improve further once real textures and baked
+lighting arrive in the GPU phase.

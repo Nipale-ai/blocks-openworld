@@ -1,0 +1,58 @@
+Generate the audio and video content for an open-world game that already exists.
+
+You work in `phase2-medien/`. The game is one directory up.
+
+**⛔ DO NOT TOUCH `../src/`, `../game.html`, `../build.mjs`, `../assets/` OR
+ANYTHING OUTSIDE `phase2-medien/`.** Another process is editing the game source
+right now. Read what you need, write only into your own directory.
+
+**⛔ SYSTEM A IS SHARED.** Before any GPU work:
+    systema-belegen "model-research" "<what you are doing>" <minutes>
+It blocks until free — you do not poll. The moment your last GPU step is done:
+    systema-frei "model-research"
+Also on abort. Give an honest duration; another session needs short windows
+between yours. Re-take the lock if you need longer.
+
+## What the game expects
+
+`../NOTES.md` documents a **radio hook** that is already wired: pressing R in a
+car cycles stations and currently shows "NO SIGNAL". Read that section and match
+what it expects — file names, formats, how many stations. Also check whether the
+game has a screen or billboard waiting for a video clip.
+
+## 1. Car radio — several stations
+
+Generate with **ACE-Step** on System A (working example and API details in
+`~/pyriq/jarvis-mlops/comfy-raw-api/gen_ace_step.py`; it takes `--tags` and an
+optional `--lyrics-file`, so it can sing).
+
+- **Three or four stations, clearly different from each other** — the point is
+  that switching stations changes the mood of the drive. Pick genres that suit
+  driving through a city at dusk and decide the split yourself; at least one
+  station should have **actual vocals**.
+- Each track long enough not to feel like a loop on a short drive, and looping
+  cleanly — cut on a bar boundary and cross-fade, do not just fade out.
+- **VERIFY EVERY TRACK BEFORE ACCEPTING IT.** Render a spectrogram and look at
+  it. Silence, truncation and dead ends at the tail are the failure mode here:
+  two models before you shipped silent audio because they trusted the generator.
+  Also listen to the numbers — peak level, RMS, actual length.
+- Encode for the web: OGG or MP3 at a sane bitrate. State the sizes.
+
+## 2. Video for the screens
+
+Generate with **LTX** on System A. One or two short clips that suit a city
+billboard or a shop display — something that reads at a glance and loops.
+Check the frames before accepting: no collapse to grey, no flicker, no text
+turning to mush.
+
+## 3. Deliver it so it can be wired in without guesswork
+
+Everything into `phase2-medien/out/`, plus `NOTES-medien.md` containing:
+- one line per file: what it is, length, size, format, loop points
+- the station list with names as they should appear in the HUD
+- **exact instructions for how the radio code should load and switch them**
+- what you generated and discarded, and why
+
+Write the scripts you use into `phase2-medien/` so the work can be repeated.
+
+Do not modify the game. Someone else wires this in afterwards.

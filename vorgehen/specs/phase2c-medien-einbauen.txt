@@ -1,0 +1,35 @@
+Wire the finished audio and video into the game.
+
+The game is in this directory. The media is in `phase2-medien/out/`:
+four radio stations as OGG, two screen loops as WebM and MP4, plus
+`radio_stations.js`, a base64 variant and a manifest.
+**`phase2-medien/NOTES-medien.md` documents exactly how it is meant to load** —
+read it first, it was written for this task.
+
+**⛔ DO NOT TOUCH `phase3-lightmaps/`** — another process works there.
+**⛔ DO NOT USE THE GPU.** System A belongs to another job right now.
+
+## What to do
+
+1. **The car radio works.** The hook exists and shows "NO SIGNAL". Make R cycle
+   the four stations, show the station name in the HUD, keep playing across
+   entering and leaving a car, and mute properly with M. Volume should sit
+   under the engine and the sirens, not over them — you are driving, not
+   listening to a concert.
+2. **The screen loops play** where the world has screens or billboards.
+3. **Keep the file-system case working.** The game must still run from
+   `file://` — that is why the media ships as base64 variants as well. Do not
+   break the folder deployment either; both paths must work.
+4. **Do not touch anything else.** No gameplay changes, no lighting changes,
+   no asset changes. This round is audio and video only.
+
+## Verify
+
+- Play it headless with real Chrome: get in a car, cycle all four stations,
+  confirm each actually produces audio (check the analyser or the audio graph,
+  not just that no error was thrown), leave the car, get back in.
+- Screenshot the HUD with a station name showing, and **look at it**.
+- Confirm the screens play their clip.
+- Zero console errors, 60 fps unchanged.
+
+Update NOTES.md with how the radio is wired and what the station list is.

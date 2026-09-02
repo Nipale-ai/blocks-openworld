@@ -1,0 +1,77 @@
+{
+  "built": "2026-09-02T10:56:06.124Z",
+  "radio": [
+    {
+      "name": "NEON DRIVE 104.6",
+      "title": "Night Grid",
+      "file": "radio_neon_drive.ogg",
+      "seconds": 51.111,
+      "bytes": 819262,
+      "sidecarBytes": 1092398,
+      "genre": "Synthwave, instrumental, 108 BPM, A-Moll"
+    },
+    {
+      "name": "SUNSET FM 88.1",
+      "title": "Take the Long Way Home",
+      "file": "radio_sunset_fm.ogg",
+      "seconds": 55.862,
+      "bytes": 924455,
+      "sidecarBytes": 1232653,
+      "genre": "80s City Pop, weiblicher Gesang (EN), 116 BPM, F-Dur"
+    },
+    {
+      "name": "BLUE NOTE 91.3",
+      "title": "After Hours",
+      "file": "radio_blue_note.ogg",
+      "seconds": 51.429,
+      "bytes": 721125,
+      "sidecarBytes": 961545,
+      "genre": "Late-Night-Jazz-Trio, instrumental, 84 BPM, Es-Dur"
+    },
+    {
+      "name": "BLOCK RADIO 97.9",
+      "title": "Seven by Seven",
+      "file": "radio_block_radio.ogg",
+      "seconds": 54.783,
+      "bytes": 782140,
+      "sidecarBytes": 1042903,
+      "genre": "Boom-Bap Hip-Hop, Rap (EN, maennlich), 92 BPM, D-Moll"
+    }
+  ],
+  "screens": [
+    {
+      "clip": "screen_billboard_car",
+      "files": {
+        "screen_billboard_car.webm": {
+          "bytes": 1521693,
+          "sidecarBytes": 2028977
+        },
+        "screen_billboard_car.mp4": {
+          "bytes": 2301086,
+          "sidecarBytes": 0
+        },
+        "screen_billboard_car_poster.jpg": {
+          "bytes": 81303,
+          "sidecarBytes": 108463
+        }
+      }
+    },
+    {
+      "clip": "screen_shop_drink",
+      "files": {
+        "screen_shop_drink.webm": {
+          "bytes": 1101850,
+          "sidecarBytes": 1469186
+        },
+        "screen_shop_drink.mp4": {
+          "bytes": 1715610,
+          "sidecarBytes": 0
+        },
+        "screen_shop_drink_poster.jpg": {
+          "bytes": 47887,
+          "sidecarBytes": 63908
+        }
+      }
+    }
+  ]
+}

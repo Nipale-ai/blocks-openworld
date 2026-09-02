@@ -1,0 +1,92 @@
+Wire the finished 3D assets into the game.
+
+The game is in this directory (`src/`, builds with `node build.mjs`). The assets
+are in `phase2-assets/out/` — 22 GLB files with PBR textures, built against the
+contract in `NOTES.md` section 5. `phase2-assets/NOTES-assets.md` documents each
+file and how it is meant to be loaded.
+
+This is the payoff round: everything so far has been placeholder boxes. When you
+are done the game must look like the renders.
+
+## What to do
+
+1. **Replace the placeholder builders in `src/assets.js`** with GLTF loads.
+   The contract was written for exactly this: same names, same pivots, same
+   orientations, same child objects. Gameplay code must not need a single
+   change. Where an asset does not match the contract, fix the loading code —
+   do not change gameplay to accommodate it.
+2. **Load asynchronously and start fast.** Do not block the game on a 20 MB
+   download. Show something immediately, swap in assets as they arrive, or hold
+   a short loading screen with real progress — your call, but a player must not
+   stare at a blank page.
+3. **Instance what repeats.** Buildings, props, civilians, traffic — hundreds of
+   copies must not become hundreds of draw calls. The LOD variants
+   (`*_lod1.glb`) exist for distance; use them.
+4. **Keep the dusk lighting working.** The materials arriving now are real PBR
+   sets, so they will react differently to the lights than the flat vertex
+   colours did. Retune where needed: the city must still read at dusk, street
+   lights must still pool, wet asphalt must still reflect. Do not lose what the
+   last round achieved.
+5. **Ship it as a folder, not a single file.** Assets load from disk next to
+   the HTML. This replaces the one-file constraint — it exists so textures can
+   stream and the page can start instantly.
+6. **Compress everything on the way out.** Use `gltf-transform`
+   (`npx @gltf-transform/cli@latest`, verified working, version 4.5.0):
+   Draco or Meshopt for geometry, **KTX2/Basis for every texture**. This is not
+   optional — uncompressed PNG textures decompress fully in GPU memory and will
+   sink the frame rate on ordinary machines. Report the before/after sizes.
+
+## VERIFY AS YOU GO — not just at the end
+
+This is the explicit instruction from the person who commissioned this: check
+and test **continuously**, not only when you think you are finished. Twenty-two
+assets go in during this round. If you wire them all in and test at the end,
+you will be debugging twenty-two things at once and you will miss some.
+
+**After each group of assets — vehicles, then weapons, then characters, then
+buildings and props — stop and verify that group before moving on:**
+
+- Build, load the game headless in real Chrome, and take screenshots that
+  actually show what you just wired in.
+- **Open those screenshots and look at them.** Wrong scale, wrong orientation,
+  black materials, missing textures, a mesh at the origin instead of its
+  position, a car sunk into the road — all obvious in an image, all invisible
+  in a log.
+- Check the frame rate and the console after each group, not only at the end.
+  Then you know which group cost what.
+- Fix what is wrong before you add the next group.
+
+**At the end, run the full pass again**: walk, drive all four vehicles, open the
+weapon wheel, fire all three weapons, trigger a police chase to five stars, get
+out on foot among civilians. Screenshot each of those states, look at every
+image, and compare against the old shots in `shots/`.
+
+**Do not report anything as done that you have not looked at.** A green check
+that no one looked at is exactly how the previous round shipped a police car
+with mirrored lettering.
+
+## Known defect to fix
+
+`vehicle_police.glb`: the "POLICE" lettering on the doors is **mirrored** — it
+reads backwards on both sides. Found by looking at
+`phase2-assets/out/renders/vehicle_police_sheet.png`; the asset's own report is
+green because it only checks numbers. Fix the UVs or the decal placement, and
+look at the result.
+
+## Rules that still bind
+
+- **Bright enough to see.** Same measurement as every round: screenshot the
+  running game, under a third of the frame near-black, road and geometry clearly
+  visible.
+- **60 fps.** Real models cost more than boxes. If something has to give, drop
+  detail in the distance, not the frame rate. Report what you measure.
+- Zero console errors.
+- Play it headless with real Chrome and **look at the screenshots**: walk, drive
+  each vehicle, open the weapon wheel, fire all three weapons, trigger a police
+  chase. Compare against the old shots in `shots/` — this must be visibly
+  better, not just different.
+- Update NOTES.md: how assets load, what you retuned, compressed sizes, frame
+  rate, and what still looks weak.
+
+The character model is the weakest asset (tube arms with a visible shoulder
+seam, stub hands). Note it in NOTES.md; do not rebuild it in this round.
