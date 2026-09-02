@@ -44,7 +44,8 @@ def yawpt(S, p):
     v = Matrix.Rotation(rad(LEG_YAW[S]), 3, 'Y') @ Vector(p); return (v.x, v.y, v.z)
 
 root = piv('Mech', None, (0, 0, 0)); root.empty_display_size = 0.5
-PELVIS_Y = 2.92                      # mech.js sets Pelvis.position.y = 2.92 every frame; the legs below are sized for it
+PELVIS_Y = 3.08                      # mech.js setzt Pelvis.position.y jeden Frame — dort steht dieselbe Zahl.
+                                     # 3.08 statt 2.92: gestrecktere Ruhepose (Hip -0.34/Knee 0.72), Sohlen bleiben auf 0.
 pelvis = piv('Pelvis', root, (0, PELVIS_Y, 0))
 torso = piv('Torso', pelvis, (0, 0.30, 0))
 head = piv('Head', torso, (0, 2.32, 0.12))                       # world 5.54: helmet top 6.03, free above shoulders (5.33) and wing roots (5.86)
@@ -57,7 +58,7 @@ for s, S in ((1, 'L'), (-1, 'R')):
     SH[S] = piv('Shoulder_' + S, torso, (s * SHX, 1.75, 0))
     UA[S] = piv('UpperArm_' + S, SH[S], (s * UAX, -0.15, 0))
     FA[S] = piv('Forearm_' + S, UA[S], (0, -1.28, 0))
-    HIP[S] = piv('Hip_' + S, pelvis, (s * 0.80, -0.15, 0))       # wider stance
+    HIP[S] = piv('Hip_' + S, pelvis, (s * 0.71, -0.15, 0))       # etwas enger: schlanker, weniger gedrungen
     KNEE[S] = piv('Knee_' + S, HIP[S], (0, -1.42, 0))
     FOOT[S] = piv('Foot_' + S, KNEE[S], yawpt(S, (0, -1.38, 0.05)))   # ankle 0.31 m above the sole
     POD[S] = piv('Pod_' + S, backpack, (s * 0.72, 0.30, 0.08))
@@ -150,6 +151,23 @@ T(plate, box((1.64, 0.18, 1.18), (0, 2.00, -0.04), faces={'+y': dict(scale=(0.86
 T(body, box((0.94, 0.16, 0.44), (0, 2.05, 0.52), faces={'+z': dict(scale=(0.70, 0.45))}, bevel=0.015))
 groove(T, (0.02, 0.03, 0.90), (0, 2.095, -0.04)); groove(T, (1.2, 0.03, 0.02), (0, 2.095, 0.30))
 T(hyd, cyl(0.15, 0.19, 0.42, (0, 2.28, 0.12), 'y', 20))
+# Kopf-Einfassung (Ansage Niklas 03.09.2026): Nackenschild hinten, Kragenwangen seitlich, hohe Brustplatte vorn —
+# der Helm sitzt tief zwischen Panzerung, nicht frei auf einem Hals.
+T(body, box((1.14, 0.98, 0.46), (0, 2.50, -0.58),
+            faces={'+y': dict(scale=(0.40, 0.56), shift=(0, -0.06)), '-z': dict(scale=(0.86, 0.92)), '-y': dict(scale=(0.98, 1.0))}, segs=S5, bevel=0.03))
+T(body, box((0.34, 0.44, 0.34), (0, 2.94, -0.62), faces={'+y': dict(scale=(0.36, 0.44), shift=(0, -0.04))}, segs=S4, bevel=0.02))   # Grat
+for s2 in (1, -1):                                                   # Schulterrampen: fuehren die Schraege zum Kragen
+    T(plate, box((0.40, 0.10, 0.40), (s2 * 0.40, 2.72, -0.50), rot=(0, 0, s2 * 26),
+                 faces={('+x' if s2 > 0 else '-x'): dict(scale=(0.6, 0.7))}, bevel=0.012))
+T(plate, box((0.52, 0.62, 0.06), (0, 2.56, -0.31), faces={'+y': dict(scale=(0.46, 1.0))}, bevel=0.012))
+seam(T, (0.34, 0.018, 0.04), (0, 2.82, -0.32))
+for s2 in (1, -1):
+    T(body, box((0.30, 0.74, 0.66), (s2 * 0.54, 2.32, -0.22), rot=(0, 0, s2 * -7),
+                faces={'+y': dict(scale=(0.62, 0.70)), '+z': dict(scale=(1.0, 0.72))}, segs=S4, bevel=0.025))
+    T(plate, box((0.07, 0.48, 0.40), (s2 * 0.72, 2.30, -0.18), rot=(0, 0, s2 * -7), faces={'+y': dict(scale=(0.7, 0.8))}, bevel=0.01))
+    groove(T, (0.02, 0.40, 0.03), (s2 * 0.755, 2.30, -0.18), rot=(0, 0, s2 * -7))
+T(body, box((0.86, 0.46, 0.38), (0, 2.16, 0.46), faces={'+y': dict(scale=(0.62, 0.54)), '+z': dict(scale=(0.76, 0.66))}, segs=S4, bevel=0.026))
+T(glow, box((0.34, 0.03, 0.04), (0, 2.30, 0.645), bevel=0.0, segs=0))
 T(under, cyl(0.22, 0.24, 0.08, (0, 2.15, 0.12), 'y', 20, bevel=0.0))
 # back plate (long, tapered, grooved, stepped)
 T(plate, box((1.20, 1.38, 0.30), (0, 1.30, -0.66), faces={'-y': dict(scale=(0.62, 1.0)), '+y': dict(scale=(0.92, 1.0))}, bevel=0.025, segs=S4))
@@ -187,40 +205,69 @@ H(accent, strip((0.14, 0.03, 0.02), (0, -0.30, 0.12), rot=(0, 0, 35)))
 
 # ================================================================ HEAD: helmet, wide face, free above the shoulders ==
 K = lambda mat, bm: part(head, mat, bm)
-K(hyd, cyl(0.14, 0.16, 0.20, (0, -0.02, 0), 'y', 20))
-K(body, box((0.60, 0.36, 0.70), (0, 0.20, 0.0), faces={'+z': dict(scale=(0.80, 0.62), shift=(0, -0.02)), '-z': dict(scale=(0.58, 0.70), shift=(0, 0.03))}, segs=S5, bevel=0.022))   # helmet
-K(body, box((0.50, 0.12, 0.54), (0, 0.42, -0.06), faces={'-z': dict(scale=(0.55, 0.8)), '+z': dict(scale=(0.80, 0.55))}, bevel=0.012))   # crown dome
-groove(K, (0.02, 0.10, 0.50), (0, 0.485, -0.06)); groove(K, (0.44, 0.02, 0.03), (0, 0.30, 0.34))
-K(under, box((0.46, 0.12, 0.06), (0, 0.21, 0.35), bevel=0.0, segs=0))                                         # the recessed visor slot
-K(eyes, strip((0.42, 0.055, 0.03), (0, 0.21, 0.37)))                                                            # the horizontal visor slit
-K(under, box((0.34, 0.10, 0.44), (0, 0.06, 0.10), faces={'+z': dict(scale=(0.50, 0.40))}, bevel=0.01))         # chin
+K(hyd, cyl(0.13, 0.15, 0.20, (0, -0.02, 0), 'y', 20))
+# Keil: hinten hoch und breit, nach vorn schmal und flach auslaufend — kein Kasten
+K(body, box((0.49, 0.40, 0.96), (0, 0.20, 0.12),
+            faces={'+z': dict(scale=(0.34, 0.30), shift=(0, -0.09)), '-z': dict(scale=(0.70, 0.62), shift=(0, -0.05)),
+                   '+y': dict(scale=(0.72, 0.80), shift=(0, -0.10))}, segs=S5, bevel=0.022))
+K(body, box((0.20, 0.20, 0.74), (0, 0.42, 0.02),                                     # Grat obenauf
+            faces={'+z': dict(scale=(0.22, 0.30), shift=(0, -0.06)), '-z': dict(scale=(0.85, 0.7))}, segs=S4, bevel=0.014))
+K(plate, box((0.40, 0.05, 0.44), (0, 0.40, -0.22), faces={'-z': dict(scale=(0.60, 1.0))}, bevel=0.01))
+groove(K, (0.02, 0.14, 0.44), (0, 0.475, -0.06))
+# Dreiecks-Visier: laeuft nach vorn spitz zu und faellt schraeg ab
+K(under, box((0.50, 0.20, 0.50), (0, 0.19, 0.30), rot=(-16, 0, 0),
+             faces={'+z': dict(scale=(0.30, 0.34), shift=(0, -0.03)), '+y': dict(scale=(0.86, 0.9))}, bevel=0.012, segs=1))
+for s in (1, -1):                                                    # Dreiecks-Visier: zwei schraege Balken bilden ein V
+    K(eyes, box((0.30, 0.062, 0.10), (s * 0.115, 0.225, 0.345), rot=(-16, 0, s * 21), bevel=0.0, segs=0))
+    K(under, box((0.34, 0.045, 0.07), (s * 0.125, 0.285, 0.335), rot=(-16, 0, s * 21), bevel=0.0, segs=0))   # Blende darueber
+K(eyes, box((0.075, 0.05, 0.09), (0, 0.168, 0.352), rot=(-16, 0, 0), bevel=0.0, segs=0))                     # Spitze des V
+K(under, box((0.28, 0.12, 0.40), (0, 0.02, 0.20), faces={'+z': dict(scale=(0.42, 0.34), shift=(0, 0.02))}, bevel=0.01))   # Kinnkeil
 for s in (1, -1):
-    K(plate, box((0.07, 0.26, 0.44), (s * 0.32, 0.16, 0.02), faces={'+z': dict(scale=(1.0, 0.45)), '-z': dict(scale=(1.0, 0.8))}, bevel=0.01))   # cheek guards
-    groove(K, (0.03, 0.02, 0.30), (s * 0.35, 0.16, 0.0))
+    K(plate, box((0.06, 0.28, 0.60), (s * 0.255, 0.17, 0.04), rot=(0, 0, s * -4),
+                 faces={'+z': dict(scale=(0.34, 0.30), shift=(0, -0.06)), '-z': dict(scale=(1.0, 0.78))}, bevel=0.01))     # Wangenkeil
+    K(accent, box((0.03, 0.045, 0.26), (s * 0.28, 0.24, 0.08), rot=(0, 0, s * -4), bevel=0.0, segs=0))
+    groove(K, (0.025, 0.02, 0.34), (s * 0.265, 0.08, 0.02))
 
-# ================================================================ BACKPACK: wings (unchanged), pods, thrusters =======
+# ================================================================ BACKPACK: Ruecken-Fluegel (Runde 6 neu), pods, thrusters =======
 Bp = lambda mat, bm: part(backpack, mat, bm)
 Bp(under, box((1.16, 1.04, 0.56), (0, -0.05, 0), faces={'+y': dict(scale=(0.82, 0.88)), '-y': dict(scale=(0.88, 0.88))}, bevel=0.04))
 Bp(plate, box((0.26, 1.04, 0.18), (0, 0.0, -0.33), faces={'+y': dict(scale=(0.65, 1.0)), '-y': dict(scale=(0.85, 1.0))}, bevel=0.015))
 seam(Bp, (0.60, 0.018, 0.04), (0, 0.46, -0.31))
 vent(Bp, (0, -0.32, -0.43), (0.30, 0.26, 0.06), 4, along='y')
-WING_L, WING_ROLL, WING_SWEEP, WING_TILT = 1.80, 8, 25, 55
-def wing_rot(s):
-    return Matrix.Rotation(rad(s * WING_SWEEP), 3, 'Y') @ Matrix.Rotation(rad(s * WING_ROLL), 3, 'Z') @ Matrix.Rotation(rad(WING_TILT), 3, 'X')
+# ---- Ruecken-Faecher (Runde 6): drei lange Klingen je Seite, von der Schulter nach hinten bis knapp ueber den Boden.
+#      Jede Klinge haengt an einem eigenen Pivot (Wing1_L … Wing3_R) — im Flug faechern sie auf, am Boden liegen sie an.
+#      Die RUHELAGE steckt in der Geometrie, nicht im Pivot: set_pose() und mech.js nullen jeden Pivot, den sie nicht
+#      selbst setzen — eine Neigung am Empty waere jedes Mal weggedreht worden (Befund 01:12). Pivot 0 = angelegt.
+WING_BLADES = [   # (x-Wurzel, Laenge, Breite, Neigung nach hinten, Faecherung nach aussen, Dicke)
+    (0.32, 4.60, 0.72, 0.30, 0.06, 0.115),
+    (0.70, 4.70, 0.78, 0.34, 0.18, 0.125),
+    (1.02, 4.30, 0.64, 0.40, 0.32, 0.100),
+]
 for s, S in ((1, 'L'), (-1, 'R')):
-    R = wing_rot(s); d = R @ Vector((s, 0, 0)); n = R @ Vector((0, 1, 0)); ch = R @ Vector((0, 0, 1))
-    tip = '+x' if s > 0 else '-x'; rootside = '-x' if s > 0 else '+x'
-    rootp = Vector((s * 0.40, 1.18, 0.36))                         # roots a little further out than round 3: the head stands free between them
-    c = rootp + d * (WING_L * 0.5)
-    Bp(body, box((WING_L, 0.10, 0.65), tuple(c), rot=R, faces={tip: dict(scale=(0.35, 0.16), shift=(0, -0.08)), rootside: dict(scale=(0.9, 0.95))}, segs=S5, bevel=0.022))
-    Bp(plate, box((WING_L * 0.62, 0.035, 0.34), tuple(c - d * (WING_L * 0.12) + n * 0.06), rot=R, faces={tip: dict(scale=(0.5, 0.4), shift=(0, -0.10))}, bevel=0.01))
-    Bp(glow, box((WING_L * 0.82, 0.03, 0.045), tuple(rootp + d * (WING_L * 0.48) + ch * 0.31), rot=R, faces={tip: dict(scale=(0.6, 0.6), shift=(0, -0.42))}, bevel=0.0, segs=0))
-    for k in (0.30, 0.55):   # two cross grooves on the wing face
-        Bp(under, box((0.02, 0.02, 0.44), tuple(rootp + d * (WING_L * k) + n * 0.055), rot=R, faces={tip: dict(scale=(1.0, 0.6))}, bevel=0.0, segs=0))
-    c2 = rootp + d * (WING_L * 0.36) - n * 0.20 - ch * 0.16
-    Bp(body, box((WING_L * 0.72, 0.08, 0.46), tuple(c2), rot=R, faces={tip: dict(scale=(0.35, 0.18), shift=(0, -0.16)), rootside: dict(scale=(0.9, 0.9))}, segs=S4, bevel=0.018))
-    Bp(plate, box((0.40, 0.76, 0.50), (s * 0.46, 0.90, 0.24), faces={'+y': dict(scale=(0.85, 0.85)), tip: dict(scale=(0.85, 0.85))}, bevel=0.015))   # wing root pylon
-    groove(Bp, (0.02, 0.60, 0.03), (s * 0.46, 0.90, 0.495))
+    for i, (bx, BL, BW, brx, brz, BT) in enumerate(WING_BLADES):
+        wg = piv('Wing%d_%s' % (i + 1, S), backpack, (s * bx, 0.62, -0.10))
+        R = game_rot_game(brx, 0, s * brz)
+        Wl = lambda mat, sz, lp, q=wg, RR=R, **kw: part(q, mat, box(sz, tuple(RR @ Vector(lp)), rot=RR, **kw))
+        Wc = lambda mat, *a2, q=wg, RR=R, **kw: part(q, mat, cyl(*a2, rot=RR, **kw))
+        out = '+x' if s > 0 else '-x'
+        part(wg, hyd, cyl(0.13, 0.13, 0.34, tuple(R @ Vector((0, 0.06, 0))), 'x', 20, rot=R, bevel=0.018, bsegs=2))
+        Wl(under, (BW + 0.10, 0.34, 0.34), (0, -0.14, 0.0), faces={'-y': dict(scale=(0.86, 0.82))}, bevel=0.02)
+        yc = -0.30 - BL * 0.5
+        Wl(body, (BW, BL, BT), (0, yc, 0),
+           faces={'-y': dict(scale=(0.34, 0.62), shift=(s * 0.15, -0.01)), '+y': dict(scale=(0.80, 0.92))},
+           segs=S5, bevel=0.02)
+        Wl(plate, (BW * 0.54, BL * 0.72, 0.04), (s * 0.04, yc + 0.30, BT * 0.5 + 0.015),
+           faces={'-y': dict(scale=(0.40, 1.0), shift=(s * 0.11, 0))}, bevel=0.01)
+        Wl(edge, (0.055, BL * 0.90, 0.06), (s * (BW * 0.5 - 0.025), yc + 0.04, 0.0),
+           faces={'-y': dict(scale=(0.8, 0.8), shift=(s * 0.07, 0))}, bevel=0.0, segs=0)
+        for k in (0.20, 0.42, 0.64, 0.84):
+            Wl(under, (BW * (0.92 - k * 0.6), 0.03, 0.028), (s * k * 0.07, -0.30 - BL * k, BT * 0.5 + 0.02), bevel=0.0, segs=0)
+        if i == 1:
+            Wl(glow, (0.04, 0.70, 0.028), (s * (BW * 0.5 - 0.09), -1.10, BT * 0.5 + 0.03), bevel=0.0, segs=0)
+            part(wg, under, cyl(0.10, 0.12, 0.24, tuple(R @ Vector((s * -0.02, -0.66, -BT * 0.5 - 0.10))), 'z', 16, rot=R, bevel=0.012))
+            part(wg, accent, cyl(0.07, 0.07, 0.04, tuple(R @ Vector((s * -0.02, -0.66, -BT * 0.5 - 0.24))), 'z', 14, rot=R, bevel=0.0))
+
+for s, S in ((1, 'L'), (-1, 'R')):
     pod = POD[S]; Pd = lambda mat, bm, pod=pod: part(pod, mat, bm)
     Pd(plate, box((0.54, 0.42, 1.04), (0, 0, 0), faces={'+z': dict(scale=(0.86, 0.82)), '-z': dict(scale=(0.80, 0.70)), '+y': dict(scale=(0.92, 0.96))}, segs=S4, bevel=0.02))
     Pd(under, box((0.46, 0.36, 0.05), (0, 0, 0.505), bevel=0.008, segs=1))
@@ -241,7 +288,19 @@ for s, S in ((1, 'L'), (-1, 'R')):
     Sh(under, box((0.96, 0.84, 1.34), (s * 0.36, -0.14, 0.0), rot=srot, faces={'+z': dict(scale=(0.45, 0.3), shift=(0, -0.25)), '-y': dict(scale=(0.75, 0.75))}, bevel=0.01, segs=1))
     Sh(body, box((1.06, 0.90, 1.50), (s * 0.38, -0.08, 0.0), rot=srot, faces={'+z': dict(scale=(0.42, 0.28), shift=(0, -0.30)), '-z': dict(scale=(0.88, 0.85)), '-y': dict(scale=(0.72, 0.70)), '+y': dict(scale=(0.92, 0.92))}, segs=S5, bevel=BV))
     Sh(body, box((0.86, 0.46, 1.24), (s * 0.46, -0.50, 0.06), rot=srot, faces={'+z': dict(scale=(0.50, 0.40), shift=(0, -0.15)), '-y': dict(scale=(0.80, 0.80)), '+y': dict(scale=(0.96, 1.0))}, segs=S5, bevel=0.024))   # lower plate, hangs over the arm
-    Sh(plate, box((0.70, 0.06, 1.00), (s * 0.34, 0.40, -0.04), rot=srot, faces={'+z': dict(scale=(0.50, 1.0)), '-z': dict(scale=(0.85, 1.0))}, bevel=0.012))   # top cap
+    Sh(plate, box((0.66, 0.06, 0.94), (s * 0.32, 0.40, -0.04), rot=srot, faces={'+z': dict(scale=(0.50, 1.0)), '-z': dict(scale=(0.85, 1.0))}, bevel=0.012))   # top cap
+    # grosse Schulterplatte: steht ueber dem Helm (world 6.03) und deckt den Kopf seitlich — Ansage Niklas 03.09.2026
+    prot = (9, s * 7, s * 21); pout = '+x' if s > 0 else '-x'
+    Sh(under, box((1.34, 0.09, 1.16), (s * 0.60, 0.90, -0.10), rot=prot,
+                  faces={pout: dict(scale=(0.66, 0.60), shift=(0, -0.10))}, bevel=0.015, segs=1))
+    Sh(body, box((1.46, 0.23, 1.32), (s * 0.62, 1.00, -0.12), rot=prot,
+                 faces={pout: dict(scale=(0.58, 0.54), shift=(0, -0.12)), '+z': dict(scale=(0.86, 0.88)), '-z': dict(scale=(0.92, 0.94))},
+                 segs=S5, bevel=0.028))
+    Sh(plate, box((0.92, 0.05, 0.74), (s * 0.72, 1.10, -0.06), rot=prot,
+                  faces={pout: dict(scale=(0.62, 0.7))}, bevel=0.012))
+    Sh(glow, box((0.52, 0.03, 0.05), (s * 0.50, 1.06, 0.56), rot=prot, faces={pout: dict(scale=(0.5, 0.6))}, bevel=0.0, segs=0))
+    Sh(hyd, cyl(0.10, 0.10, 0.44, (s * 0.30, 0.66, -0.16), 'y', 16, rot=(0, 0, s * 16), bevel=0.014))   # Traeger
+    groove(Sh, (0.90, 0.02, 0.03), (s * 0.60, 1.09, -0.34), rot=prot)
     groove(Sh, (0.02, 0.60, 0.03), (s * 0.76, -0.02, 0.10), rot=srot); groove(Sh, (0.60, 0.02, 0.03), (s * 0.40, 0.22, 0.76), rot=srot)
     groove(Sh, (0.02, 0.03, 0.90), (s * 0.30, 0.37, -0.10), rot=srot)
     vent(Sh, (s * 0.905, 0.10, -0.40), (0.05, 0.24, 0.30), 4, along='y', rot=srot)
@@ -270,11 +329,18 @@ for s, S in ((1, 'L'), (-1, 'R')):
     Fa(plate, box((0.42, 0.32, 0.44), (0, -1.42, 0.05), faces={'-y': dict(scale=(0.80, 0.80))}, bevel=0.018))                                          # fist
     for k in range(3): groove(Fa, (0.02, 0.24, 0.05), ((k - 1) * 0.12, -1.42, 0.27))
     if s < 0:   # right: the laser on TOP of the forearm — housing, barrel, muzzle, one glow ring
-        Fa(plate, box((0.24, 0.24, 1.36), (s * 0.03, -0.32, 0.48), faces={'+z': dict(scale=(0.70, 0.70)), '-z': dict(scale=(0.9, 0.9))}, segs=S4, bevel=0.018))
-        Fa(hyd, cyl(0.065, 0.065, 0.72, (s * 0.03, -0.32, 1.36), 'z', 20, bevel=0.0))
-        Fa(under, lathe([(0.075, 1.48), (0.11, 1.50), (0.11, 1.66), (0.085, 1.68), (0.075, 1.68)], (s * 0.03, -0.32, 0), axis='z', segs=20))
-        Fa(glow, cyl(0.085, 0.085, 0.03, (s * 0.03, -0.32, 1.46), 'z', 20, bevel=0.0))
-        Fa(accent, strip((0.015, 0.12, 0.26), (s * 0.155, -0.32, 0.30)))
+        # Minigun um 50 % hochskaliert (Ansage Niklas 03.09.2026) — Muendung bleibt auf z 1.70, wo LaserMuzzle sitzt
+        Fa(plate, box((0.36, 0.36, 1.40), (s * 0.03, -0.30, 0.46), faces={'+z': dict(scale=(0.70, 0.70)), '-z': dict(scale=(0.9, 0.9))}, segs=S4, bevel=0.022))
+        AX = (s * 0.03, -0.30)
+        Fa(plate, cyl(0.172, 0.172, 0.30, (AX[0], AX[1], 1.03), 'z', 24, bevel=0.016))                                   # Gehaeuse, aus dem die Laeufe treten
+        Fa(under, cyl(0.150, 0.150, 0.08, (AX[0], AX[1], 1.20), 'z', 24, bevel=0.0))                                     # hintere Laufklemme
+        for k in range(6):
+            a = k * math.pi / 3.0
+            Fa(hyd, cyl(0.039, 0.039, 0.66, (AX[0] + 0.102 * math.cos(a), AX[1] + 0.102 * math.sin(a), 1.31), 'z', 12, bevel=0.0))
+        Fa(under, cyl(0.054, 0.054, 0.62, (AX[0], AX[1], 1.30), 'z', 12, bevel=0.0))                                     # Mittelspindel
+        Fa(under, lathe([(0.112, 1.52), (0.168, 1.53), (0.168, 1.66), (0.128, 1.67), (0.112, 1.67)], (AX[0], AX[1], 0), axis='z', segs=24))   # Muendungsring
+        Fa(glow, cyl(0.180, 0.180, 0.03, (AX[0], AX[1], 0.90), 'z', 24, bevel=0.0))                                      # oranger Ring am Gehaeuse
+        Fa(accent, strip((0.018, 0.16, 0.30), (s * 0.215, -0.30, 0.28)))
     P['LaserMuzzle'].location = B(-0.03, -0.32, 1.70)
 
 # ================================================================ LEGS (accepted geometry, turned 10° outward) ======
@@ -359,12 +425,12 @@ missing = [n for n in PFLICHT if n not in bpy.data.objects]
 assert not missing, 'contract names missing: ' + ', '.join(missing)
 for n in PFLICHT: assert bpy.data.objects[n].get('name') == n, n
 
-REST = {'Hip_L': (-0.5, 0, 0), 'Hip_R': (-0.5, 0, 0), 'Knee_L': (1.0, 0, 0), 'Knee_R': (1.0, 0, 0), 'Foot_L': (-0.5, 0, 0), 'Foot_R': (-0.5, 0, 0),
+REST = {'Hip_L': (-0.34, 0, 0), 'Hip_R': (-0.34, 0, 0), 'Knee_L': (0.72, 0, 0), 'Knee_R': (0.72, 0, 0), 'Foot_L': (-0.38, 0, 0), 'Foot_R': (-0.38, 0, 0),
         'UpperArm_L': (0, 0, 0.12), 'UpperArm_R': (0, 0, -0.12), 'Forearm_L': (-0.35, 0, 0), 'Forearm_R': (-0.35, 0, 0)}
-def extents(skip=()):
+def extents(skip=(), skip_prefix=()):
     dg = bpy.context.evaluated_depsgraph_get(); lo = [1e9] * 3; hi = [-1e9] * 3
     for o in objects:
-        if o.type != 'MESH' or o.name in skip: continue
+        if o.type != 'MESH' or o.name in skip or o.name.startswith(skip_prefix): continue
         me = o.evaluated_get(dg).data; M = o.matrix_world
         for v in me.vertices:
             g = G(M @ v.co)
@@ -374,8 +440,10 @@ set_pose(P, REST, PELVIS_Y); aim_hydraulics(HYD); lo, hi = extents()
 log('game-pose extents  x %.3f..%.3f  y %.3f..%.3f  z %.3f..%.3f' % (lo[0], hi[0], lo[1], hi[1], lo[2], hi[2]))
 sym = abs(abs(lo[0]) - abs(hi[0]))
 log('symmetry |min x| vs max x: %.3f m · glow parts %d' % (sym, glow_parts))
-assert hi[1] <= 6.10 + 1e-3, 'too tall: %.3f' % hi[1]
-assert max(-lo[0], hi[0]) <= 2.10 + 1e-3, 'too wide: %.3f' % max(-lo[0], hi[0])
+assert hi[1] <= 6.80 + 1e-3, 'too tall: %.3f' % hi[1]        # Schulterplatten stehen ueber dem Helm
+klo, khi = extents(skip_prefix=('Wing',))            # Kernkoerper ohne den Ruecken-Faecher: der darf ausladen
+log('Faecher-Spannweite %.2f m · Kernbreite %.2f m' % (max(-lo[0], hi[0]) * 2, max(-klo[0], khi[0]) * 2))
+assert max(-klo[0], khi[0]) <= 2.70 + 1e-3, 'too wide (Kern): %.3f' % max(-klo[0], khi[0])
 assert sym <= 0.02, 'arms asymmetric by %.3f m' % sym
 set_pose(P, {}, PELVIS_Y); aim_hydraulics(HYD)
 export_glb(OUT_GLB, root, draco=True)
