@@ -1,0 +1,74 @@
+The weapon holds in `src/player.js` do not work in the game, and the diagnosis
+is already done. Do not re-investigate — act on it.
+
+**⛔ NO GPU. Do not touch phase2-assets/, phase3-lightmaps/.**
+Budget is tight. Stay on these three tasks.
+
+## The diagnosis (measured, not guessed)
+
+Bone rotations were read from the running game with each weapon selected.
+The `HOLDS` poses **are** being applied — the deltas are large:
+UpperArm_R 1.86 rad between pistol and rocket, UpperArm_L 2.64 rad,
+Hand_R 1.75 rad, Chest 0.40 rad. The code path works.
+
+**The failure is the left arm.** With the rocket launcher the left forearm sits
+at −0.188 rad — almost straight — while the upper arm is rotated hard. In the
+game the arm sticks out sideways. The owner's words: "the other arm stuck out
+to the left". It looks wrong on all three weapons, which is why they read as
+identical despite the different numbers.
+
+**Cause:** the anchor/grip offsets in `HOLDS` were estimated, not derived from
+the actual weapon geometry. After the anchor rotation is applied, the forward
+grip is not where the table assumes it is, so the IK reaches for a point that
+forces the arm out and straight.
+
+## 1. Calibrate the holds against the real geometry
+
+Do not guess new numbers. **Measure them.**
+
+The weapon meshes are loaded GLBs. Each has its origin at the grip, the barrel
+along +Z, a `muzzle` empty at the tip, and the rocket launcher has grips at
+z 0.02 and 0.35 (NOTES.md section 5.3). Read the actual positions out of the
+loaded meshes at runtime, transform them through the anchor placement, and
+derive where the left hand must go — instead of storing a guessed offset.
+
+Then check, per weapon and per state (lowered and aiming): is the left elbow
+bent naturally, is the upper arm close to the body, does the hand actually sit
+on the forward grip? A left forearm near 0 rad means the arm is straight and
+wrong; it should be clearly bent.
+
+The three holds must be **visibly different from each other**:
+- **rocket launcher: tube resting on the right shoulder**, left hand on the
+  front grip, elbow down and in front of the chest
+- **machine gun: shouldered**, stock at the shoulder, left hand forward on the
+  handguard, both elbows down
+- **pistol**: both hands together in front of the chest, elbows bent
+
+## 2. Reload animations are missing entirely
+
+`reload` does not appear once in `player.js`. `weapons.js` has the logic
+(`startReload`, `reloadT`, `reloading`) and a sound, but the character does
+nothing. Add an animation per weapon, driven by the existing reload timer so it
+stays in sync:
+
+- **pistol**: magazine out with the left hand, new one in, slide released
+- **machine gun**: left hand off the handguard, magazine swap, hand back, charge
+- **rocket launcher**: tube tips down off the shoulder, left hand loads a rocket
+  at the rear, tube back up on the shoulder
+
+They do not need to be elaborate, but the arms must move and the timing must
+match the reload duration.
+
+## 3. Verification — fixed camera, not your choice
+
+Previous rounds passed because staged screenshots looked right while the game
+did not. So the shots are prescribed:
+
+- Character **filling the frame**, side profile, from about 3 m.
+- One image per weapon per state: lowered, aiming, mid-reload. Nine images.
+- **Put them side by side.** If the three weapons look the same in a row, it is
+  not done. State in NOTES.md what visibly distinguishes each one.
+- Also read the bone rotations back out and confirm the left forearm is bent
+  (well away from 0) for every weapon in every state.
+
+60 fps, zero console errors, brightness gate unchanged.

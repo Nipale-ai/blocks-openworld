@@ -1018,3 +1018,72 @@ Hand settle rates raised (Hand_R 16, Hand_L 14, forearms 12) — a hand carrying
   arm-overshoot metric no longer applies — the pistol arm is IK-held).
 - Gate `pruefe_openworld.mjs`: **GREEN, 71.8 / 18.6 % near-black** (round 7: 71.7 / 18.6 %) — unchanged.
 - Not touched: `phase2-assets/`, `phase3-lightmaps/`, NPC posing, weapons/camera code.
+
+## 14. ROUND 9 — the holds calibrated against the weapon geometry, reload animations (2026-09-02, ~21:05–22:00, `player.js` only, no GPU work)
+
+### 14.1 What was wrong (measured, not guessed)
+The HOLDS table stored guessed grip / left-hand offsets. The rig's arm is **0.53 m** (upper 0.2807 + fore 0.25), the MG's handguard is **0.62 m** in
+front of the butt plate and the launcher's fore grip **0.56 m** in front of the point the tube rests on. Reaching those from the left shoulder
+straightens the arm: round 8's own `shots/hold/r8a_num.json` had `Forearm_L.x = −0.19` for mg_low, mg_aim and rocket_low and `ikErr.L = 0.156` for
+rocket_low — the "0 in all six poses" in §13.1 was wrong. A straight left arm across the body reads as "sticks out to the left" from every angle, so
+all three weapons looked alike.
+
+### 14.2 What changed (`src/player.js`)
+- **`measureWeapon(id, mesh)`** reads the loaded GLB's vertex positions at runtime (weapon frame: origin = grip, +Z = barrel; `loadedRocket` skipped)
+  with `under(z)`, `top(z)`, `halfW(z)`, `rear()`, `lowest()`, `cluster(z0, z1, yMax)` and returns the named points the holds use. Measured:
+  MG `butt` (0, 0.008, −0.322), `handguard` (0, 0.012, 0.30), `magBase` (0, −0.178, 0.17), `charge`; rocket `rest` = tube underside at z −0.22
+  (y 0.012), `foreGrip` (0, −0.03, 0.34) = the vertex cluster below the tube at z 0.28–0.42, `breech` (0, 0.09, −0.406); pistol `leftPalm`
+  = grip half-width + 1.7 cm, `magBase` (0, −0.119, 0), `slide`. **Nothing about the weapon's shape is stored in HOLDS any more.**
+- **`HOLDS`** now names `at` (the weapon point pinned to the chest-frame anchor) and `hand` (the point the left palm closes on). Grip = anchor −
+  weaponQ·at. Values were found with `test/holdcalc.mjs` (the same geometry offline) and `test/holdsearch.mjs` (grid search over anchor / blade /
+  rotation, scoring left bend ≥ 1.0 rad, elbows below the shoulder, no over-reach at aim pitch 0 / ±0.5), then confirmed in the game:
+  - **pistol** — low: grip at the belly (0, 1.08, 0.20), muzzle down-left (Sul); aim: grip 40 cm in front of the chest, both hands on it, chest
+    blade −0.12. Elbow poles down, not out (round 8 had poleL (0.7, −0.7, 0.2) = chicken wing).
+  - **MG** — aim: **butt plate in the shoulder pocket** (chest frame (−0.14, 0.14, −0.10)), **chest bladed −0.7** (40°, the only way the 0.53 m
+    arm reaches the handguard with a bent elbow), head down 0.14 / rolled 0.12 onto the stock; low: butt at the right ribs, muzzle down 0.45 and
+    across to the left (yaw 1.1), left hand on the handguard.
+  - **rocket** — aim: tube underside 22 cm behind the rear grip on top of the right shoulder ((−0.21, 0.16, −0.08)), chest bladed −0.6, right
+    hand at the rear grip (forearm folded up, elbow down), left on the fore grip; low: same rest, tube up 0.35 and yawed 0.55 across the body, blade −0.3.
+- **Torso follows the aim pitch:** `Spine.x += −pitch·0.25·armRaise` (round 8 only pitched the head), so the weapon pivoting about the anchor does
+  not pull the left hand out of reach when aiming down.
+- **Reload animations** (`RELOAD`, `reloadPt()`): driven by `weapons.current.reloadT / def.reloadTime` (u 0…1), so they always match the reload
+  length (1.1 / 2.3 / 2.8 s) and the `reload2` click at 60 %. The left wrist follows keyframes `[u, frame, x, y, z]` — frame `h` = the hold's
+  hand point, `w` = a point in the weapon frame, `c` = a point in the chest frame (the pouch on the belt rides with the torso) — smoothstepped per
+  segment and fed through the same IK; the weapon itself gets a motion window `[u0, u1, pitch, yaw, roll, dx, dy, dz]` eased in/out over 12 %:
+  - pistol: hand to the mag base (0.16), mag pulled down (0.32), belt (0.48), new mag in from below (0.66–0.76), slide grabbed and pulled 6 cm
+    (0.87–0.94), back on the grip; the pistol cants 0.55 toward the shooter, muzzle up 0.45.
+  - MG: hand off the handguard to the mag (0.12), mag down 20 cm (0.26), belt (0.42), mag in (0.58–0.68), charging handle pulled 10 cm
+    (0.80–0.88), back on the handguard; rifle canted 0.45, muzzle up 0.25.
+  - rocket: **tube tips down off the shoulder** (pitch +0.75, anchor down 24 cm / forward 14 cm / left 14 cm, u 0.05–0.97), hand slides back along
+    the tube (0.14), belt (0.30), rocket to the breech (0.50) and pushed in (0.66), hand up the tube (0.82) and back on the fore grip as the tube
+    comes back up. The hand leaves the fore grip *before* the tube tips (first version: u 0.2 over-reached by 10 cm).
+  The pistol's free-swinging left arm at a sprint is suppressed while reloading; `player.reloadU` exposes u for tests.
+
+### 14.3 Verified — the prescribed camera (`node test/hold9.mjs --tag=r9c`, minified `game.html` 1 069 KB, MacBook GPU via Metal, headless Chrome 1280×720)
+Fixed camera **3 m from the chest at chest height, side profile from the weapon side (−X)**, 320×440 crop (the character is ~360 px tall). One
+image per weapon per state, side by side: **`shots/hold9/r9c_grid_side.png`** (3 rows = pistol / MG / rocket, 3 columns = lowered / aiming /
+mid-reload at u 0.5). The same nine from the front (`r9c_grid_front.png`) and from the left (`r9c_grid_left.png`), and a reload strip per weapon
+at u 0.1…0.9 (`r9c_<weapon>_reload_strip.png`). Bone read-back in `r9c_num.json`.
+
+What visibly distinguishes the three in the side row:
+- **pistol** — a small gun at chest height, both hands together on it, forearms horizontal, elbows tucked; lowered it hangs at the belly.
+- **MG** — the rifle horizontal **at eye level**, stock at the shoulder, cheek on it, the right elbow folded under, the left arm forward under the
+  handguard; lowered it lies across the belly pointing down-left.
+- **rocket** — the long tube **on top of the right shoulder**, bell behind the head, muzzle in front; the left arm crosses the chest to the fore
+  grip; lowered the tube points up 20°; mid-reload the tube hangs vertically in front of the body with the left hand at the breech.
+
+Left forearm bend (`Forearm_L.x`, rad; straight = 0), reach shortfall `ikErr.L` = 0 in every cell:
+
+| | lowered | aiming | aim up 0.6 | aim down −0.5 | mid-reload | reload min over u 0.1…0.9 |
+|---|---|---|---|---|---|---|
+| pistol | −1.44 | −1.35 | −1.27 | −1.38 | −1.34 | −1.19 |
+| MG | −1.52 | −1.74 | −1.42 | −1.48 | −1.52 | −1.18 |
+| rocket | −1.30 | −1.65 | −1.51 | −1.51 | −1.44 | −1.18 |
+
+Left elbow relative to the left shoulder (root frame, m): below it in every cell (y −0.08 … −0.28) and never further out than 0.05 to the left —
+the upper arm stays on the body. Right forearm −1.3 … −2.8 (the rocket's right hand is 22 cm ahead of the shoulder, so that arm is folded).
+**60 fps, 0 console errors.**
+- Gate `pruefe_openworld.mjs`: **GREEN, 88.8 / 17.6 % near-black.** The §13 log quoted 71.7 / 18.6 %; the round-8 build (`stand-20260902-2103`)
+  re-run next to `assets/` right now reads **89.3 / 17.2 %** — the gate's reading moved with the environment, not with this change. Unchanged.
+- Offline tools kept: `test/holdcalc.mjs` (+ `test/holds9.mjs` candidate table), `test/holdsearch.mjs`, `test/geo.mjs` (vertex histogram per weapon).
+- Not touched: `phase2-assets/`, `phase3-lightmaps/`, weapons.js, NPC posing, camera.

@@ -39,6 +39,7 @@ measurements.
 | Applying the baked lighting | green, first try | 18 min | $11.15 |
 | Shrill audio, stiff animation, new characters | green, first try | 29 min | $14.94 |
 | Weapon holds and movement | green, first try | 20 min | – |
+| Calibrating the holds, reload animations | green, first try | 18 min | $8.02 |
 
 **Every round passed on the first attempt.** Costs are list-price equivalents
 reported by the API, not what was actually billed.
@@ -74,6 +75,13 @@ guessed:
   head, follow-through, per-limb damping, weight on the stride.
 - **The character mesh was crude.** Rebuilt: the shoulder now flows out of the
   torso instead of stepping off it, and the hands have fingers.
+- **The first attempt at weapon holds silently failed.** The poses were applied —
+  bone deltas of up to 2.6 rad between weapons — but the left arm ended up
+  almost straight and sticking out, because the grip offsets were estimated
+  rather than derived from the loaded meshes. It looked wrong on all three, so
+  all three read as identical. Diagnosed by reading bone rotations out of the
+  running game (`vorgehen/werkzeuge/diagnose.mjs`), then fixed by measuring the
+  grips at runtime. Left forearm went from −0.19 rad (straight) to −1.30.
 - **Weapons were carried, not held.** Each now has its own two-handed pose:
   the pistol supported, the machine gun shouldered with the left hand on the
   handguard, and the rocket launcher resting on the shoulder with both grips —
