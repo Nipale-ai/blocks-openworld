@@ -96,10 +96,23 @@ def limb(loft, region, joints, radii, bones, n=12, sub=3, rx_scale=1.0, rz_scale
 def build_body(pal):
     L = Loft(); cop = pal['cop']
     # ---- torso: hips -> shoulders (horizontal rings), bones Hips / Spine / Chest
-    torso = [((0, 0.84, 0), 0.165, 0.105, [('Hips', 1)]), ((0, 0.90, 0), 0.170, 0.110, [('Hips', 1)]), ((0, 0.98, 0), 0.160, 0.105, [('Hips', 0.8), ('Spine', 0.2)]),
-             ((0, 1.06, 0), 0.150, 0.100, [('Hips', 0.4), ('Spine', 0.6)]), ((0, 1.14, 0), 0.155, 0.102, [('Spine', 1)]), ((0, 1.22, 0), 0.170, 0.108, [('Spine', 0.7), ('Chest', 0.3)]),
-             ((0, 1.30, 0), 0.185, 0.115, [('Spine', 0.4), ('Chest', 0.6)]), ((0, 1.38, 0), 0.200, 0.120, [('Chest', 1)]), ((0, 1.44, 0), 0.215, 0.115, [('Chest', 1)]),
-             ((0, 1.49, 0), 0.190, 0.100, [('Chest', 1)]), ((0, 1.52, 0), 0.075, 0.065, [('Chest', 0.6), ('Head', 0.4)])]
+    # Silhouette markanter: breitere Huefte, deutlich schmalere Taille, breiter
+    # werdender Brustkorb. Dazu zwei harte Absaetze als Guertel (1.00/1.02) und
+    # Kragen (1.485/1.50) — eine Kante liest sich auf Distanz besser als jedes
+    # Texturdetail.
+    torso = [((0, 0.84, 0), 0.178, 0.112, [('Hips', 1)]), ((0, 0.90, 0), 0.182, 0.116, [('Hips', 1)]),
+             ((0, 0.97, 0), 0.168, 0.108, [('Hips', 0.85), ('Spine', 0.15)]),
+             ((0, 1.00, 0), 0.172, 0.111, [('Hips', 0.7), ('Spine', 0.3)]),   # Guertel oben
+             ((0, 1.02, 0), 0.152, 0.099, [('Hips', 0.55), ('Spine', 0.45)]), # Guertel unten
+             ((0, 1.08, 0), 0.141, 0.094, [('Hips', 0.3), ('Spine', 0.7)]),   # Taille
+             ((0, 1.16, 0), 0.156, 0.101, [('Spine', 1)]),
+             ((0, 1.24, 0), 0.180, 0.112, [('Spine', 0.6), ('Chest', 0.4)]),
+             ((0, 1.32, 0), 0.202, 0.122, [('Spine', 0.3), ('Chest', 0.7)]),
+             ((0, 1.39, 0), 0.219, 0.127, [('Chest', 1)]),
+             ((0, 1.44, 0), 0.222, 0.121, [('Chest', 1)]),
+             ((0, 1.485, 0), 0.196, 0.104, [('Chest', 1)]),                   # Kragen unten
+             ((0, 1.50, 0), 0.150, 0.090, [('Chest', 1)]),                    # Kragen oben
+             ((0, 1.52, 0), 0.073, 0.064, [('Chest', 0.6), ('Head', 0.4)])]
     rings = []
     for (c, rx, rz, w) in torso:
         v = (c[1] - 0.84) / (1.52 - 0.84)
@@ -123,7 +136,7 @@ def build_body(pal):
         # Schulter als Klotz ab (Fehler im ersten Versuch: Ring bei y=1.505,
         # x=0.205, r=0.070 reichte bis 0.275 — Torso dort nur 0.168 breit).
         # Jetzt: klein und weit innen starten, Deltoid-Maximum tiefer legen.
-        j = [(sx * 0.135, 1.455, 0), (sx * 0.185, 1.425, 0), (sx * 0.215, 1.375, 0),
+        j = [(sx * 0.140, 1.450, 0), (sx * 0.190, 1.420, 0), (sx * 0.218, 1.370, 0),
              (sx * 0.232, 1.30, 0), (sx * 0.24, 1.17, 0), (sx * 0.242, 1.06, 0),
              (sx * 0.24, 0.92, 0)]
         r = [0.052, 0.062, 0.064, 0.056, 0.042, 0.046, 0.032]

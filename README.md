@@ -38,6 +38,7 @@ measurements.
 | Baking lightmaps in Cycles | green, first try | 85 min | $29.10 |
 | Applying the baked lighting | green, first try | 18 min | $11.15 |
 | Shrill audio, stiff animation, new characters | green, first try | 29 min | $14.94 |
+| Weapon holds and movement | green, first try | 20 min | – |
 
 **Every round passed on the first attempt.** Costs are list-price equivalents
 reported by the API, not what was actually billed.
@@ -73,6 +74,10 @@ guessed:
   head, follow-through, per-limb damping, weight on the stride.
 - **The character mesh was crude.** Rebuilt: the shoulder now flows out of the
   torso instead of stepping off it, and the hands have fingers.
+- **Weapons were carried, not held.** Each now has its own two-handed pose:
+  the pistol supported, the machine gun shouldered with the left hand on the
+  handguard, and the rocket launcher resting on the shoulder with both grips —
+  held through walking, sprinting and aiming.
 
 ## What is weak, honestly
 

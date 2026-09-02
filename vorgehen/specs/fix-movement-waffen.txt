@@ -1,0 +1,50 @@
+Two things about the player character need work. Fix exactly these. Nothing else.
+
+**⛔ NO GPU.** **⛔ Do not touch phase2-assets/, phase3-lightmaps/.**
+Budget is tight — work efficiently, do not explore beyond the task.
+
+## 1. Weapons are not held properly
+
+The character carries all three weapons the same way, one-handed, with no real
+grip. That reads as wrong immediately, especially in third person where the
+character is always on screen.
+
+Each weapon needs its own hold, using both arms:
+
+- **Pistol** — one hand on the grip, the other supporting it, arms bent, weapon
+  held at chest height when aiming, lowered across the body when not.
+- **Machine gun** — **shouldered**: stock against the shoulder, right hand on
+  the grip, **left hand forward on the handguard**, elbow down. Sighting along
+  the weapon when aiming, carried at a slant across the chest when not.
+- **Rocket launcher** — **on the shoulder**: the tube rests on the right
+  shoulder, right hand at the rear grip, left hand at the front grip, head
+  tilted slightly to sight along it. This is the one that looks most wrong
+  today and the most obvious when it is right.
+
+The rig has `Hand_L` and `Hand_R` and a `WeaponSocket` under `Hand_R`
+(see NOTES.md section 5.1). The left hand has to be driven to the weapon's
+forward grip — an IK-like solve or a direct pose per weapon, whichever is
+simpler to keep stable. Lowered, aiming and firing all need to look right.
+
+## 2. Movement still reads stiff
+
+Round 7 added phase offsets and follow-through. Go further where it shows most:
+
+- **Turning**: the body must lean and rotate into a turn, not pivot on the spot.
+- **Start and stop**: a step of acceleration and a settle at the end, not
+  instant full speed and instant stop.
+- **Sprint**: more forward lean, longer stride, arms driving harder.
+- **Strafing and backing up** need their own gait, not the forward one played
+  sideways.
+- **Landing** from a jump needs a knee bend that absorbs.
+
+## Verify — briefly, budget is tight
+
+Record short headless captures from a **side view** (profile reads the gait
+best): walking, sprinting, turning, and standing with each of the three weapons
+both lowered and aiming. Extract frames, **look at them**, fix what is wrong.
+The weapon holds are the priority: if the rocket launcher is not clearly on the
+shoulder, it is not done.
+
+60 fps, zero console errors, brightness gate unchanged. Note what you changed in
+NOTES.md — briefly.

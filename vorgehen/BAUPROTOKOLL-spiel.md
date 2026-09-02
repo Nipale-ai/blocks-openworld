@@ -973,3 +973,48 @@ the step / protruding block at the shoulder; the pedestrian and the officer clos
 - **Facing at speed** turns at 8 per second instead of 12 (the arc into a turn); the movement direction itself is unchanged, so
   nothing in the controls or the collision changed — only where the mesh (and the minimap arrow, the blob shadow) points during the
   first ~0.2 s of a direction change.
+
+## 13. ROUND 8 — weapon holds and the remaining stiffness (2026-09-02, ~19:20–20:10, `player.js` only, no GPU work)
+
+### 13.1 Weapon holds — the weapon is placed first, both arms are solved to it
+`poseArms()` + `solveArm()` in `player.js`, table `HOLDS`. Per weapon and state (low carry / aim, lerped by `armRaise`): an **anchor** in the
+Chest frame, the weapon **orientation** (root frame while aiming — camera pitch and kick added — riding on the chest while carried), the **grip**
+in the weapon frame, the **left palm** point + finger direction, elbow poles, and torso/head additions (blade, cheek). Then two-bone IK per arm:
+the right wrist is put where the `WeaponSocket` lands on the grip (`wrist = grip − handQ·socketPos`, `handQ = weaponQ·socketQ⁻¹`, read from the
+rig at construction), the right hand oriented so the barrel follows the weapon; the left wrist 7 cm back along the fingers from the palm point.
+IK writes Euler targets (`setEulerNear` picks the equivalent XYZ triple / 2π branch nearest the bone's current rotation so the per-bone damping
+never spins), so the round-7 settle rates still apply and aiming still snaps. `ikErr.L/R` = reach shortfall (0 in all six poses).
+- **Pistol:** aim = two-handed at chest height, both arms bent (pivot 8 cm above the chest bone, grip 30 cm out), chest bladed −0.12; low =
+  both hands at the belly, muzzle down-left (Sul). At a sprint the left arm swings free.
+- **Machine gun:** aim = **shouldered** — anchor is the shoulder pocket (−0.17, 1.42, 0.05), stock 32 cm behind the grip sits in it, left hand
+  22 cm forward on the handguard (elbow down, pole (0.45, −1, 0)), chest bladed −0.4, head down 0.14 and rolled 0.12 onto the stock. Low =
+  across the chest at a slant (anchor (−0.09, 1.21, 0.14), pitch 0.42 down, yaw 0.6 left), both hands on.
+- **Rocket launcher:** anchor is the **top of the right shoulder** (−0.21, 1.50, −0.02); the tube's underside 26 cm behind the grip rests on
+  it, right hand at the rear grip (forearm up, elbow down), left hand at the front grip 32 cm further; head rolled 0.14 toward the tube and
+  down 0.06 while aiming; low = same, tube pitched up 0.4, head straight. Chest bladed −0.45 / −0.3.
+Hand settle rates raised (Hand_R 16, Hand_L 14, forearms 12) — a hand carrying the weapon should not trail the forearm.
+
+### 13.2 Movement
+- **Turning:** facing is rate-limited (6.5 rad/s at a walk → 3.5 at a sprint) on top of the damp (12−5·speed01); the velocity heads where the
+  body faces blended with the input (35 % → 70 % at a sprint), so the path arcs and a reversal brakes–turns–goes. Bank doubled
+  (−turn·(0.12+0.1·speed01), clamped ±0.3), hips lead the turn (0.1·turn), head 0.2, chest 0.12. Measured: 45° jog turn = 0.17 rad bank,
+  max yaw step 4.9 rad/s, speed dips 4.2 → 3.9 in the arc. Not applied while aiming (strafing stays crisp).
+- **Start / stop:** the exponential velocity damp is a **ramp**: 12 m/s² into a jog (0.38 s), 10 into a sprint (0.74 s from standing),
+  14 to a stop (a jog stops in 16 frames). The acceleration lean goes through an underdamped spring (ω 11, ζ 0.32): 0.21 rad into the first
+  step, −0.14 back against the braking, then forward past neutral and settled. Braking bends the knees (+0.35 shin) and sinks the root 5 cm.
+- **Sprint:** lean 0.36 (spine 0.25 measured), thigh ±1.15, arms ±1.1 with forearms tucked (−0.3 − 0.45·armAmp), stride 0.6 + 0.14·v
+  (1.64 m per step at 7.4 m/s), bob 7 cm.
+- **Strafe / back-up:** body-frame direction (`dirF/dirR`, damped). Strafe: fore-aft swing ×0.4, legs roll sideways (leading leg out on one
+  beat, trailing closes on the next), hips/spine tilt into it. Backing up: phase runs backwards, step −30 %, torso back 0.08, head glances
+  over the left shoulder, toes land first.
+- **Landing:** `landT` 0.4 s, `landK` from impact speed; knee bend (thighs −0.6, shins +1.05), spine 0.28 forward, arms forward, root −11 cm
+  scaled — fast in (first 18 %), slow out. Measured root dip after a standing jump: 7.5 cm.
+
+### 13.3 Verified (minified `game.html` 1 067 KB, MacBook GPU via Metal, headless Chrome 1280×720)
+- `node test/hold.mjs` (new): strips `shots/hold/r8a_*.png`, `r8b_hold_mg.png`, zooms `r8*_zoom_*.png` — all three weapons low + aim from the
+  weapon side, a front quarter and the front, plus walk / sprint / start-stop / turn / strafe / back-up / landing / reversal. Looked at: rocket
+  clearly on the shoulder in both states, MG shouldered with the left hand forward, pistol two-handed. **60 fps, 0 console errors.**
+- `node test/hold-tele.mjs` (new): the numbers quoted above. `node test/anim.mjs --tag=r8 --out=shots/anim-r8`: 60 fps, 0 errors (its
+  arm-overshoot metric no longer applies — the pistol arm is IK-held).
+- Gate `pruefe_openworld.mjs`: **GREEN, 71.8 / 18.6 % near-black** (round 7: 71.7 / 18.6 %) — unchanged.
+- Not touched: `phase2-assets/`, `phase3-lightmaps/`, NPC posing, weapons/camera code.
