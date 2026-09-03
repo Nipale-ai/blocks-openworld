@@ -1,0 +1,122 @@
+{
+ "triangles": 74978,
+ "objects": 161,
+ "ratio": 0.48746492895284643,
+ "contract_ok": true,
+ "pelvis_y": 3.08,
+ "hyd": [
+  [
+   "Hyd_WaistL_body",
+   "Hyd_WaistL_rod",
+   "HydA_WaistL",
+   "HydB_WaistL"
+  ],
+  [
+   "Hyd_WaistR_body",
+   "Hyd_WaistR_rod",
+   "HydA_WaistR",
+   "HydB_WaistR"
+  ],
+  [
+   "Hyd_ElbowL_body",
+   "Hyd_ElbowL_rod",
+   "HydA_ElbowL",
+   "HydB_ElbowL"
+  ],
+  [
+   "Hyd_ElbowR_body",
+   "Hyd_ElbowR_rod",
+   "HydA_ElbowR",
+   "HydB_ElbowR"
+  ],
+  [
+   "Hyd_KneeL_body",
+   "Hyd_KneeL_rod",
+   "HydA_KneeL",
+   "HydB_KneeL"
+  ],
+  [
+   "Hyd_KneeR_body",
+   "Hyd_KneeR_rod",
+   "HydA_KneeR",
+   "HydB_KneeR"
+  ],
+  [
+   "Hyd_AnkleL_body",
+   "Hyd_AnkleL_rod",
+   "HydA_AnkleL",
+   "HydB_AnkleL"
+  ],
+  [
+   "Hyd_AnkleR_body",
+   "Hyd_AnkleR_rod",
+   "HydA_AnkleR",
+   "HydB_AnkleR"
+  ]
+ ],
+ "rest": {
+  "Hip_L": [
+   -0.34,
+   0,
+   0
+  ],
+  "Hip_R": [
+   -0.34,
+   0,
+   0
+  ],
+  "Knee_L": [
+   0.72,
+   0,
+   0
+  ],
+  "Knee_R": [
+   0.72,
+   0,
+   0
+  ],
+  "Foot_L": [
+   -0.38,
+   0,
+   0
+  ],
+  "Foot_R": [
+   -0.38,
+   0,
+   0
+  ],
+  "UpperArm_L": [
+   0,
+   0,
+   0.12
+  ],
+  "UpperArm_R": [
+   0,
+   0,
+   -0.12
+  ],
+  "Forearm_L": [
+   -0.35,
+   0,
+   0
+  ],
+  "Forearm_R": [
+   -0.35,
+   0,
+   0
+  ]
+ },
+ "extents_game_pose": {
+  "min": [
+   -3.1986193656921387,
+   -0.01853327266871929,
+   -4.785192966461182
+  ],
+  "max": [
+   3.1986193656921387,
+   6.618244171142578,
+   1.719834804534912
+  ]
+ },
+ "symmetry_x": 0.0
+}

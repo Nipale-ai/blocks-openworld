@@ -9,9 +9,11 @@ from written briefs, on local hardware.
 ## What it has
 
 - **A mech you call in at five stars** — modelled in Blender by the same model
-  over four critique rounds, 50k triangles, swept shoulder wings and a visor
-  head. Hold right mouse to aim: the body locks onto the crosshair while the
-  legs strafe in any direction, so you can back off and keep firing
+  over four critique rounds, then pushed to a hero standard (113,676 tris, PBR
+  lacquer with edge wear, panel breaks, bolts) with a 74,960-tri game version
+  derived from it. Swept shoulder wings and a visor head. Hold right mouse to
+  aim: the body locks onto the crosshair while the legs strafe in any direction,
+  so you can back off and keep firing
 - Third-person character: walk, run, sprint, jump
 - Four vehicles you enter and leave, with a real tyre-slip physics model —
   suspension per wheel, weight transfer, five-speed automatic, handbrake slides

@@ -11,11 +11,14 @@ argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 opts = dict(a.split('=', 1) for a in argv if '=' in a)
 ONLY = set(opts.get('only', '').split(',')) - {''}
 SAMPLES = int(opts.get('samples', 128))
-OUT = os.path.join(HERE, 'renders'); os.makedirs(OUT, exist_ok=True)
+HERO = os.environ.get('MECH_HERO') == '1'
+BLEND = os.environ.get('MECH_BLEND', 'mech-hero.blend' if HERO else 'mech.blend')
+REPORT = os.environ.get('MECH_REPORT', 'mech-hero-report.json' if HERO else 'mech-report.json')
+OUT = os.path.join(HERE, 'renders-hero' if HERO else 'renders'); os.makedirs(OUT, exist_ok=True)
 
-bpy.ops.wm.open_mainfile(filepath=os.path.join(HERE, 'mech.blend'))
+bpy.ops.wm.open_mainfile(filepath=os.path.join(HERE, BLEND))
 sc = bpy.context.scene
-rep = json.load(open(os.path.join(HERE, 'mech-report.json')))
+rep = json.load(open(os.path.join(HERE, REPORT)))
 O = bpy.data.objects
 P = {o.name: o for o in O if o.type == 'EMPTY' and not o.name.startswith(('HydA_', 'HydB_', 'Tube_'))}
 HYD = [(O[b], O[r], O[a], O[bb]) for b, r, a, bb in rep['hyd']]
@@ -65,12 +68,14 @@ def area(name, pos, target, power, size, color=(1, 1, 1), spread=180):
 cam_data = bpy.data.cameras.new('Cam'); cam = bpy.data.objects.new('Cam', cam_data); sc.collection.objects.link(cam); sc.camera = cam
 cam_data.sensor_width = 36; cam_data.clip_end = 500
 
-HERO = {'Torso': (0.04, 0.45, 0.0), 'Head': (-0.10, 0.25, 0.0), 'Pelvis': (0.10, 0.0, -0.03),
-        'Hip_L': (-1.0, 0, 0.04), 'Knee_L': (1.35, 0, 0), 'Foot_L': (-0.35, 0, 0),
-        'Hip_R': (-0.05, 0, -0.02), 'Knee_R': (0.70, 0, 0), 'Foot_R': (-0.65, 0, 0),
-        'UpperArm_R': (-1.0, 0, -0.20), 'Forearm_R': (0.72, 0, 0),
-        'UpperArm_L': (0.50, 0, 0.50), 'Forearm_L': (-1.30, 0, 0),
-        'Shoulder_L': (0.05, 0, 0.06), 'Shoulder_R': (-0.05, 0, -0.04)}
+HERO = {'Torso': (0.22, 0.60, 0.0), 'Head': (-0.30, 0.35, 0.0), 'Pelvis': (0.18, 0.0, -0.10),
+        'Hip_L': (-1.40, 0, 0.12), 'Knee_L': (1.85, 0, 0), 'Foot_L': (-0.50, 0, 0),
+        'Hip_R': (0.30, 0, -0.08), 'Knee_R': (0.45, 0, 0), 'Foot_R': (-0.65, 0, 0),
+        'UpperArm_R': (-1.30, 0, -0.35), 'Forearm_R': (0.55, 0, 0),
+        'UpperArm_L': (0.45, 0, 0.65), 'Forearm_L': (-1.65, 0, 0),
+        'Shoulder_L': (0.12, 0, 0.12), 'Shoulder_R': (-0.12, 0, -0.10),
+        'Wing1_L': (0.0, 0, 0.40), 'Wing2_L': (0.0, 0, 0.60), 'Wing3_L': (0.0, 0, 0.80),
+        'Wing1_R': (0.0, 0, -0.40), 'Wing2_R': (0.0, 0, -0.60), 'Wing3_R': (0.0, 0, -0.80)}
 
 # views: name, camera position, target (game coords), lens mm, pose, light rig
 VIEWS = [
@@ -84,6 +89,7 @@ VIEWS = [
     ('08_silhouette',   (7.4, 4.4, 13.6),  (0.0, 3.0, 0.0), 45, 'rest', 'silhouette'),
     ('09_top',          (0.0, 16.0, 0.01), (0.0, 3.0, 0.0), 40, 'rest', 'studio'),     # diagnostics: plan view
     ('10_wing',         (3.5, 5.8, 9.0),   (1.2, 5.4, -1.0), 50, 'rest', 'studio'),   # diagnostics: level with the wing
+    ('11_hero_action',  (5.0, 2.2, 8.0),   (0.0, 3.4, 0.0), 30, 'hero', 'hero'),   # low angle: imposing, blade raised
 ]
 
 lights = []
@@ -95,20 +101,43 @@ def clear_lights():
 def rig(kind):
     clear_lights()
     if kind == 'studio':
-        set_world((0.035, 0.040, 0.055), (0.42, 0.47, 0.58), 1.0)   # lighter world: the metallic lack mirrors it, that is where the anthracite tone comes from
-        lights.append(area('Key', (7.0, 9.5, 7.5), (0, 3.2, 0), 1500, 6.0, (1.0, 0.96, 0.90)))
-        lights.append(area('FillFront', (-7.5, 4.5, 9.5), (0, 3.2, 0), 380, 6.0, (0.85, 0.9, 1.0)))   # second light from front-side, ~25 % of the key
-        lights.append(area('Rim', (-6.5, 7.5, -8.5), (0, 3.4, 0), 2800, 4.0, (0.72, 0.84, 1.0)))
-        lights.append(area('Fill', (-8.0, 3.0, 6.0), (0, 3.0, 0), 300, 5.0, (0.85, 0.9, 1.0)))
-        lights.append(area('Top', (0.0, 11.0, 1.0), (0, 3.0, 0), 600, 6.0, (0.9, 0.93, 1.0)))
+        if HERO:
+            # Hero-Studio: helle Welt (Metall spiegelt sie — dunkle Welt = mattes Metall),
+            # kleiner scharfer Key für Glanzlichter, weiche Fills.
+            set_world((0.10, 0.11, 0.14), (0.72, 0.78, 0.90), 1.2)
+            lights.append(area('Key', (7.0, 9.5, 7.5), (0, 3.2, 0), 2600, 2.5, (1.0, 0.96, 0.90)))
+            lights.append(area('FillFront', (-7.5, 4.5, 9.5), (0, 3.2, 0), 700, 6.0, (0.85, 0.9, 1.0)))
+            lights.append(area('Rim', (-6.5, 7.5, -8.5), (0, 3.4, 0), 4200, 3.0, (0.72, 0.84, 1.0)))
+            lights.append(area('Fill', (-8.0, 3.0, 6.0), (0, 3.0, 0), 600, 5.0, (0.85, 0.9, 1.0)))
+            lights.append(area('Top', (0.0, 11.0, 1.0), (0, 3.0, 0), 1100, 5.0, (0.9, 0.93, 1.0)))
+            lights.append(area('Bounce', (0.0, 0.5, 8.0), (0, 3.0, 0), 350, 8.0, (0.9, 0.92, 1.0)))
+        else:
+            set_world((0.035, 0.040, 0.055), (0.42, 0.47, 0.58), 1.0)   # lighter world: the metallic lack mirrors it, that is where the anthracite tone comes from
+            lights.append(area('Key', (7.0, 9.5, 7.5), (0, 3.2, 0), 1500, 6.0, (1.0, 0.96, 0.90)))
+            lights.append(area('FillFront', (-7.5, 4.5, 9.5), (0, 3.2, 0), 380, 6.0, (0.85, 0.9, 1.0)))   # second light from front-side, ~25 % of the key
+            lights.append(area('Rim', (-6.5, 7.5, -8.5), (0, 3.4, 0), 2800, 4.0, (0.72, 0.84, 1.0)))
+            lights.append(area('Fill', (-8.0, 3.0, 6.0), (0, 3.0, 0), 300, 5.0, (0.85, 0.9, 1.0)))
+            lights.append(area('Top', (0.0, 11.0, 1.0), (0, 3.0, 0), 600, 6.0, (0.9, 0.93, 1.0)))
     elif kind == 'hero':
-        set_world((0.012, 0.014, 0.022), (0.22, 0.26, 0.34), 1.0)
-        lights.append(area('Rim', (-6.0, 8.0, -7.0), (0, 3.6, 0), 9000, 3.0, (0.82, 0.9, 1.0)))
-        lights.append(area('Rim2', (7.0, 6.5, -7.5), (0, 3.4, 0), 5000, 2.5, (1.0, 0.62, 0.30)))
-        lights.append(area('Key', (8.0, 6.0, 9.0), (0, 3.2, 0), 1500, 5.0, (0.80, 0.86, 1.0)))
-        lights.append(area('FillFront', (-7.5, 4.5, 9.5), (0, 3.2, 0), 420, 6.0, (0.7, 0.8, 1.0)))
-        lights.append(area('Fill', (-9.0, 3.0, 7.0), (0, 3.0, 0), 300, 5.0, (0.6, 0.72, 1.0)))
-        lights.append(area('Ground', (2.5, 0.3, 5.5), (0, 2.0, 0), 260, 3.0, (1.0, 0.55, 0.25)))
+        if HERO:
+            # Battle-Setting: dunkler Himmel, Glut-Glow von unten, harte Rim-Lichter
+            set_world((0.06, 0.025, 0.012), (0.10, 0.12, 0.18), 0.8)
+            lights.append(area('Rim', (-6.0, 8.0, -7.0), (0, 3.6, 0), 13000, 2.2, (0.82, 0.9, 1.0)))
+            lights.append(area('Rim2', (7.0, 6.5, -7.5), (0, 3.4, 0), 9000, 1.8, (1.0, 0.55, 0.22)))
+            lights.append(area('Key', (8.0, 6.0, 9.0), (0, 3.2, 0), 2800, 3.0, (0.80, 0.86, 1.0)))
+            lights.append(area('FillFront', (-7.5, 4.5, 9.5), (0, 3.2, 0), 650, 6.0, (0.7, 0.8, 1.0)))
+            lights.append(area('Fill', (-9.0, 3.0, 7.0), (0, 3.0, 0), 450, 5.0, (0.6, 0.72, 1.0)))
+            lights.append(area('Ground', (2.5, 0.3, 5.5), (0, 2.0, 0), 500, 3.0, (1.0, 0.50, 0.20)))
+            lights.append(area('Danger', (-4.0, 1.0, 4.0), (0, 3.0, 0), 700, 2.0, (1.0, 0.30, 0.10)))
+            lights.append(area('Ember', (0.0, 0.2, -6.0), (0, 2.5, 0), 2500, 5.0, (1.0, 0.35, 0.08)))
+        else:
+            set_world((0.012, 0.014, 0.022), (0.22, 0.26, 0.34), 1.0)
+            lights.append(area('Rim', (-6.0, 8.0, -7.0), (0, 3.6, 0), 9000, 3.0, (0.82, 0.9, 1.0)))
+            lights.append(area('Rim2', (7.0, 6.5, -7.5), (0, 3.4, 0), 5000, 2.5, (1.0, 0.62, 0.30)))
+            lights.append(area('Key', (8.0, 6.0, 9.0), (0, 3.2, 0), 1500, 5.0, (0.80, 0.86, 1.0)))
+            lights.append(area('FillFront', (-7.5, 4.5, 9.5), (0, 3.2, 0), 420, 6.0, (0.7, 0.8, 1.0)))
+            lights.append(area('Fill', (-9.0, 3.0, 7.0), (0, 3.0, 0), 300, 5.0, (0.6, 0.72, 1.0)))
+            lights.append(area('Ground', (2.5, 0.3, 5.5), (0, 2.0, 0), 260, 3.0, (1.0, 0.55, 0.25)))
 
 for name, pos, target, lens, pose, kind in VIEWS:
     if ONLY and name not in ONLY: continue
