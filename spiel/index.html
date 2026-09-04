@@ -42614,9 +42614,18 @@ void main() {
     return { name: d.name, sub: `${d.magazine} rd \xB7 ${d.id === "rocket" ? "heavy" : d.auto ? "auto" : "semi"}` };
   });
   var KRIEG = {
-    reward: { feind: 1200, cop: 150, hostile: 200, wreckPolice: 250, wreckCivil: 80 },
+    reward: { feind: 1200, copMech: 400, cop: 150, hostile: 200, wreckPolice: 250, wreckCivil: 80 },
     attribution: 10,
     // s: ein Wrack zahlt nur, wenn der Spieler in diesem Fenster den Treffer setzte
+    polizei: {
+      abStars: 4,
+      spawnEvery: 6,
+      // Runde 16: Cops rufen ab 4★ eigene Mechs (licht + schwer)
+      light: { hp: 320, speed: 5.4, scale: 0.72, burst: 5 },
+      heavy: { hp: 950, speed: 3, scale: 1.38, burst: 10 },
+      maxLights: 2,
+      maxHeavy: 1
+    },
     feind: {
       hp: 500,
       hpNest: 650,
@@ -49738,21 +49747,21 @@ void main() {
       this.lowpass.frequency.setTargetAtTime(on2 ? 420 : 2e4, t2, 0.06);
     }
     setListener(px2, py2, pz2, fx, fy, fz, ux, uy, uz) {
-      this.lx = px2;
-      this.ly = py2;
-      this.lz = pz2;
+      this.lx = fin(px2);
+      this.ly = fin(py2);
+      this.lz = fin(pz2);
       if (!this.ctx) return;
       const L = this.ctx.listener, t2 = this.ctx.currentTime;
       if (L.positionX) {
         L.positionX.setTargetAtTime(fin(px2), t2, 0.02);
         L.positionY.setTargetAtTime(fin(py2), t2, 0.02);
         L.positionZ.setTargetAtTime(fin(pz2), t2, 0.02);
-        L.forwardX.setTargetAtTime(fx, t2, 0.02);
-        L.forwardY.setTargetAtTime(fy, t2, 0.02);
-        L.forwardZ.setTargetAtTime(fz, t2, 0.02);
-        L.upX.setTargetAtTime(ux, t2, 0.02);
-        L.upY.setTargetAtTime(uy, t2, 0.02);
-        L.upZ.setTargetAtTime(uz, t2, 0.02);
+        L.forwardX.setTargetAtTime(fin(fx), t2, 0.02);
+        L.forwardY.setTargetAtTime(fin(fy), t2, 0.02);
+        L.forwardZ.setTargetAtTime(fin(fz), t2, 0.02);
+        L.upX.setTargetAtTime(fin(ux), t2, 0.02);
+        L.upY.setTargetAtTime(fin(uy), t2, 0.02);
+        L.upZ.setTargetAtTime(fin(uz), t2, 0.02);
       } else {
         L.setPosition(fin(px2), fin(py2), fin(pz2));
         L.setOrientation(fx, fy, fz, ux, uy, uz);
@@ -51292,10 +51301,13 @@ void main() {
       this.recover = recover;
     }
     addShake(a) {
+      if (!Number.isFinite(a)) return;
       this.shake = Math.min(1.5, this.shake + a);
     }
+    // Runde 16: NaN-Shake haette die Kamera dauerhaft vergiftet (schwarzes Bild)
     // directional impact kick (world-space metres, decays fast) + a short FOV punch
     addKick(x, y2, z, fov2 = 0) {
+      if (![x, y2, z, fov2].every(Number.isFinite)) return;
       this.kick.x = clamp2(this.kick.x + x, -0.6, 0.6);
       this.kick.y = clamp2(this.kick.y + y2, -0.4, 0.4);
       this.kick.z = clamp2(this.kick.z + z, -0.6, 0.6);
@@ -53191,7 +53203,55 @@ void main() {
       this.brakeLights.visible = !this.wrecked && (this.controls.brake > 0.05 || this.controls.handbrake && !!this.driver);
       this.lightsMesh.material = this.driver && !this.wrecked ? MAT.lights : MAT.lightsOff;
     }
+    nanGuard() {
+      if (!isFinite(this.pos.x + this.pos.y + this.pos.z + this.vel.x + this.vel.y + this.vel.z + this.yaw + this.speed + this.vy + this.yawRate + this.steer + this.wheels[0].comp + this.wheels[0].load)) {
+        if (!this._nanT || this.G.time - this._nanT > 10) {
+          console.warn("vehicle: NaN-Zustand zurueckgesetzt (" + this.type + " #" + this.id + ")");
+          this._nanT = this.G.time;
+        }
+        if (window.__nanDiag) {
+          const felder = { pos: [this.pos.x, this.pos.y, this.pos.z], vel: [this.vel.x, this.vel.y, this.vel.z], yaw: this.yaw, speed: this.speed, vy: this.vy, yawRate: this.yawRate, steer: this.steer, gear: this.gear, rpm: this.rpm, wheelspin: this.wheelspin, comp: this.wheels.map((w) => w.comp), load: this.wheels.map((w) => w.load) };
+          const bad = [];
+          for (const k in felder) {
+            const v = felder[k];
+            (Array.isArray(v) ? v : [v]).forEach((x, i) => {
+              if (!Number.isFinite(x)) bad.push(k + (Array.isArray(v) ? "[" + i + "]" : ""));
+            });
+          }
+          if (bad.length) console.warn("NaN-Felder:", bad.join(","));
+        }
+        if (this._goodP) {
+          this.pos.copy(this._goodP);
+          this.yaw = this._goodYaw || this.yaw;
+        } else {
+          this.pos.set(0, this.G.world.groundHeight(0, 0), 0);
+        }
+        this.vel.set(0, 0, 0);
+        this.vy = 0;
+        this.yawRate = 0;
+        this.speed = 0;
+        this.rpm = this.def.engine.idle;
+        this.wheelspin = 0;
+        this.pitch = 0;
+        this.roll = 0;
+        this.pitchRate = 0;
+        this.rollRate = 0;
+        this.steer = 0;
+        this.slip = 0;
+        this.skidAcc = 0;
+        for (const w of this.wheels) {
+          w.comp = this.staticComp;
+          w.load = this.def.mass * GRAV / 4;
+          w.skidD = 0;
+        }
+      } else if (this.G.time - (this._goodT || -9) > 0.5) {
+        this._goodT = this.G.time;
+        (this._goodP || (this._goodP = new Vector3())).copy(this.pos);
+        this._goodYaw = this.yaw;
+      }
+    }
     update(dt2) {
+      this.nanGuard();
       const G2 = this.G;
       const moving = Math.hypot(this.vel.x, this.vel.z) > 0.03 || Math.abs(this.vy) > 0.05 || Math.abs(this.yawRate) > 0.02;
       if (!this.driver && !moving && !this.airborne) {
@@ -54035,6 +54095,7 @@ void main() {
     update(dt2) {
       const G2 = this.G, P = G2.player, I2 = G2.input;
       for (const v of this.list) {
+        v.nanGuard();
         if (v.driver === "player" && !P.dead) {
           const c = v.controls;
           const fwd = I2.down("KeyW") || I2.down("ArrowUp"), back = I2.down("KeyS") || I2.down("ArrowDown");
@@ -54074,6 +54135,7 @@ void main() {
       for (const v of this.list) v.update(dt2);
       this.collidePairs();
       this.collideProps();
+      for (const v of this.list) v.nanGuard();
       const A2 = G2.audio;
       if (A2.ready) {
         for (const v of this.list) {
@@ -54604,6 +54666,20 @@ void main() {
     }
     update(dt2) {
       const G2 = this.G, P = G2.player, camPos = G2.camera.position;
+      for (const n2 of this.list) {
+        if (!isFinite(n2.pos.x + n2.pos.y + n2.pos.z + n2.vel.x + n2.vel.z)) {
+          if (n2._goodP) {
+            n2.pos.copy(n2._goodP);
+          } else {
+            n2.pos.set(0, 0, 0);
+          }
+          n2.vel.set(0, 0, 0);
+          n2.vy = 0;
+        } else if (G2.time - (n2._goodT || -9) > 0.5) {
+          n2._goodT = G2.time;
+          (n2._goodP || (n2._goodP = new Vector3())).copy(n2.pos);
+        }
+      }
       for (let i = this.list.length - 1; i >= 0; i--) {
         const n2 = this.list[i];
         const dCam = Math.hypot(n2.pos.x - camPos.x, n2.pos.z - camPos.z);
@@ -56438,19 +56514,30 @@ void main() {
       this.G = G2;
       this.isFeind = true;
       this.nest = !!opts.nest;
+      this.cop = !!opts.cop;
       this.weaponId = "mg";
+      this.tier = opts.tier || "std";
+      const T = this.cop ? KRIEG.polizei[this.tier] : null;
+      this.s = T ? T.scale : 1;
+      this.speedMax = T ? T.speed : KRIEG.feind.walkSpeed;
       this.mesh = makeMechMesh();
+      if (this.s !== 1) this.mesh.scale.setScalar(this.s);
       G2.scene.add(this.mesh);
       this.P = {};
       for (const n2 of PIVOTS) this.P[n2] = this.mesh.getObjectByName(n2);
-      this.raubkopf();
-      this.raustAusruestung();
+      if (this.cop) {
+        this.polizeilicht();
+        if (this.tier === "heavy") this.panzerAnbau();
+      } else {
+        this.raubkopf();
+        this.raustAusruestung();
+      }
       this.pos = new Vector3(x, G2.world.groundHeight(x, z) + KRIEG.feind.drop.height, z);
       this.vel = new Vector3();
       this.vy = KRIEG.feind.drop.vy0;
       this.yaw = rand(0, Math.PI * 2);
       this.state = "falling";
-      this.hp = this.nest ? KRIEG.feind.hpNest : KRIEG.feind.hp;
+      this.hp = this.nest ? KRIEG.feind.hpNest : T ? T.hp : KRIEG.feind.hp;
       this.maxHealth = this.hp;
       this.wrecked = false;
       this.dead = false;
@@ -56460,7 +56547,7 @@ void main() {
       this.torsoYaw = 0;
       this.dmgFlash = 0;
       this.lastHurt = -99;
-      this.burst = { n: 0, t: 0, cd: rand(1.2, 2.2) };
+      this.burst = { n: 0, t: 0, cd: rand(1.2, 2.2), rounds: T ? T.burst : KRIEG.feind.burst.rounds };
       this.restPose();
       this.updateMesh();
       this.aabb = new AABB(0, 0, 0, 0, 0, 0);
@@ -56500,6 +56587,43 @@ void main() {
           return k;
         });
       });
+    }
+    // Runde 16: Polizeilicht — prozedurale, SELBSTLEUCHTende Blaurot-Stange (rohe Emissive-Materialien
+    // rendern ohne Licht-Gitter-Patch, was hier genau richtig ist: das Licht bringt es selbst mit). Blitzt.
+    polizeilicht() {
+      const H = this.P.Head || this.P.Torso;
+      if (!H) return;
+      const mk = (hex, emit, w, h, d, x, y2, z) => {
+        const m = new MeshStandardMaterial({ color: hex, emissive: emit, emissiveIntensity: 2.4, roughness: 0.5 });
+        noteMaterial(m);
+        this.lightsMats = this.lightsMats || [];
+        if (emit) this.lightsMats.push(m);
+        const mesh = new Mesh(new BoxGeometry(w, h, d), m);
+        mesh.position.set(x, y2, z);
+        return mesh;
+      };
+      const bar = new Group();
+      bar.add(mk(1316380, 0, 0.98, 0.17, 0.38, 0, 0.5, 0.02));
+      bar.add(mk(659230, 4881663, 0.4, 0.14, 0.34, -0.27, 0.5, 0.02));
+      bar.add(mk(1968650, 16722458, 0.4, 0.14, 0.34, 0.27, 0.5, 0.02));
+      H.add(bar);
+      this.lichtBar = bar;
+    }
+    panzerAnbau() {
+      const A2 = ASSETS.upgrades;
+      const src = A2 && A2.Upgrade_panzer;
+      const T = this.P.Torso;
+      if (src && T) {
+        const k = src.clone(true);
+        T.add(k);
+      }
+    }
+    // Licht bar blinkt abwechselnd blau/rot (update callt alle Frames)
+    blinkLicht(t2) {
+      if (!this.lightsMats) return;
+      const phase = Math.floor(t2 * 3.2) % 2;
+      this.lightsMats[0].emissiveIntensity = phase === 0 ? 3.4 : 0.25;
+      this.lightsMats[1].emissiveIntensity = phase === 0 ? 0.25 : 3.4;
     }
     // rost-rote GLB-Teile als Raub-Mech-Panzer: klar unterscheidbare Silhouette, Boot-gepatchte Materialien
     raustAusruestung() {
@@ -56549,13 +56673,14 @@ void main() {
       return out.set(this.pos.x + lx * c + lz * s, this.pos.y + ly, this.pos.z - lx * s + lz * c);
     }
     updateAABB() {
+      const r = 2.1 * this.s, h = 6.1 * this.s;
       const a = this.aabb;
-      a.minX = this.pos.x - 2.1;
-      a.maxX = this.pos.x + 2.1;
-      a.minZ = this.pos.z - 2.1;
-      a.maxZ = this.pos.z + 2.1;
+      a.minX = this.pos.x - r;
+      a.maxX = this.pos.x + r;
+      a.minZ = this.pos.z - r;
+      a.maxZ = this.pos.z + r;
       a.minY = this.pos.y;
-      a.maxY = this.pos.y + 6.1;
+      a.maxY = this.pos.y + h;
     }
     // gleiche Zwei-Kisten-Geometrie wie Mech.raycast (Beine + Torso)
     raycast(ox, oy, oz, dx, dy, dz, maxT) {
@@ -56564,7 +56689,7 @@ void main() {
       const lx = px2 * c - pz2 * s, lz = px2 * s + pz2 * c, ly = oy - this.pos.y;
       const ldx = dx * c - dz * s, ldz = dx * s + dz * c;
       let best = null;
-      for (const [hw, y0, y1, hl] of [[1.15, 0, 3.4, 1], [2.05, 3.1, 6.2, 1.25]]) {
+      for (const [hw, y0, y1, hl] of [[1.15 * this.s, 0, 3.4 * this.s, 1 * this.s], [2.05 * this.s, 3.1 * this.s, 6.2 * this.s, 1.25 * this.s]]) {
         let tmin = 0, tmax = maxT, axis = -1;
         const slabs = [[lx, ldx, -hw, hw], [ly, dy, y0, y1], [lz, ldz, -hl, hl]];
         let ok = true;
@@ -56620,10 +56745,13 @@ void main() {
       const G2 = this.G;
       _a3.copy(this.pos);
       _a3.y += 3.5;
-      G2.weapons.scheduleExplosion(_a3, 9, 22, 200, this, 0.05);
-      G2.fx.explosion({ x: _a3.x, y: _a3.y, z: _a3.z }, 8);
+      G2.weapons.scheduleExplosion(_a3, 9 * this.s, 22, 200, this, 0.05);
+      G2.fx.explosion({ x: _a3.x, y: _a3.y, z: _a3.z }, 8 * this.s);
       G2.audio.explosion(_a3, 1.8);
-      if (vomSpieler && G2.krieg) G2.krieg.onFeindKill(this);
+      if (vomSpieler) {
+        if (G2.police && this.cop) G2.police.crime("killCop", this.pos);
+        if (G2.krieg) G2.krieg.onFeindKill(this);
+      }
     }
     // feuert einen Schuss des laufenden Bursts auf den Spieler (Waffe/Kamera/FX ueber npcFire-Pfad)
     feuer() {
@@ -56642,6 +56770,21 @@ void main() {
     update(dt2) {
       const G2 = this.G, P = G2.player;
       this.dmgFlash = Math.max(0, this.dmgFlash - dt2 * 4);
+      if (!isFinite(this.pos.x + this.pos.y + this.pos.z + this.vy + this.yaw + this.speed)) {
+        if (this._goodP) {
+          this.pos.copy(this._goodP);
+          this.yaw = this._goodYaw || this.yaw;
+        } else {
+          this.pos.y = G2.world.groundHeight(this.pos.x || 0, this.pos.z || 0);
+        }
+        this.vy = 0;
+        this.speed = 0;
+        this.yawRate = 0;
+      } else if (G2.time - (this._goodT || -9) > 0.5) {
+        this._goodT = G2.time;
+        (this._goodP || (this._goodP = new Vector3())).copy(this.pos);
+        this._goodYaw = this.yaw;
+      }
       const gy = G2.world.groundHeight(this.pos.x, this.pos.z);
       if (this.state === "falling") {
         const h = this.pos.y - gy;
@@ -56658,6 +56801,16 @@ void main() {
       } else if (this.state === "guard") {
         const d = Math.hypot(P.pos.x - this.pos.x, P.pos.z - this.pos.z);
         if (!P.dead && (d < 70 || G2.time - this.lastHurt < 12)) this.state = "hunt";
+      } else if (this.state === "leave") {
+        this.leaveT = (this.leaveT || 0) + dt2;
+        const dx = this.pos.x - P.pos.x, dz = this.pos.z - P.pos.z;
+        const d = Math.hypot(dx, dz) || 1;
+        this.yaw = dampAngle(this.yaw, Math.atan2(dx, dz), 2, dt2);
+        this.speed = clamp2(this.speed + KRIEG.feind.accel * dt2, 0, this.speedMax);
+        this.pos.x += Math.sin(this.yaw) * this.speed * dt2;
+        this.pos.z += Math.cos(this.yaw) * this.speed * dt2;
+        this.phase += dt2 * 2.4 * this.speed / this.speedMax;
+        if (this.leaveT > 7) return "remove";
       } else if (this.state === "hunt") {
         const ziel = P.vehicle && P.vehicle.isMech && P.vehicle.piloted ? P.vehicle.pos : P.pos;
         const dx = ziel.x - this.pos.x, dz = ziel.z - this.pos.z;
@@ -56667,13 +56820,13 @@ void main() {
         this.torsoYaw = clamp2(angleDelta(this.yaw, soll), -0.7, 0.7);
         const willLaufen = d > KRIEG.feind.range && !P.dead;
         const F = KRIEG.feind;
-        this.speed = clamp2(this.speed + (willLaufen ? F.accel : -F.accel * 1.6) * dt2, 0, F.walkSpeed);
+        this.speed = clamp2(this.speed + (willLaufen ? F.accel : -F.accel * 1.6) * dt2, 0, this.speedMax);
         if (this.speed > 0.05) {
           const s = Math.sin(this.yaw), c = Math.cos(this.yaw);
           this.pos.x += dx / d * this.speed * dt2;
           this.pos.z += dz / d * this.speed * dt2;
         }
-        this.phase += dt2 * (2.4 * this.speed / F.walkSpeed + (this.speed > 0.05 ? 0.4 : 0));
+        this.phase += dt2 * (2.4 * this.speed / this.speedMax + (this.speed > 0.05 ? 0.4 : 0));
         const B2 = F.burst;
         this.burst.cd -= dt2;
         this.burst.t -= dt2;
@@ -56684,7 +56837,7 @@ void main() {
             this.burst.t = B2.gap;
           } else this.burst.t = 0.3;
         } else if (this.burst.n <= 0 && this.burst.cd <= 0 && d < F.fireRange && faces && !P.dead) {
-          this.burst.n = B2.rounds;
+          this.burst.n = this.burst.rounds;
           this.burst.t = 0;
           this.burst.cd = rand(B2.cd[0], B2.cd[1]);
         }
@@ -56693,11 +56846,12 @@ void main() {
         this.deadT += dt2;
         if (this.deadT > 4) return "remove";
       }
+      this.blinkLicht(G2.time);
       this.updateMesh(gy);
       this.updateAABB();
     }
     updateMesh(gy) {
-      const P = this.P, g2 = this.gaitK = damp2(this.gaitK || 0, this.state === "hunt" && this.speed > 0.1 ? 1 : 0, 6, 0.016);
+      const P = this.P, g2 = this.gaitK = damp2(this.gaitK || 0, (this.state === "hunt" || this.state === "leave") && this.speed > 0.1 ? 1 : 0, 6, 0.016);
       this.mesh.position.copy(this.pos);
       this.mesh.rotation.set(0, this.yaw, 0);
       if (this.state === "dead") {
@@ -56737,9 +56891,10 @@ void main() {
       this.money += n2;
       this.G.ui.moneyPop(n2);
     }
-    onFeindKill() {
-      this.pay(KRIEG.reward.feind);
-      this.G.ui.msg("+" + geld(KRIEG.reward.feind), "Raub-Mech verschrottet", 1.6);
+    onFeindKill(f) {
+      const istCop = f && f.cop;
+      this.pay(istCop ? KRIEG.reward.copMech : KRIEG.reward.feind);
+      this.G.ui.msg("+" + geld(istCop ? KRIEG.reward.copMech : KRIEG.reward.feind), istCop ? "Polizei-Mech verschrottet" : "Raub-Mech verschrottet", 1.6);
     }
     onNpcKill(n2) {
       if (n2.cop) this.pay(KRIEG.reward.cop);
@@ -56860,9 +57015,38 @@ void main() {
       if (indus) this.spawnFeind(cx(indus), cz(indus), { nest: true });
       this.nestsDone = true;
     }
+    // Runde 16: Polizei-Mech-Kader — ab 4★ kommen den Cops eigene Walker zu Hilfe (klein, ab 5★ auch schwer).
+    polizeiKader(dt2) {
+      const G2 = this.G, stars = G2.police.stars;
+      const cops = () => this.list.filter((f) => f.cop && !f.dead && f.state !== "leave");
+      if (stars === 0) {
+        for (const f of this.list) if (f.cop && !f.dead && f.state !== "dead" && f.state !== "leave") f.state = "leave";
+        return;
+      }
+      const soll = stars >= 5 ? KRIEG.polizei.maxLights + KRIEG.polizei.maxHeavy : stars >= KRIEG.polizei.abStars ? 1 : 0;
+      const lights = cops().filter((f) => f.tier === "light").length, heavies = cops().filter((f) => f.tier === "heavy").length;
+      if (cops().length < soll) {
+        this.copSpawnT = (this.copSpawnT || 3) - dt2;
+        if (this.copSpawnT <= 0) {
+          const p = this.wellenSpawn();
+          if (p) {
+            const willHeavy = stars >= 5 && heavies < KRIEG.polizei.maxHeavy && lights >= KRIEG.polizei.maxLights;
+            if (willHeavy ? heavies < KRIEG.polizei.maxHeavy : lights < KRIEG.polizei.maxLights) {
+              const f = this.spawnFeind(p.x, p.z, { cop: true, tier: willHeavy ? "heavy" : "light" });
+              if (!this._copMsg) {
+                G2.ui.msg("POLIZEI-MECH", "Die Stadt hat eigene Walker \u2014 Vorsicht", 3);
+                this._copMsg = true;
+              }
+            }
+          }
+          this.copSpawnT = KRIEG.polizei.spawnEvery;
+        }
+      }
+    }
     update(dt2) {
       const G2 = this.G;
       if (!this.nestsDone && G2.state === "playing" && G2.realTime > 3) this.nester();
+      this.polizeiKader(dt2);
       const m = G2.mechSys.mech;
       if (m && !m.wrecked) {
         m.maxHealth = MECH.maxHealth + (this.owned.has("panzer") ? 600 : 0);
@@ -56870,7 +57054,7 @@ void main() {
         if (this._attachedMech !== m) this.anbauen();
       }
       if (m && m.piloted && !m.wrecked) {
-        const alive = this.list.filter((f) => !f.dead).length;
+        const alive = this.list.filter((f) => !f.dead && !f.cop).length;
         this.waveT -= dt2;
         if (this.waveT <= 0 && alive < KRIEG.feind.wave.maxAlive) {
           const n2 = Math.min(KRIEG.feind.wave.count(this.wave), KRIEG.feind.wave.maxAlive - alive);
@@ -56891,7 +57075,7 @@ void main() {
       }
     }
     debug() {
-      return { money: this.money, owned: [...this.owned], feinds: this.list.map((f) => ({ state: f.state, hp: Math.round(f.hp), d: Math.round(Math.hypot(f.pos.x - this.G.player.pos.x, f.pos.z - this.G.player.pos.z)), nest: f.nest })), wave: this.wave, waveT: +this.waveT.toFixed(1), shop: this.shopOpen, anbauten: this._anbauten.length };
+      return { money: this.money, owned: [...this.owned], feinds: this.list.map((f) => ({ state: f.state, hp: Math.round(f.hp), d: Math.round(Math.hypot(f.pos.x - this.G.player.pos.x, f.pos.z - this.G.player.pos.z)), nest: f.nest, cop: f.cop, tier: f.tier })), wave: this.wave, waveT: +this.waveT.toFixed(1), shop: this.shopOpen, anbauten: this._anbauten.length };
     }
   };
 
@@ -58372,6 +58556,25 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     // ---- per frame -----------------------------------------------------------------------------------------------------
     update(dt2) {
       const G2 = this.G, W = G2.world;
+      if (!isFinite(this.pos.x + this.pos.y + this.pos.z + this.vel.x + this.vel.y + this.vel.z + this.yaw + this.speed)) {
+        if (!this._nanT || G2.time - this._nanT > 10) {
+          console.warn("mech: NaN-Zustand zurueckgesetzt");
+          this._nanT = G2.time;
+        }
+        if (this._goodP) {
+          this.pos.copy(this._goodP);
+          this.yaw = this._goodYaw || this.yaw;
+        }
+        this.vel.set(0, 0, 0);
+        this.vy = 0;
+        this.yawRate = 0;
+        this.speed = 0;
+        this.flying = false;
+      } else if (G2.time - (this._goodT || -9) > 0.5) {
+        this._goodT = G2.time;
+        (this._goodP || (this._goodP = new Vector3())).copy(this.pos);
+        this._goodYaw = this.yaw;
+      }
       this.lights.length = 0;
       const gy = W.groundHeight(this.pos.x, this.pos.z);
       const h = this.pos.y - gy;
@@ -59617,14 +59820,24 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           danceTick(dt2);
           if (input.pressed("KeyV")) ui.msg("CAMERA", gcam.mode === "drive" ? "chase (only mode in phase 1)" : "third person", 1.2);
           if (!krieg.shopOpen) {
-            weapons.update(dt2, realDt);
-            player.update(dt2);
-            vehicles.update(dt2);
-            npcs.update(dt2);
-            police.update(dt2, realDt);
-            mechSys.update(dt2);
-            krieg.update(dt2);
-            props.update(dt2, audio, fx, propTmp);
+            const safe = (name, fn) => {
+              try {
+                fn();
+              } catch (e) {
+                if (!G._sysErrT || G.realTime - G._sysErrT > 5) {
+                  console.error(name + " update failed:", e);
+                  G._sysErrT = G.realTime;
+                }
+              }
+            };
+            safe("weapons", () => weapons.update(dt2, realDt));
+            safe("player", () => player.update(dt2));
+            safe("vehicles", () => vehicles.update(dt2));
+            safe("npcs", () => npcs.update(dt2));
+            safe("police", () => police.update(dt2, realDt));
+            safe("mech", () => mechSys.update(dt2));
+            safe("krieg", () => krieg.update(dt2));
+            safe("props", () => props.update(dt2, audio, fx, propTmp));
             fx.update(dt2);
           }
           if (audio.radio) audio.radio.update(player);
