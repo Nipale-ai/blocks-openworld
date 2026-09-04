@@ -9382,8 +9382,8 @@
      * @param {Vector3} target - The target vector that is used to store the method's result.
      * @return {?Vector3} The interpolated value.
      */
-    static getInterpolation(point, p1, p2, p3, v1, v2, v3, target) {
-      if (this.getBarycoord(point, p1, p2, p3, _v3$2) === null) {
+    static getInterpolation(point, p1, p2, p32, v1, v2, v3, target) {
+      if (this.getBarycoord(point, p1, p2, p32, _v3$2) === null) {
         target.x = 0;
         target.y = 0;
         if ("z" in target) target.z = 0;
@@ -15501,8 +15501,8 @@
      * @param {Plane} [p4] - The fifth plane that encloses the frustum.
      * @param {Plane} [p5] - The sixth plane that encloses the frustum.
      */
-    constructor(p0 = new Plane(), p1 = new Plane(), p2 = new Plane(), p3 = new Plane(), p4 = new Plane(), p5 = new Plane()) {
-      this.planes = [p0, p1, p2, p3, p4, p5];
+    constructor(p0 = new Plane(), p1 = new Plane(), p2 = new Plane(), p32 = new Plane(), p4 = new Plane(), p5 = new Plane()) {
+      this.planes = [p0, p1, p2, p32, p4, p5];
     }
     /**
      * Sets the frustum planes by copying the given planes.
@@ -15515,12 +15515,12 @@
      * @param {Plane} [p5] - The sixth plane that encloses the frustum.
      * @return {Frustum} A reference to this frustum.
      */
-    set(p0, p1, p2, p3, p4, p5) {
+    set(p0, p1, p2, p32, p4, p5) {
       const planes = this.planes;
       planes[0].copy(p0);
       planes[1].copy(p1);
       planes[2].copy(p2);
-      planes[3].copy(p3);
+      planes[3].copy(p32);
       planes[4].copy(p4);
       planes[5].copy(p5);
       return this;
@@ -18772,7 +18772,7 @@
         intPoint = l - 2;
         weight = 1;
       }
-      let p0, p3;
+      let p0, p32;
       if (this.closed || intPoint > 0) {
         p0 = points[(intPoint - 1) % l];
       } else {
@@ -18782,26 +18782,26 @@
       const p1 = points[intPoint % l];
       const p2 = points[(intPoint + 1) % l];
       if (this.closed || intPoint + 2 < l) {
-        p3 = points[(intPoint + 2) % l];
+        p32 = points[(intPoint + 2) % l];
       } else {
         tmp.subVectors(points[l - 1], points[l - 2]).add(points[l - 1]);
-        p3 = tmp;
+        p32 = tmp;
       }
       if (this.curveType === "centripetal" || this.curveType === "chordal") {
         const pow = this.curveType === "chordal" ? 0.5 : 0.25;
         let dt0 = Math.pow(p0.distanceToSquared(p1), pow);
         let dt1 = Math.pow(p1.distanceToSquared(p2), pow);
-        let dt2 = Math.pow(p2.distanceToSquared(p3), pow);
+        let dt2 = Math.pow(p2.distanceToSquared(p32), pow);
         if (dt1 < 1e-4) dt1 = 1;
         if (dt0 < 1e-4) dt0 = dt1;
         if (dt2 < 1e-4) dt2 = dt1;
-        px.initNonuniformCatmullRom(p0.x, p1.x, p2.x, p3.x, dt0, dt1, dt2);
-        py.initNonuniformCatmullRom(p0.y, p1.y, p2.y, p3.y, dt0, dt1, dt2);
-        pz.initNonuniformCatmullRom(p0.z, p1.z, p2.z, p3.z, dt0, dt1, dt2);
+        px.initNonuniformCatmullRom(p0.x, p1.x, p2.x, p32.x, dt0, dt1, dt2);
+        py.initNonuniformCatmullRom(p0.y, p1.y, p2.y, p32.y, dt0, dt1, dt2);
+        pz.initNonuniformCatmullRom(p0.z, p1.z, p2.z, p32.z, dt0, dt1, dt2);
       } else if (this.curveType === "catmullrom") {
-        px.initCatmullRom(p0.x, p1.x, p2.x, p3.x, this.tension);
-        py.initCatmullRom(p0.y, p1.y, p2.y, p3.y, this.tension);
-        pz.initCatmullRom(p0.z, p1.z, p2.z, p3.z, this.tension);
+        px.initCatmullRom(p0.x, p1.x, p2.x, p32.x, this.tension);
+        py.initCatmullRom(p0.y, p1.y, p2.y, p32.y, this.tension);
+        pz.initCatmullRom(p0.z, p1.z, p2.z, p32.z, this.tension);
       }
       point.set(
         px.calc(weight),
@@ -18847,9 +18847,9 @@
       return this;
     }
   };
-  function CatmullRom(t2, p0, p1, p2, p3) {
+  function CatmullRom(t2, p0, p1, p2, p32) {
     const v0 = (p2 - p0) * 0.5;
-    const v1 = (p3 - p1) * 0.5;
+    const v1 = (p32 - p1) * 0.5;
     const t22 = t2 * t2;
     const t3 = t2 * t22;
     return (2 * p1 - 2 * p2 + v0 + v1) * t3 + (-3 * p1 + 3 * p2 - 2 * v0 - v1) * t22 + v0 * t2 + p1;
@@ -18881,8 +18881,8 @@
   function CubicBezierP3(t2, p) {
     return t2 * t2 * t2 * p;
   }
-  function CubicBezier(t2, p0, p1, p2, p3) {
-    return CubicBezierP0(t2, p0) + CubicBezierP1(t2, p1) + CubicBezierP2(t2, p2) + CubicBezierP3(t2, p3);
+  function CubicBezier(t2, p0, p1, p2, p32) {
+    return CubicBezierP0(t2, p0) + CubicBezierP1(t2, p1) + CubicBezierP2(t2, p2) + CubicBezierP3(t2, p32);
   }
   var CubicBezierCurve = class extends Curve {
     /**
@@ -19260,10 +19260,10 @@
       const p0 = points[intPoint === 0 ? intPoint : intPoint - 1];
       const p1 = points[intPoint];
       const p2 = points[intPoint > points.length - 2 ? points.length - 1 : intPoint + 1];
-      const p3 = points[intPoint > points.length - 3 ? points.length - 1 : intPoint + 2];
+      const p32 = points[intPoint > points.length - 3 ? points.length - 1 : intPoint + 2];
       point.set(
-        CatmullRom(weight, p0.x, p1.x, p2.x, p3.x),
-        CatmullRom(weight, p0.y, p1.y, p2.y, p3.y)
+        CatmullRom(weight, p0.x, p1.x, p2.x, p32.x),
+        CatmullRom(weight, p0.y, p1.y, p2.y, p32.y)
       );
       return point;
     }
@@ -49615,6 +49615,8 @@ void main() {
   }
 
   // src/audio.js
+  var fin = (v) => Number.isFinite(v) ? v : 0;
+  var p3 = (p) => p ? { x: fin(p.x), y: fin(p.y), z: fin(p.z) } : p;
   var RADIO_STATIONS = [];
   var ENGINE_CHARS = {
     sedan: { mult: 2, sub: 0.3, saw2: 0.2, noise: 0.07, drive: 0.5, burble: 0.12, cutBase: 180, cutRpm: 0.16, cutThr: 300, cutLoad: 700, subMix: 0.5, rumble: 0.35, gainIdle: 0.16, gainFull: 0.4 },
@@ -49742,9 +49744,9 @@ void main() {
       if (!this.ctx) return;
       const L = this.ctx.listener, t2 = this.ctx.currentTime;
       if (L.positionX) {
-        L.positionX.setTargetAtTime(px2, t2, 0.02);
-        L.positionY.setTargetAtTime(py2, t2, 0.02);
-        L.positionZ.setTargetAtTime(pz2, t2, 0.02);
+        L.positionX.setTargetAtTime(fin(px2), t2, 0.02);
+        L.positionY.setTargetAtTime(fin(py2), t2, 0.02);
+        L.positionZ.setTargetAtTime(fin(pz2), t2, 0.02);
         L.forwardX.setTargetAtTime(fx, t2, 0.02);
         L.forwardY.setTargetAtTime(fy, t2, 0.02);
         L.forwardZ.setTargetAtTime(fz, t2, 0.02);
@@ -49752,7 +49754,7 @@ void main() {
         L.upY.setTargetAtTime(uy, t2, 0.02);
         L.upZ.setTargetAtTime(uz, t2, 0.02);
       } else {
-        L.setPosition(px2, py2, pz2);
+        L.setPosition(fin(px2), fin(py2), fin(pz2));
         L.setOrientation(fx, fy, fz, ux, uy, uz);
       }
     }
@@ -49769,17 +49771,19 @@ void main() {
       pn2.rolloffFactor = 1.15;
       pn2.coneOuterGain = 1;
       if (pn2.positionX) {
-        pn2.positionX.value = p.x;
-        pn2.positionY.value = p.y;
-        pn2.positionZ.value = p.z;
-      } else pn2.setPosition(p.x, p.y, p.z);
+        pn2.positionX.value = fin(p.x);
+        pn2.positionY.value = fin(p.y);
+        pn2.positionZ.value = fin(p.z);
+      } else pn2.setPosition(fin(p.x), fin(p.y), fin(p.z));
       return pn2;
     }
     // A voice: gain → (panner) → bus. kill(t) disconnects after t.
     voice(p, ref, bus = "sfx", max = 260, gain = 1) {
+      p = p3(p);
+      gain = fin(gain);
       const ctx = this.ctx;
       const out = ctx.createGain();
-      out.gain.value = gain;
+      out.gain.value = fin(gain);
       let node = out;
       if (p) {
         const pn2 = this.panner(p, ref, max);
@@ -49871,6 +49875,7 @@ void main() {
     }
     // ---- one-shots -------------------------------------------------------------------
     gunshot(type, p) {
+      p = p3(p);
       if (!this.ready) return;
       const d = this.dist(p);
       if (d > 320 || this.voiceCount > 48) return;
@@ -49896,6 +49901,8 @@ void main() {
       v.kill(t2 + 1.3);
     }
     explosion(p, size = 1) {
+      p = p3(p);
+      size = fin(size);
       if (!this.ready) return;
       const d = this.dist(p);
       if (d > 700) return;
@@ -49934,6 +49941,8 @@ void main() {
       }, 3e3);
     }
     impact(kind, p, strength = 1) {
+      p = p3(p);
+      strength = fin(strength);
       if (!this.ready) return;
       const d = this.dist(p);
       if (d > 140 || this.voiceCount > 52) return;
@@ -49992,6 +50001,8 @@ void main() {
       v.kill(t2 + 0.3);
     }
     crash(p, energy) {
+      p = p3(p);
+      energy = fin(energy);
       if (!this.ready) return;
       const d = this.dist(p);
       if (d > 260) return;
@@ -50267,15 +50278,15 @@ void main() {
       return {
         set: (k, q) => {
           const tt = ctx.currentTime;
-          v.out.gain.setTargetAtTime(k * 1.1, tt, 0.06);
-          f.frequency.setTargetAtTime(500 + k * 1400, tt, 0.08);
-          o.frequency.setTargetAtTime(40 + k * 30, tt, 0.1);
+          v.out.gain.setTargetAtTime(fin(k) * 1.1, tt, 0.06);
+          f.frequency.setTargetAtTime(500 + fin(k) * 1400, tt, 0.08);
+          o.frequency.setTargetAtTime(40 + fin(k) * 30, tt, 0.1);
           if (q) {
             if (v.pan.positionX) {
-              v.pan.positionX.setTargetAtTime(q.x, tt, 0.03);
-              v.pan.positionY.setTargetAtTime(q.y, tt, 0.03);
-              v.pan.positionZ.setTargetAtTime(q.z, tt, 0.03);
-            } else v.pan.setPosition(q.x, q.y, q.z);
+              v.pan.positionX.setTargetAtTime(fin(q.x), tt, 0.03);
+              v.pan.positionY.setTargetAtTime(fin(q.y), tt, 0.03);
+              v.pan.positionZ.setTargetAtTime(fin(q.z), tt, 0.03);
+            } else v.pan.setPosition(fin(q.x), fin(q.y), fin(q.z));
           }
         },
         stop: () => {
@@ -50338,13 +50349,13 @@ void main() {
       return {
         set: (k, q) => {
           const tt = ctx.currentTime;
-          v.out.gain.setTargetAtTime(k * 0.9, tt, 0.04);
+          v.out.gain.setTargetAtTime(fin(k) * 0.9, tt, 0.04);
           if (q) {
             if (v.pan.positionX) {
-              v.pan.positionX.setTargetAtTime(q.x, tt, 0.03);
-              v.pan.positionY.setTargetAtTime(q.y, tt, 0.03);
-              v.pan.positionZ.setTargetAtTime(q.z, tt, 0.03);
-            } else v.pan.setPosition(q.x, q.y, q.z);
+              v.pan.positionX.setTargetAtTime(fin(q.x), tt, 0.03);
+              v.pan.positionY.setTargetAtTime(fin(q.y), tt, 0.03);
+              v.pan.positionZ.setTargetAtTime(fin(q.z), tt, 0.03);
+            } else v.pan.setPosition(fin(q.x), fin(q.y), fin(q.z));
           }
         },
         stop: () => {
@@ -50385,10 +50396,10 @@ void main() {
         move: (q) => {
           if (v.pan.positionX) {
             const tt = ctx.currentTime;
-            v.pan.positionX.setTargetAtTime(q.x, tt, 0.02);
-            v.pan.positionY.setTargetAtTime(q.y, tt, 0.02);
-            v.pan.positionZ.setTargetAtTime(q.z, tt, 0.02);
-          } else v.pan.setPosition(q.x, q.y, q.z);
+            v.pan.positionX.setTargetAtTime(fin(q.x), tt, 0.02);
+            v.pan.positionY.setTargetAtTime(fin(q.y), tt, 0.02);
+            v.pan.positionZ.setTargetAtTime(fin(q.z), tt, 0.02);
+          } else v.pan.setPosition(fin(q.x), fin(q.y), fin(q.z));
         },
         stop: () => {
           const tt = ctx.currentTime;
@@ -50453,10 +50464,10 @@ void main() {
       this.v.out.gain.setTargetAtTime(0.18 * volume, t2, 0.05);
       if (this.v.pan) {
         if (this.v.pan.positionX) {
-          this.v.pan.positionX.setTargetAtTime(p.x, t2, 0.03);
-          this.v.pan.positionY.setTargetAtTime(p.y, t2, 0.03);
-          this.v.pan.positionZ.setTargetAtTime(p.z, t2, 0.03);
-        } else this.v.pan.setPosition(p.x, p.y, p.z);
+          this.v.pan.positionX.setTargetAtTime(fin(p.x), t2, 0.03);
+          this.v.pan.positionY.setTargetAtTime(fin(p.y), t2, 0.03);
+          this.v.pan.positionZ.setTargetAtTime(fin(p.z), t2, 0.03);
+        } else this.v.pan.setPosition(fin(p.x), fin(p.y), fin(p.z));
       }
     }
     stop() {
@@ -50639,10 +50650,10 @@ void main() {
       this.sq.frequency.setTargetAtTime(750 + s * 500, t2, 0.05);
       if (this.v.pan) {
         if (this.v.pan.positionX) {
-          this.v.pan.positionX.setTargetAtTime(p.x, t2, 0.03);
-          this.v.pan.positionY.setTargetAtTime(p.y, t2, 0.03);
-          this.v.pan.positionZ.setTargetAtTime(p.z, t2, 0.03);
-        } else this.v.pan.setPosition(p.x, p.y, p.z);
+          this.v.pan.positionX.setTargetAtTime(fin(p.x), t2, 0.03);
+          this.v.pan.positionY.setTargetAtTime(fin(p.y), t2, 0.03);
+          this.v.pan.positionZ.setTargetAtTime(fin(p.z), t2, 0.03);
+        } else this.v.pan.setPosition(fin(p.x), fin(p.y), fin(p.z));
       }
     }
     stop() {
@@ -50822,10 +50833,10 @@ void main() {
       const p = this.car.pos, t2 = this.sys.ctx.currentTime, pn2 = this.pan;
       const hy = this.car.isMech ? 3.6 : 0.8;
       if (pn2.positionX) {
-        pn2.positionX.setTargetAtTime(p.x, t2, 0.05);
-        pn2.positionY.setTargetAtTime(p.y + hy, t2, 0.05);
-        pn2.positionZ.setTargetAtTime(p.z, t2, 0.05);
-      } else pn2.setPosition(p.x, p.y + hy, p.z);
+        pn2.positionX.setTargetAtTime(fin(p.x), t2, 0.05);
+        pn2.positionY.setTargetAtTime(fin(p.y) + hy, t2, 0.05);
+        pn2.positionZ.setTargetAtTime(fin(p.z), t2, 0.05);
+      } else pn2.setPosition(fin(p.x), fin(p.y) + hy, fin(p.z));
     }
     off() {
       this.stop();
@@ -51032,9 +51043,9 @@ void main() {
       if (this.pan) {
         const p = this.quelle(), t2 = this.sys.ctx.currentTime, pn2 = this.pan;
         if (pn2.positionX) {
-          pn2.positionX.setTargetAtTime(p.x, t2, 0.05);
+          pn2.positionX.setTargetAtTime(fin(p.x), t2, 0.05);
           pn2.positionY.setTargetAtTime(p.y, t2, 0.05);
-          pn2.positionZ.setTargetAtTime(p.z, t2, 0.05);
+          pn2.positionZ.setTargetAtTime(fin(p.z), t2, 0.05);
         } else pn2.setPosition(p.x, p.y, p.z);
       }
       if (dt2 > 1e-4 && this.ausMech) {
@@ -59577,68 +59588,75 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         G.fpsN = 0;
       }
       if (G.state === "playing") {
-        const dt2 = realDt * G.timeScale;
-        G.dt = dt2;
-        G.time += dt2;
-        if (!weapons.wheelOpen && (input.dx || input.dy)) gcam.look(input.dx, input.dy);
-        if (input.pressed("KeyK")) krieg.toggleShop();
-        if (krieg.shopOpen) krieg.shopInput();
-        else if (input.pressed("KeyE") && !player.dead) {
-          if (player.state === "vehicle") player.exitVehicle();
-          else if (player.state === "foot") {
-            const m = mechSys.enterable(player.pos);
-            if (m) player.enterVehicle(m);
-            else {
-              const v = vehicles.nearest(player.pos.x, player.pos.z, 3.2, (v2) => !v2.wrecked);
-              if (v) player.enterVehicle(v);
+        try {
+          const dt2 = realDt * G.timeScale;
+          G.dt = dt2;
+          G.time += dt2;
+          if (!weapons.wheelOpen && (input.dx || input.dy)) gcam.look(input.dx, input.dy);
+          if (input.pressed("KeyK")) krieg.toggleShop();
+          if (krieg.shopOpen) krieg.shopInput();
+          else if (input.pressed("KeyE") && !player.dead) {
+            if (player.state === "vehicle") player.exitVehicle();
+            else if (player.state === "foot") {
+              const m = mechSys.enterable(player.pos);
+              if (m) player.enterVehicle(m);
+              else {
+                const v = vehicles.nearest(player.pos.x, player.pos.z, 3.2, (v2) => !v2.wrecked);
+                if (v) player.enterVehicle(v);
+              }
             }
           }
+          if (input.pressed("KeyH")) ui.help(true);
+          if (input.pressed("KeyM")) ui.msg(audio.toggleMute() ? "MUTED" : "SOUND ON", "", 1);
+          if (input.pressed("KeyR") && player.state === "vehicle" && audio.radio) audio.radio.next().then((t2) => ui.msg("RADIO", t2, 2)).catch(() => ui.msg("RADIO", "NO SIGNAL", 1.5));
+          if (input.pressed("KeyB") && !player.dead) {
+            const on2 = danceToggle();
+            if (player.state === "foot") weapons.setVisible(!on2);
+            ui.msg("DANCE", on2 ? "on" : "off", 1);
+          }
+          danceTick(dt2);
+          if (input.pressed("KeyV")) ui.msg("CAMERA", gcam.mode === "drive" ? "chase (only mode in phase 1)" : "third person", 1.2);
+          if (!krieg.shopOpen) {
+            weapons.update(dt2, realDt);
+            player.update(dt2);
+            vehicles.update(dt2);
+            npcs.update(dt2);
+            police.update(dt2, realDt);
+            mechSys.update(dt2);
+            krieg.update(dt2);
+            props.update(dt2, audio, fx, propTmp);
+            fx.update(dt2);
+          }
+          if (audio.radio) audio.radio.update(player);
+          screens.update(realDt);
+          if (audio.tanzton) audio.tanzton.update(mechSys.mech, player.state === "vehicle" && player.vehicle === mechSys.mech, realDt, player);
+          gcam.update(realDt);
+          if (G.freeCam) {
+            camera.position.set(G.freeCam[0], G.freeCam[1], G.freeCam[2]);
+            camera.lookAt(G.freeCam[3], G.freeCam[4], G.freeCam[5]);
+            camera.updateMatrixWorld();
+          }
+          updateSun();
+          if (player.state === "foot" && !player.dead) {
+            const m = mechSys.enterable(player.pos);
+            const v = m ? null : vehicles.nearest(player.pos.x, player.pos.z, 3.2, (v2) => !v2.wrecked);
+            ui.prompt(m ? "<kbd>E</kbd> Board mech" : v ? `<kbd>E</kbd> ${v.driver === "ai" ? "Hijack" : "Enter"} ${v.name}` : police.stars >= 5 && (!mechSys.mech || mechSys.mech.wrecked) ? "<kbd>G</kbd> Call the mech" : "");
+          } else if (player.state === "vehicle") {
+            const v = player.vehicle;
+            ui.prompt(v.isMech ? v.onGround && !v.flying ? "<kbd>E</kbd> Leave mech" : "" : Math.abs(v.speed) < 2 ? "<kbd>E</kbd> Exit" : "");
+          } else ui.prompt("");
+          const spd = player.state === "vehicle" && player.vehicle ? player.vehicle.isMech ? Math.hypot(player.vehicle.vel.x, player.vehicle.vel.y, player.vehicle.vel.z) * 1.6 : Math.abs(player.vehicle.speed) : 0;
+          postfx.streak = damp2(postfx.streak, clamp2((spd - 22) / 32, 0, 1) * 0.55, 5, realDt);
+          camera.getWorldDirection(listenerF);
+          listenerU.set(0, 1, 0).applyQuaternion(camera.quaternion);
+          audio.setListener(camera.position.x, camera.position.y, camera.position.z, listenerF.x, listenerF.y, listenerF.z, listenerU.x, listenerU.y, listenerU.z);
+          ui.update(realDt);
+        } catch (e) {
+          if (!G._frameErrT || G.realTime - G._frameErrT > 5) {
+            console.error("frame error (gedeckelt geloggt):", e);
+            G._frameErrT = G.realTime;
+          }
         }
-        if (input.pressed("KeyH")) ui.help(true);
-        if (input.pressed("KeyM")) ui.msg(audio.toggleMute() ? "MUTED" : "SOUND ON", "", 1);
-        if (input.pressed("KeyR") && player.state === "vehicle" && audio.radio) audio.radio.next().then((t2) => ui.msg("RADIO", t2, 2)).catch(() => ui.msg("RADIO", "NO SIGNAL", 1.5));
-        if (input.pressed("KeyB") && !player.dead) {
-          const on2 = danceToggle();
-          if (player.state === "foot") weapons.setVisible(!on2);
-          ui.msg("DANCE", on2 ? "on" : "off", 1);
-        }
-        danceTick(dt2);
-        if (input.pressed("KeyV")) ui.msg("CAMERA", gcam.mode === "drive" ? "chase (only mode in phase 1)" : "third person", 1.2);
-        if (!krieg.shopOpen) {
-          weapons.update(dt2, realDt);
-          player.update(dt2);
-          vehicles.update(dt2);
-          npcs.update(dt2);
-          police.update(dt2, realDt);
-          mechSys.update(dt2);
-          krieg.update(dt2);
-          props.update(dt2, audio, fx, propTmp);
-          fx.update(dt2);
-        }
-        if (audio.radio) audio.radio.update(player);
-        screens.update(realDt);
-        if (audio.tanzton) audio.tanzton.update(mechSys.mech, player.state === "vehicle" && player.vehicle === mechSys.mech, realDt, player);
-        gcam.update(realDt);
-        if (G.freeCam) {
-          camera.position.set(G.freeCam[0], G.freeCam[1], G.freeCam[2]);
-          camera.lookAt(G.freeCam[3], G.freeCam[4], G.freeCam[5]);
-          camera.updateMatrixWorld();
-        }
-        updateSun();
-        if (player.state === "foot" && !player.dead) {
-          const m = mechSys.enterable(player.pos);
-          const v = m ? null : vehicles.nearest(player.pos.x, player.pos.z, 3.2, (v2) => !v2.wrecked);
-          ui.prompt(m ? "<kbd>E</kbd> Board mech" : v ? `<kbd>E</kbd> ${v.driver === "ai" ? "Hijack" : "Enter"} ${v.name}` : police.stars >= 5 && (!mechSys.mech || mechSys.mech.wrecked) ? "<kbd>G</kbd> Call the mech" : "");
-        } else if (player.state === "vehicle") {
-          const v = player.vehicle;
-          ui.prompt(v.isMech ? v.onGround && !v.flying ? "<kbd>E</kbd> Leave mech" : "" : Math.abs(v.speed) < 2 ? "<kbd>E</kbd> Exit" : "");
-        } else ui.prompt("");
-        const spd = player.state === "vehicle" && player.vehicle ? player.vehicle.isMech ? Math.hypot(player.vehicle.vel.x, player.vehicle.vel.y, player.vehicle.vel.z) * 1.6 : Math.abs(player.vehicle.speed) : 0;
-        postfx.streak = damp2(postfx.streak, clamp2((spd - 22) / 32, 0, 1) * 0.55, 5, realDt);
-        camera.getWorldDirection(listenerF);
-        listenerU.set(0, 1, 0).applyQuaternion(camera.quaternion);
-        audio.setListener(camera.position.x, camera.position.y, camera.position.z, listenerF.x, listenerF.y, listenerF.z, listenerU.x, listenerU.y, listenerU.z);
-        ui.update(realDt);
       } else {
         gcam.update(realDt);
         updateSun();
