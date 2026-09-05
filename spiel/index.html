@@ -42583,8 +42583,8 @@ void main() {
     brakeHeight: 38,
     touchdown: 7,
     // call-in: free fall to brakeHeight, thrusters bring it down to touchdown speed
-    flight: { thrust: 34, lift: 9, maxUp: 11, maxDown: -16, forward: 14, drag: 0.9, fuelTime: 6.5, refuelTime: 9, hoverBand: 2.5 },
-    // seconds of full thrust, seconds to refill on the ground
+    flight: { thrust: 34, lift: 9, maxUp: 14, maxDown: -24, forward: 24, drag: 0.55, turnAir: 2.2, boostMul: 1.9, boostAccel: 2.4, boostBurn: 2.6, fuelTime: 6.5, refuelTime: 9, hoverBand: 2.5 },
+    // Runde 18: flinkere Luft — Boost (Shift) brennt Treibstoff (boostBurn-Fache Verbrauchsrate)
     stomp: { windup: 0.28, slam: 0.1, recover: 0.5, radius: 10, damage: 140, impulse: 26, cooldown: 1.6 },
     missiles: { salvo: 6, gap: 0.075, reload: 3.2, speed: 42, accel: 55, maxSpeed: 95, life: 5, turn: 3.2, blast: { radius: 5.5, impulse: 15, damage: 130 } },
     // Minigun am rechten Unterarm: die Laeufe muessen erst auf Drehzahl kommen, dann faellt der erste Schuss.
@@ -48076,6 +48076,11 @@ void main() {
       this.buildSpawns();
       this.buildBoundary();
       this.instanceBuildings();
+      this.group.updateMatrixWorld(true);
+      this.group.traverse((o) => {
+        o.matrixAutoUpdate = false;
+        o.matrixWorldAutoUpdate = false;
+      });
     }
     // ---------- layout -----------------------------------------------------------------------
     buildBlocks() {
@@ -53313,7 +53318,7 @@ void main() {
         if (!moving) this.controls.steer = damp2(this.controls.steer, 0, 5, dt2);
       }
       if (this.awake) {
-        const n2 = Math.max(1, Math.min(8, Math.ceil(dt2 / (1 / 120))));
+        const n2 = Math.max(1, Math.min(5, Math.ceil(dt2 / (1 / 120))));
         const h = dt2 / n2;
         for (let i = 0; i < n2; i++) this.step(h);
       }
@@ -58494,6 +58499,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this.hatchT = 0;
       this.stomp = { t: -1, cd: 0 };
       this.stompPhase = 0;
+      this.slam = false;
       this.weapon = 0;
       this.missiles = [];
       this.salvo = 0;
@@ -58803,8 +58809,19 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       G2.gcam.addShake(clamp2(2 * k - d / 40, 0.3, 1.8));
       G2.gcam.addKick(0, 0.25 * k, 0, 5 * k);
       if (d < 30) G2.postfx.flash = Math.max(G2.postfx.flash, 0.12);
-      G2.props.explode(p.x, p.y, p.z, 11 * k, 12 * k, 0);
-      this.shoveVehicles(p, 9 * k, 14 * k, 25 * k, true);
+      if (this.slam) {
+        this.slam = false;
+        const k2 = k * 1.5;
+        G2.props.explode(p.x, p.y, p.z, 14 * k2, 18 * k2, 30);
+        this.shoveVehicles(p, 12 * k2, 22 * k2, 45 * k2);
+        G2.fx.shockwave(p, 12 * k2, 16767400);
+        G2.gcam.addShake(1.2);
+        G2.npcs.explode(p, 8 * k2, 9, 60, this.piloted);
+        this.stomp.cd = MECH.stomp.cooldown;
+      } else {
+        G2.props.explode(p.x, p.y, p.z, 11 * k, 12 * k, 0);
+        this.shoveVehicles(p, 9 * k, 14 * k, 25 * k, true);
+      }
       G2.npcs.alertGunfire(p, callIn, 3);
       G2.npcs.explode(p, 6 * k, 7, 40 * k, this.piloted);
       if (callIn) {
@@ -58883,7 +58900,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       const stomping = this.stomp.t >= 0;
       const wantUp = I2.down("Space") && this.fuel > 1e-3 && !stomping;
       const falling = !this.onGround && this.vel.y < -6 && h < 14 + -this.vel.y * 0.9;
-      const autoBrake = falling && this.fuel > 0;
+      const autoBrake = falling && this.fuel > 0 && !this.slam;
       if (wantUp) {
         thrustWant = 1;
         this.flying = true;
@@ -58947,23 +58964,35 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         }
         this.fuel = Math.min(1, this.fuel + dt2 / F.refuelTime);
       } else {
-        const ax = wx * F.forward * 1.2, az = wz * F.forward * 1.2;
+        const boost = I2.down("ShiftLeft") && this.fuel > 1e-3;
+        const cap = F.forward * (boost ? F.boostMul : 1);
+        const acc = F.forward * 1.6 * (boost ? F.boostAccel : 1);
+        const ax = wx * acc, az = wz * acc;
         this.vel.x += ax * dt2;
         this.vel.z += az * dt2;
         const dr = Math.exp(-F.drag * dt2);
         this.vel.x *= dr;
         this.vel.z *= dr;
         const hs = Math.hypot(this.vel.x, this.vel.z);
-        if (hs > F.forward) {
-          this.vel.x *= F.forward / hs;
-          this.vel.z *= F.forward / hs;
+        if (hs > cap) {
+          this.vel.x *= cap / hs;
+          this.vel.z *= cap / hs;
         }
         this.speed = hs;
+        if (boost) this.fuel = Math.max(0, this.fuel - dt2 / F.fuelTime * (F.boostBurn - 1));
+        if (boost && hs > 12) {
+          G2.gcam.addKick(0, 0, 0, 14 * dt2);
+        }
         if (aimMode || moving) {
           const want = aimMode ? this.aimYaw : Math.atan2(wx, wz);
           const d = angleDelta(this.yaw, want);
-          const mx = MECH.turnRate * 1.2 * dt2;
+          const mx = MECH.turnRate * F.turnAir * dt2;
           this.yaw += clamp2(d, -mx, mx);
+        }
+        if (I2.pressed("KeyF") && !stomping && this.stomp.cd <= 0) {
+          this.vel.y = Math.min(this.vel.y, -26);
+          this.slam = true;
+          this.fuel = Math.max(0, this.fuel - 0.08);
         }
         this.airT += dt2;
       }
