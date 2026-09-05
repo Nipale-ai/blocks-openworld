@@ -42178,7 +42178,8 @@ void main() {
           if (!arr) continue;
           for (let i = 0; i < arr.length; i++) {
             const it2 = arr[i];
-            if (out.indexOf(it2) === -1) out.push(it2);
+            if (it2.dead || out.indexOf(it2) !== -1) continue;
+            out.push(it2);
           }
         }
       return out;
@@ -42287,36 +42288,6 @@ void main() {
       return top;
     }
   };
-
-  // ../../../../../../.hermes/hermes-agent/node_modules/three/examples/jsm/utils/SkeletonUtils.js
-  function clone(source) {
-    const sourceLookup = /* @__PURE__ */ new Map();
-    const cloneLookup = /* @__PURE__ */ new Map();
-    const clone2 = source.clone();
-    parallelTraverse(source, clone2, function(sourceNode, clonedNode) {
-      sourceLookup.set(clonedNode, sourceNode);
-      cloneLookup.set(sourceNode, clonedNode);
-    });
-    clone2.traverse(function(node) {
-      if (!node.isSkinnedMesh) return;
-      const clonedMesh = node;
-      const sourceMesh = sourceLookup.get(node);
-      const sourceBones = sourceMesh.skeleton.bones;
-      clonedMesh.skeleton = sourceMesh.skeleton.clone();
-      clonedMesh.bindMatrix.copy(sourceMesh.bindMatrix);
-      clonedMesh.skeleton.bones = sourceBones.map(function(bone) {
-        return cloneLookup.get(bone);
-      });
-      clonedMesh.bind(clonedMesh.skeleton, clonedMesh.bindMatrix);
-    });
-    return clone2;
-  }
-  function parallelTraverse(a, b, callback) {
-    callback(a, b);
-    for (let i = 0; i < a.children.length; i++) {
-      parallelTraverse(a.children[i], b.children[i], callback);
-    }
-  }
 
   // src/defs.js
   var VEHICLE_DEFS = {
@@ -42614,7 +42585,7 @@ void main() {
     return { name: d.name, sub: `${d.magazine} rd \xB7 ${d.id === "rocket" ? "heavy" : d.auto ? "auto" : "semi"}` };
   });
   var KRIEG = {
-    reward: { feind: 1200, copMech: 400, cop: 150, hostile: 200, wreckPolice: 250, wreckCivil: 80 },
+    reward: { feind: 1200, copMech: 400, building: 150, cop: 150, hostile: 200, wreckPolice: 250, wreckCivil: 80 },
     attribution: 10,
     // s: ein Wrack zahlt nur, wenn der Spieler in diesem Fenster den Treffer setzte
     polizei: {
@@ -42650,6 +42621,36 @@ void main() {
       { id: "schub2", name: "Schubd\xFCsen Mk2", preis: 1e3, text: "Vorw\xE4rtsschub \xD71,8 \xB7 +50 % Treibstoff", anbau: [{ teil: "Upgrade_schubmk2", pivot: "Knee_L" }, { teil: "Upgrade_schubmk2", pivot: "Knee_R", spiegel: true }] }
     ]
   };
+
+  // ../../../../../../.hermes/hermes-agent/node_modules/three/examples/jsm/utils/SkeletonUtils.js
+  function clone(source) {
+    const sourceLookup = /* @__PURE__ */ new Map();
+    const cloneLookup = /* @__PURE__ */ new Map();
+    const clone2 = source.clone();
+    parallelTraverse(source, clone2, function(sourceNode, clonedNode) {
+      sourceLookup.set(clonedNode, sourceNode);
+      cloneLookup.set(sourceNode, clonedNode);
+    });
+    clone2.traverse(function(node) {
+      if (!node.isSkinnedMesh) return;
+      const clonedMesh = node;
+      const sourceMesh = sourceLookup.get(node);
+      const sourceBones = sourceMesh.skeleton.bones;
+      clonedMesh.skeleton = sourceMesh.skeleton.clone();
+      clonedMesh.bindMatrix.copy(sourceMesh.bindMatrix);
+      clonedMesh.skeleton.bones = sourceBones.map(function(bone) {
+        return cloneLookup.get(bone);
+      });
+      clonedMesh.bind(clonedMesh.skeleton, clonedMesh.bindMatrix);
+    });
+    return clone2;
+  }
+  function parallelTraverse(a, b, callback) {
+    callback(a, b);
+    for (let i = 0; i < a.children.length; i++) {
+      parallelTraverse(a.children[i], b.children[i], callback);
+    }
+  }
 
   // ../../../../../../.hermes/hermes-agent/node_modules/three/examples/jsm/utils/BufferGeometryUtils.js
   function mergeGeometries(geometries, useGroups = false) {
@@ -48142,6 +48143,29 @@ void main() {
       }
       return terrainHeight(x, z);
     }
+    // Runde 19: begehbarer Untergrund inkl. Daechern — ein Gebäude zählt nur, wenn die Fuesse
+    // schon ueber seinem Dach sind (sonst wuerde man am Boden auf Dächer hochteleportiert).
+    surfaceHeight(x, z, feetY = 1e9) {
+      let y2 = this.groundHeight(x, z);
+      const list = this.statics.query(x - 0.5, z - 0.5, x + 0.5, z + 0.5, this._surf || (this._surf = []));
+      for (const b of list) {
+        if (b.dead || b.tag === "prop") continue;
+        if (x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ && b.maxY <= feetY + 0.6 && b.maxY > y2) y2 = b.maxY;
+      }
+      return y2;
+    }
+    // Runde 19: Wand-Detektion fuer den Mech-Klettergriff — hoechstes Gebäude unter dem Vorderteil
+    wallAhead(x, z, feetY) {
+      const list = this.statics.query(x - 1.6, z - 1.6, x + 1.6, z + 1.6, this._wall || (this._wall = []));
+      let best = null;
+      for (const b of list) {
+        if (b.dead || b.tag !== "building") continue;
+        if (x > b.minX - 0.1 && x < b.maxX + 0.1 && z > b.minZ - 0.1 && z < b.maxZ + 0.1 && b.maxY > feetY + 1.2) {
+          if (!best || b.maxY > best.maxY) best = b;
+        }
+      }
+      return best;
+    }
     surfaceAt(x, z) {
       const b = this.blockAt(x, z);
       if (b) return x > b.lot.minX && x < b.lot.maxX && z > b.lot.minZ && z < b.lot.maxZ ? b.lotSurface : "concrete";
@@ -48153,6 +48177,62 @@ void main() {
       this.statics.insertBox(aabb, aabb.minX, aabb.minZ, aabb.maxX, aabb.maxZ);
       this.staticList.push(aabb);
       return aabb;
+    }
+    // Runde 19: zerstoerbare Gebäude. HP nach Hoehe; bei 0 kollabiert das Haus (Instanz weg, Box tot, Staub).
+    registerBuildingHP(aabb, rec) {
+      if (aabb.tag !== "building") return;
+      aabb.hp = aabb.maxHp = Math.round(140 + aabb.maxY * 85);
+      aabb.rec = rec;
+    }
+    damageBuilding(aabb, dmg, px2, py2, pz2) {
+      if (!aabb || aabb.dead || aabb.hp === void 0) return false;
+      aabb.hp -= dmg;
+      if (aabb.hp > 0) {
+        if (this.G) this.G.fx.dust({ x: px2, y: py2, z: pz2 }, 8, 0, 1, 0);
+        return false;
+      }
+      this.collapseBuilding(aabb, px2, py2, pz2);
+      return true;
+    }
+    damageBuildingsAt(x, y2, z, radius, dmg) {
+      const list = this.statics.query(x - radius, z - radius, x + radius, z + radius, this._dmg || (this._dmg = []));
+      let hitAny = false;
+      for (const b of list) {
+        if (b.dead || b.tag !== "building" || b.hp === void 0) continue;
+        const cx = Math.max(b.minX, Math.min(x, b.maxX)), cz = Math.max(b.minZ, Math.min(z, b.maxZ));
+        const d = Math.hypot(cx - x, cz - z);
+        if (d > radius) continue;
+        const k = 1 - d / radius;
+        if (y2 > b.maxY + 6) continue;
+        hitAny = this.damageBuilding(b, dmg * k, cx, Math.min(y2, b.maxY * 0.7), cz) || hitAny;
+      }
+      return hitAny;
+    }
+    collapseBuilding(aabb, px2, py2, pz2) {
+      aabb.dead = true;
+      const G2 = this.G;
+      if (!G2) return;
+      if (aabb.rec && aabb.rec.im) {
+        _p.set(aabb.rec.x, -60, aabb.rec.z);
+        _q.identity();
+        _s.set(0.01, 0.01, 0.01);
+        _m.compose(_p, _q, _s);
+        aabb.rec.im.setMatrixAt(aabb.rec.slot, _m);
+        aabb.rec.im.instanceMatrix.needsUpdate = true;
+      }
+      const cx = (aabb.minX + aabb.maxX) / 2, cz = (aabb.minZ + aabb.maxZ) / 2, h = aabb.maxY;
+      for (let i = 0; i < 26; i++) G2.fx.chunk(cx + randSpread(aabb.maxX - aabb.minX) * 0.5, h * (0.2 + Math.random() * 0.7), cz + randSpread(aabb.maxZ - aabb.minZ) * 0.5, randSpread(9), Math.random() * 4 + 2, randSpread(9), 1.2, 0.55, 0.44, 0.36);
+      G2.fx.dustRing({ x: cx, y: 0.3, z: cz }, Math.max(aabb.maxX - aabb.minX, aabb.maxZ - aabb.minZ) * 0.7, 40, [0.6, 0.56, 0.5], 1.6);
+      for (let i = 0; i < 5; i++) G2.fx.smoke.spawn({ x: cx + randSpread(6), y: h * rand(0.15, 0.6), z: cz + randSpread(6), vx: randSpread(1.2), vy: rand(1.5, 3), vz: randSpread(1.2), s0: 3, s1: 9, a0: 0.5, a1: 0, life: rand(2, 3.4), r: [0.55, 0.52, 0.48], r1: [0.35, 0.35, 0.35], drag: 1.1, rotv: randSpread(1) });
+      G2.audio.explosion({ x: cx, y: h * 0.4, z: cz }, 2.2);
+      G2.audio.crash({ x: cx, y: 1, z: cz }, 1.6);
+      const d = Math.hypot(G2.player.pos.x - cx, G2.player.pos.z - cz);
+      G2.gcam.addShake(Math.max(0, 1.4 - d / 60));
+      G2.police.crime("explosion", { x: cx, y: 0, z: cz });
+      if (G2.krieg && d < 160) {
+        G2.krieg.pay(KRIEG.reward.building);
+        G2.ui.msg("+" + KRIEG.reward.building + " \u20AC", "Geb\xE4ude eingeebnet", 1.4);
+      }
     }
     // ---------- ground & slabs ------------------------------------------------------------------
     buildGround() {
@@ -48256,6 +48336,8 @@ void main() {
       const aabb = AABB.fromCenter(x, 0, z, sw, k.h, sd);
       const rec = { kind, x, z, rot, aabb, block: b };
       this.buildings.push(rec);
+      aabb.tag = "building";
+      this.registerBuildingHP(aabb, rec);
       if (kind === "gas_station") {
         for (const cx of [-9, 9]) for (const cz of [-2, 6]) this.addStatic(AABB.fromCenter(x + cx, 0, z + cz, 0.8, 5.2, 0.8), "building");
         this.addStatic(new AABB(x - 12, 4.9, z - 4, x + 12, 6.4, z + 8), "building");
@@ -55995,6 +56077,7 @@ void main() {
         const R = radius * 1.5;
         if (d < R) f.damage(damage * (1 - d / R) * 0.7, "explosion", source);
       }
+      if (G2.world) G2.world.damageBuildingsAt(pos.x, pos.y, pos.z, radius * 1.6, damage * 2.4);
       const P = G2.player;
       {
         const dx = P.pos.x - pos.x, dz = P.pos.z - pos.z, dy = P.pos.y + 0.9 - pos.y;
@@ -58680,7 +58763,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         this._goodYaw = this.yaw;
       }
       this.lights.length = 0;
-      const gy = W.groundHeight(this.pos.x, this.pos.z);
+      const gy = W.surfaceHeight(this.pos.x, this.pos.z, this.pos.y);
       const h = this.pos.y - gy;
       this.dmgFlash = Math.max(0, this.dmgFlash - dt2 * 4);
       this.stomp.cd = Math.max(0, this.stomp.cd - dt2);
@@ -58856,6 +58939,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         const k = 1 - d / (R + 2);
         f.damage(dmg * k * 0.8, "explosion", "player");
       }
+      if (this.G.world) this.G.world.damageBuildingsAt(p.x, p.y, p.z, R, dmg * 1.6);
     }
     // ---- piloting --------------------------------------------------------------------------------------------------------
     pilot(dt2, gy, h) {
@@ -58873,6 +58957,48 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       if (tanzt && (moving || I2.down("Space") || I2.mouseDown(0) || I2.pressed("KeyF"))) danceStop();
       this.aimYaw = Math.atan2(cam.flat.x, cam.flat.z);
       this.aimPitch = cam.pitch;
+      if (this.climb) {
+        const box2 = this.climb.box;
+        if (!moving || I2.pressed("Space") || this.fuel <= 1e-3 || this.pos.y + 4.6 * dt2 >= box2.maxY - 0.05) {
+          if (this.pos.y + 4.6 * dt2 >= box2.maxY - 0.05) {
+            this.pos.y = box2.maxY;
+            const cxb = (box2.minX + box2.maxX) / 2, czb = (box2.minZ + box2.maxZ) / 2;
+            this.pos.x += (cxb - this.pos.x) * 0.35;
+            this.pos.z += (czb - this.pos.z) * 0.35;
+            this.vel.set(0, 0, 0);
+            this.onGround = true;
+            this.flying = false;
+            this.landT = 1;
+            G2.ui.msg("DACH ERREICHT", "Blick von oben \u2014 die Stadt gehoert dir", 1.4);
+          }
+          this.climb = null;
+          this.vel.set(0, 0, 0);
+        } else {
+          this.pos.y += 4.6 * dt2;
+          this.fuel = Math.max(0, this.fuel - dt2 / 8);
+          this.phase += dt2 * 2.2;
+          this.speed = 0;
+          this.vel.set(0, 0, 0);
+          this.onGround = false;
+          this.flying = false;
+          if (Math.random() < 0.3) {
+            const fp = this.P.Foot_R.getWorldPosition(_a4);
+            G2.fx.dust({ x: fp.x, y: fp.y, z: fp.z }, 4, 0, -0.5, 0);
+          }
+          this.updateMesh();
+          this.updateAABB();
+          return 0.35;
+        }
+      } else if (moving && fwd > 0 && I2.down("Space") && this.onGround && this.fuel > 0.02) {
+        const fx2 = this.pos.x + Math.sin(this.yaw) * 2.2, fz2 = this.pos.z + Math.cos(this.yaw) * 2.2;
+        const box2 = G2.world.wallAhead(fx2, fz2, this.pos.y);
+        if (box2) {
+          this.climb = { box: box2 };
+          this.vel.set(0, 0, 0);
+          this.speed = 0;
+          G2.audio.mechStep(this.pos, 1);
+        }
+      }
       const wheelOpen = G2.weapons.wheelOpen;
       const aimMode = I2.mouseDown(2) && !this.wrecked && !wheelOpen;
       if (aimMode && !this.aimMode && this.aimHint < 2) {
@@ -58994,13 +59120,43 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           this.slam = true;
           this.fuel = Math.max(0, this.fuel - 0.08);
         }
+        if ((I2.pressed("KeyA") || I2.pressed("KeyD")) && !this.roll) {
+          const tap = I2.pressed("KeyA") ? "A" : "D";
+          if (this._tap && this._tap.k === tap && G2.time - this._tap.t < 0.32) {
+            this.roll = { dir: tap === "A" ? 1 : -1, t: 0 };
+            this.vel.x += cam.right.x * 14 * this.roll.dir;
+            this.vel.z += cam.right.z * 14 * this.roll.dir;
+            G2.audio.ui("open");
+          }
+          this._tap = { k: tap, t: G2.time };
+        }
+        if (this.speed > 14) {
+          this._nearT = (this._nearT || 0) - dt2;
+          if (this._nearT <= 0) {
+            const nx = this.pos.x + this.vel.x / this.speed * 13, nz = this.pos.z + this.vel.z / this.speed * 13;
+            const list = G2.world.statics.query(nx - 7, nz - 7, nx + 7, nz + 7, G2.world._nm || (G2.world._nm = []));
+            let best = 1e9;
+            for (const b of list) {
+              if (b.dead || b.tag === "prop") continue;
+              if (this.pos.y > b.maxY + 2) continue;
+              const dx = Math.max(b.minX - nx, 0, nx - b.maxX), dz = Math.max(b.minZ - nz, 0, nz - b.maxZ);
+              const d = Math.hypot(dx, dz);
+              if (d < best) best = d;
+            }
+            if (best > 0.8 && best < 5.5) {
+              this._nearT = 0.55;
+              G2.gcam.addShake(0.14 + (5.5 - best) * 0.05);
+              G2.gcam.addKick(0, 0, 0, 3);
+            }
+          }
+        }
         this.airT += dt2;
       }
       this.pos.x += this.vel.x * dt2;
       this.pos.z += this.vel.z * dt2;
       this.pos.y += this.vel.y * dt2;
       this.collide(dt2);
-      const g2 = G2.world.groundHeight(this.pos.x, this.pos.z);
+      const g2 = G2.world.surfaceHeight(this.pos.x, this.pos.z, this.pos.y);
       if (this.pos.y <= g2 + 1e-3) {
         if (!this.onGround) {
           this.land(g2, -this.vel.y, false);
@@ -59268,6 +59424,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         if (len > 1e-5) hit = G2.weapons.raycastWorld(ox, oy, oz, (nx - ox) / len, (ny - oy) / len, (nz - oz) / len, len, { ignoreMech: true, player: false, ignoreVehicle: null, ignoreNpc: null, minT: 0 });
         if (hit || m.age >= m.life || dl < 2.5 && m.age > 0.3) {
           const p = hit || { x: nx, y: ny, z: nz };
+          if (G2.world) G2.world.damageBuildingsAt(p.x, p.y, p.z, Mi2.blast.radius * 1.6, Mi2.blast.damage * 2.4);
           G2.weapons.explode(p, Mi2.blast.radius, Mi2.blast.impulse, Mi2.blast.damage, "player");
           this.removeMissile(i);
           continue;
@@ -59372,6 +59529,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         g2.decalT = 3;
         G2.fx.decal(hit, hit.nx, hit.ny, hit.nz, rand(0.18, 0.3));
       }
+      if (hit.kind === "building" && hit.ref && hit.ref.hp !== void 0) G2.world.damageBuilding(hit.ref, Gd.damage * 0.8, hit.x, hit.y, hit.z);
       if (hit.kind === "mech") {
         const f = hit.ref;
         const dmg = Gd.damage * (f.isFeind ? 2.2 : 0.18);
@@ -59589,8 +59747,18 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     }
     updateMesh() {
       this.mesh.position.copy(this.pos);
-      this.mesh.rotation.set(0, this.yaw, 0);
+      if (this.roll) {
+        this.roll.t += 0.016;
+        const k = Math.min(1, this.roll.t / 0.62);
+        this._rollZ = this.roll.dir * 6.283 * (k * k * (3 - 2 * k));
+        if (k >= 1) {
+          this.roll = null;
+          this._rollZ = 0;
+        }
+      }
+      this.mesh.rotation.set(0, this.yaw, this._rollZ || 0);
     }
+    // Runde 19: Barrel-Roll um die Längsachse
     remove() {
       this.gunStop();
       this.stopLoop();
@@ -59775,6 +59943,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     pmrem.dispose();
     const world = new World(scene);
     G.world = world;
+    world.G = G;
     const props = new Props(scene, world);
     G.props = props;
     const fx2 = new FX(scene, (x, z) => world.groundHeight(x, z));
