@@ -47389,9 +47389,28 @@ void main() {
   function makePlayerMesh() {
     return makeCharacterRig("player");
   }
+  var copVestParts = null;
   function makeNpcMesh(rng, armed = false, cop = false) {
-    if (cop) return makeCharacterRig("officer", rng.range(0.98, 1.06));
-    return makeCharacterRig(rng.pick(CIVILIANS), rng.range(0.93, 1.06));
+    const rig = cop ? makeCharacterRig("officer", rng.range(0.98, 1.06)) : makeCharacterRig(rng.pick(CIVILIANS), rng.range(0.93, 1.06));
+    if (cop && rig.bones.Chest) {
+      if (!copVestParts) {
+        const base = new MeshStandardMaterial({ color: 13227578, emissive: 9413914, emissiveIntensity: 0.55, roughness: 0.85 });
+        const band = new MeshStandardMaterial({ color: 15921896, emissive: 14211272, emissiveIntensity: 0.4, roughness: 0.6 });
+        copVestParts = { base, band, g: new BoxGeometry(0.44, 0.3, 0.3), s: new BoxGeometry(0.46, 0.07, 0.32) };
+      }
+      const vest = new Group();
+      const body = new Mesh(copVestParts.g, copVestParts.base);
+      body.castShadow = false;
+      vest.add(body);
+      for (const dy of [0.05, -0.05]) {
+        const st = new Mesh(copVestParts.s, copVestParts.band);
+        st.position.y = dy;
+        vest.add(st);
+      }
+      vest.position.y = 0.02;
+      rig.bones.Chest.add(vest);
+    }
+    return rig;
   }
   var WHEELS = ["wheel_FL", "wheel_FR", "wheel_RL", "wheel_RR"];
   var PAINT = { metalness: 0.45, roughness: 0.85, envMapIntensity: 1.35, gain: 1 };
@@ -48005,14 +48024,14 @@ void main() {
   }
 
   // src/world.js
-  var XS = [-240, -160, -80, 0, 80, 160, 240];
-  var XW = [14, 14, 14, 24, 14, 14, 14];
-  var ZS = [-240, -160, -85, -10, 70, 150, 240];
-  var ZW = [14, 14, 14, 18, 14, 14, 14];
+  var XS = [-320, -240, -160, -80, 0, 80, 160, 240, 320];
+  var XW = [14, 14, 14, 14, 24, 14, 14, 14, 14];
+  var ZS = [-320, -240, -160, -85, -10, 70, 150, 240, 320];
+  var ZW = [14, 14, 14, 14, 18, 14, 14, 14, 14];
   var SIDEWALK = 3.5;
   var KERB = 0.15;
-  var EXT = 247;
-  var FIELD = 400;
+  var EXT = 327;
+  var FIELD = 480;
   var LANE = 1.75;
   var LANE_BLVD = 3.75;
   var PARK_OFF = 5.4;
@@ -48060,20 +48079,21 @@ void main() {
     }
     // ---------- layout -----------------------------------------------------------------------
     buildBlocks() {
-      for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) {
+      for (let i = 0; i < XS.length - 1; i++) for (let j = 0; j < ZS.length - 1; j++) {
         const b = { i, j, minX: XS[i] + XW[i] / 2, maxX: XS[i + 1] - XW[i + 1] / 2, minZ: ZS[j] + ZW[j] / 2, maxZ: ZS[j + 1] - ZW[j + 1] / 2, template: "midtown", lotColor: PALETTE.lot, lotSurface: "concrete" };
         b.lot = { minX: b.minX + SIDEWALK, maxX: b.maxX - SIDEWALK, minZ: b.minZ + SIDEWALK, maxZ: b.maxZ - SIDEWALK };
         let t2 = "midtown";
-        if ((i === 2 || i === 3) && (j === 2 || j === 3)) t2 = "downtown";
+        if ((i === 3 || i === 4) && (j === 3 || j === 4)) t2 = "downtown";
         if (i === 0) t2 = "industrial";
-        if (i === 5) t2 = j === 0 ? "stunt" : j >= 3 ? "industrial" : "midtown";
-        if (j === 5 && i >= 1 && i <= 4) t2 = "residential";
-        if (j === 0 && i >= 1 && i <= 4) t2 = i === 2 ? "residential" : "midtown";
-        if (i === 3 && j === 2) t2 = "plaza";
-        if (i === 4 && j === 3) t2 = "park";
-        if (i === 1 && j === 2) t2 = "parking";
-        if (i === 4 && j === 1) t2 = "gas";
-        if (i === 1 && j === 4) t2 = "park";
+        if (i === 7) t2 = j === 0 ? "stunt" : j >= 4 ? "industrial" : "midtown";
+        if (j === 7 && i >= 1 && i <= 6) t2 = "residential";
+        if (j === 0 && i >= 1 && i <= 6) t2 = i === 3 ? "residential" : "midtown";
+        if (i === 4 && j === 2) t2 = "plaza";
+        if (i === 2 && j === 4) t2 = "park";
+        if (i === 1 && j === 3) t2 = "parking";
+        if (i === 5 && j === 1) t2 = "gas";
+        if (i === 6 && j === 5) t2 = "park";
+        if (i === 5 && j === 5) t2 = "plaza";
         b.template = t2;
         this.blocks.push(b);
       }
@@ -48081,17 +48101,17 @@ void main() {
     }
     blockAt(x, z) {
       let i = -1, j = -1;
-      for (let k = 0; k < 6; k++) if (x >= XS[k] + XW[k] / 2 && x <= XS[k + 1] - XW[k + 1] / 2) {
+      for (let k = 0; k < XS.length - 1; k++) if (x >= XS[k] + XW[k] / 2 && x <= XS[k + 1] - XW[k + 1] / 2) {
         i = k;
         break;
       }
       if (i < 0) return null;
-      for (let k = 0; k < 6; k++) if (z >= ZS[k] + ZW[k] / 2 && z <= ZS[k + 1] - ZW[k + 1] / 2) {
+      for (let k = 0; k < ZS.length - 1; k++) if (z >= ZS[k] + ZW[k] / 2 && z <= ZS[k + 1] - ZW[k + 1] / 2) {
         j = k;
         break;
       }
       if (j < 0) return null;
-      return this.blocks[i * 6 + j];
+      return this.blocks[i * (ZS.length - 1) + j];
     }
     inMedian(x, z) {
       if (Math.abs(x) > 2) return false;
@@ -48328,7 +48348,7 @@ void main() {
             this.fillEdges(b, ["warehouse", "industrial", "shop_small"], placed, { setback: 2 });
             this.scatter(b, ["barrel", "crate", "dumpster", "cone"], 14, placed, 1.5);
             this.scatter(b, ["tank"], 1, placed, 6);
-            this.spawns.hostiles.push({ x: cx + rng.range(-8, 8), z: cz + rng.range(-8, 8) });
+            if ((b.i + b.j) % 2 === 0) this.spawns.hostiles.push({ x: cx + rng.range(-8, 8), z: cz + rng.range(-8, 8) });
             break;
           case "residential":
             this.fillEdges(b, ["house", "house", "house", "shop_small"], placed, { setback: 3 });
@@ -48402,10 +48422,10 @@ void main() {
           }
         }
       }
-      const dock = this.blocks[0 * 6 + 3];
+      const dock = this.blocks[0 * 8 + 3];
       this.ramps.push({ x: dock.lot.minX + 10, z: dock.lot.maxZ - 8, w: 8, d: 12, h: 1.2, yaw: Math.PI, base: KERB + 0.03 });
       this.placeBuilding("bridge_ramp", dock.lot.minX + 10, dock.lot.maxZ - 8, Math.PI, dock);
-      for (const x of [-120, -40, 40, 120]) this.bumps.push({ axis: "x", x, z: -240, len: 14 }), this.bumps.push({ axis: "x", x, z: 240, len: 14 });
+      for (const x of [-200, -120, -40, 40, 120, 200]) this.bumps.push({ axis: "x", x, z: -320, len: 14 }), this.bumps.push({ axis: "x", x, z: 320, len: 14 });
     }
     // ---------- roads dressing: markings, crosswalks, lamps, signals ----------------------------
     buildRoadsDressing() {
@@ -48481,7 +48501,7 @@ void main() {
         }
       }
       for (const s of this.medianSegs) for (let z = s.z0 + 6; z < s.z1 - 4; z += 12) this.prop("tree_round", 0, z, rng.range(0, 6));
-      for (const jn of this.junctions) if (jn.i >= 2 && jn.i <= 4 && jn.j >= 2 && jn.j <= 4) {
+      for (const jn of this.junctions) if (jn.i >= 3 && jn.i <= 5 && jn.j >= 3 && jn.j <= 5) {
         this.prop("trafficlight", jn.x - jn.wV / 2 - 1.2, jn.z - jn.wH / 2 - 1.2, 0);
         this.prop("trafficlight", jn.x + jn.wV / 2 + 1.2, jn.z + jn.wH / 2 + 1.2, Math.PI);
       }
@@ -48728,7 +48748,7 @@ void main() {
       }
       this.spawns.vehicles.push({ x: PARK_OFF_BLVD, z: -24, yaw: Math.PI, type: "sedan", parked: true }, { x: PARK_OFF_BLVD, z: -40, yaw: Math.PI, type: "muscle", parked: true }, { x: -PARK_OFF_BLVD, z: -32, yaw: 0, type: "van", parked: true });
       const shuffled = parked.filter((p) => Math.hypot(p.x - 10, p.z + 30) > 30).sort(() => rng() - 0.5);
-      for (let k = 0; k < 26; k++) this.spawns.vehicles.push({ ...shuffled[k], parked: true });
+      for (let k = 0; k < 40; k++) this.spawns.vehicles.push({ ...shuffled[k], parked: true });
       this.spawns.parkedSpots = parked;
       const w = this.walk.nodes.map((n2, i) => ({ i, d: Math.hypot(n2.x, n2.z) })).sort((a, b) => a.d - b.d);
       this.spawns.npcs = w.slice(0, Math.floor(w.length * 0.7)).map((o) => o.i);
@@ -48772,7 +48792,7 @@ void main() {
               d = r.district;
               rect = r.rect;
             } else {
-              d = DOT && b.block && DOT[b.block.template] || "midtown";
+              d = "rt";
               missing++;
             }
           }
@@ -48785,6 +48805,27 @@ void main() {
         this.buildingMeshes.set(kind, rec);
         for (const [d, sub] of groups) {
           let geo = proto.geometry, mat = proto.material;
+          if (LM && d === "rt") {
+            const im2 = new InstancedMesh(proto.geometry, proto.material, sub.length);
+            im2.name = "Buildings_" + kind + "_rt";
+            im2.castShadow = true;
+            im2.receiveShadow = true;
+            rec.meshes.push(im2);
+            sub.forEach((b, k) => {
+              _p.set(b.x, this.groundHeight(b.x, b.z) - (kind === "bridge_ramp" ? 0.03 : 0), b.z);
+              _q.setFromAxisAngle(UP, b.rot);
+              _s.set(1, 1, 1);
+              _m.compose(_p, _q, _s);
+              im2.setMatrixAt(k, _m);
+              im2.setColorAt(k, _c3.set(b.tint));
+              b.im = im2;
+              b.slot = k;
+            });
+            im2.instanceMatrix.needsUpdate = true;
+            if (im2.instanceColor) im2.instanceColor.needsUpdate = true;
+            this.group.add(im2);
+            continue;
+          }
           if (LM) {
             if (!proto.geometry.boundingSphere) proto.geometry.computeBoundingSphere();
             geo = new BufferGeometry();
@@ -48817,7 +48858,7 @@ void main() {
           this.group.add(im);
         }
       }
-      if (missing) console.warn(`lightmaps: ${missing} of ${this.buildings.length} buildings have no atlas rect (layout mismatch) \u2014 they sample the atlas corner`);
+      if (missing) console.info(`lightmaps: ${missing} of ${this.buildings.length} buildings render with real-time grid light (new round-17 districts \u2014 expected)`);
     }
     lmMaterial(family, d) {
       this.lmMats = this.lmMats || /* @__PURE__ */ new Map();
@@ -49002,7 +49043,7 @@ void main() {
         this.damage(rec, damage * (1 - d / radius) * 0.6);
       }
     }
-    update(dt2, audio, fx, tmp2) {
+    update(dt2, audio, fx2, tmp2) {
       const world = this.world;
       const grid = this.grid;
       grid.map.clear();
@@ -49026,7 +49067,7 @@ void main() {
           if (rec.vy < -2.5) {
             rec.vy = -rec.vy * 0.28;
             audio && audio.impact(rec.sound === "wood" ? "wood" : "metal", rec, clamp2(-rec.vy * 0.3, 0.2, 1.2));
-            fx && fx.dust(rec, 2, 0, 1, 0);
+            fx2 && fx2.dust(rec, 2, 0, 1, 0);
           } else rec.vy = 0;
           rec.onGround = true;
           const f = Math.exp(-5 * dt2);
@@ -49746,7 +49787,7 @@ void main() {
       this.lowpass.frequency.cancelScheduledValues(t2);
       this.lowpass.frequency.setTargetAtTime(on2 ? 420 : 2e4, t2, 0.06);
     }
-    setListener(px2, py2, pz2, fx, fy, fz, ux, uy, uz) {
+    setListener(px2, py2, pz2, fx2, fy, fz, ux, uy, uz) {
       this.lx = fin(px2);
       this.ly = fin(py2);
       this.lz = fin(pz2);
@@ -49756,7 +49797,7 @@ void main() {
         L.positionX.setTargetAtTime(fin(px2), t2, 0.02);
         L.positionY.setTargetAtTime(fin(py2), t2, 0.02);
         L.positionZ.setTargetAtTime(fin(pz2), t2, 0.02);
-        L.forwardX.setTargetAtTime(fin(fx), t2, 0.02);
+        L.forwardX.setTargetAtTime(fin(fx2), t2, 0.02);
         L.forwardY.setTargetAtTime(fin(fy), t2, 0.02);
         L.forwardZ.setTargetAtTime(fin(fz), t2, 0.02);
         L.upX.setTargetAtTime(fin(ux), t2, 0.02);
@@ -49764,7 +49805,7 @@ void main() {
         L.upZ.setTargetAtTime(fin(uz), t2, 0.02);
       } else {
         L.setPosition(fin(px2), fin(py2), fin(pz2));
-        L.setOrientation(fx, fy, fz, ux, uy, uz);
+        L.setOrientation(fx2, fy, fz, ux, uy, uz);
       }
     }
     dist(p) {
@@ -52026,16 +52067,16 @@ void main() {
       for (let i = 0; i < 4; i++) this.gait[i] = damp2(this.gait[i], gt2[i], 7, dt2);
       const [gIdle, gWalk, gRun, gSprint] = this.gait;
       const gMove = 1 - gIdle;
-      const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw), rx = -fz, rz = fx;
+      const fx2 = Math.sin(this.yaw), fz = Math.cos(this.yaw), rx = -fz, rz = fx2;
       if (sp > 0.4) {
-        this.dirF = damp2(this.dirF, clamp2((this.vel.x * fx + this.vel.z * fz) / sp, -1, 1), 9, dt2);
+        this.dirF = damp2(this.dirF, clamp2((this.vel.x * fx2 + this.vel.z * fz) / sp, -1, 1), 9, dt2);
         this.dirR = damp2(this.dirR, clamp2((this.vel.x * rx + this.vel.z * rz) / sp, -1, 1), 9, dt2);
       }
       const back = clamp2(-this.dirF, 0, 1) * gMove, strafe = this.dirR * gMove * (1 - back);
       const idt = dt2 > 1e-5 ? 1 / dt2 : 0;
       const ax = (this.vel.x - this.prevVel.x) * idt, az = (this.vel.z - this.prevVel.z) * idt;
       this.prevVel.copy(this.vel);
-      this.accF = damp2(this.accF, clamp2(ax * fx + az * fz, -30, 30), 14, dt2);
+      this.accF = damp2(this.accF, clamp2(ax * fx2 + az * fz, -30, 30), 14, dt2);
       this.accR = damp2(this.accR, clamp2(ax * rx + az * rz, -30, 30), 14, dt2);
       this.yawRate = damp2(this.yawRate, clamp2(angleDelta(this.prevYaw, this.yaw) * idt, -8, 8), 10, dt2);
       this.prevYaw = this.yaw;
@@ -53963,10 +54004,11 @@ void main() {
       this.G = G2;
       this.list = [];
       this.onExplode = null;
-      this.trafficCount = 14;
+      this.trafficCount = 20;
       this.tmpVec = new Vector3();
       this.paintIdx = 0;
     }
+    // Runde 17: traffic 20 für die 8x8-Stadt
     spawnAll() {
       const G2 = this.G, W = G2.world, rng = W.rng;
       for (const s of W.spawns.vehicles) {
@@ -54939,16 +54981,16 @@ void main() {
             n2.strafe = Math.random() < 0.5 ? -1 : 1;
           }
           const l = dP || 1;
-          const fx = toP.x / l, fz = toP.z / l;
-          const rx = -fz, rz = fx;
+          const fx2 = toP.x / l, fz = toP.z / l;
+          const rx = -fz, rz = fx2;
           const blocked = n2.blockedT > 1.2;
           if (dP > 24 || blocked) {
             speed = NPC.runSpeed * 0.75;
-            tx = n2.pos.x + fx * 6 + rx * n2.strafe * 2;
+            tx = n2.pos.x + fx2 * 6 + rx * n2.strafe * 2;
             tz = n2.pos.z + fz * 6 + rz * n2.strafe * 2;
           } else if (dP < 7) {
             speed = NPC.walkSpeed * 1.4;
-            tx = n2.pos.x - fx * 4 + rx * n2.strafe * 2;
+            tx = n2.pos.x - fx2 * 4 + rx * n2.strafe * 2;
             tz = n2.pos.z - fz * 4 + rz * n2.strafe * 2;
           } else {
             speed = NPC.walkSpeed * 1.1;
@@ -55110,8 +55152,8 @@ void main() {
             n2.strafe = Math.random() < 0.5 ? -1 : 1;
           }
           const l = dP || 1;
-          const fx = toP.x / l, fz = toP.z / l;
-          const rx = -fz, rz = fx;
+          const fx2 = toP.x / l, fz = toP.z / l;
+          const rx = -fz, rz = fx2;
           const blocked = n2.blockedT > 1.2;
           const pv = P.vehicle;
           const fastCar = pv && Math.abs(pv.speed) > 12;
@@ -55119,11 +55161,11 @@ void main() {
             speed = 0;
           } else if (dP > 26 || blocked) {
             speed = NPC.runSpeed * 0.85;
-            tx = n2.pos.x + fx * 6 + rx * n2.strafe * 2;
+            tx = n2.pos.x + fx2 * 6 + rx * n2.strafe * 2;
             tz = n2.pos.z + fz * 6 + rz * n2.strafe * 2;
           } else if (dP < 8) {
             speed = NPC.walkSpeed * 1.4;
-            tx = n2.pos.x - fx * 4 + rx * n2.strafe * 2;
+            tx = n2.pos.x - fx2 * 4 + rx * n2.strafe * 2;
             tz = n2.pos.z - fz * 4 + rz * n2.strafe * 2;
           } else {
             speed = NPC.walkSpeed * 1.2;
@@ -55224,14 +55266,14 @@ void main() {
             n2.pos.z += c * sg * pz2;
           }
         } else if (vs > 4 && n2.dodgeT <= 0) {
-          const fx = v.vel.x / vs, fz = v.vel.z / vs;
-          const ahead = -(dx * fx + dz * fz);
-          const side = -(dx * -fz + dz * fx);
+          const fx2 = v.vel.x / vs, fz = v.vel.z / vs;
+          const ahead = -(dx * fx2 + dz * fz);
+          const side = -(dx * -fz + dz * fx2);
           if (ahead > 0 && ahead < 4 + vs * 1.2 && Math.abs(side) < 2.5) {
             n2.dodgeT = 0.9;
             const sg = side >= 0 ? -1 : 1;
             n2.dodgeX = -fz * sg * -1;
-            n2.dodgeZ = fx * sg * -1;
+            n2.dodgeZ = fx2 * sg * -1;
             n2.fear = 1;
           }
           if (v.sirenOn && vs > 8 && d2 < 64 && !n2.cop && (n2.state === "walk" || n2.state === "idle")) {
@@ -55690,7 +55732,7 @@ void main() {
       this.projectiles.push(pr);
     }
     updateProjectiles(dt2) {
-      const G2 = this.G, fx = G2.fx;
+      const G2 = this.G, fx2 = G2.fx;
       for (let i = this.projectiles.length - 1; i >= 0; i--) {
         const p = this.projectiles[i];
         p.age += dt2;
@@ -55726,14 +55768,14 @@ void main() {
         if (p.tracer) {
           const tl = Math.min(pd.tracerLen, p.dist);
           const l = len > 1e-5 ? len : 1;
-          fx.tracerSet(p.tracer, p.x - (nx - ox) / l * tl, p.y - (ny - oy) / l * tl, p.z - (nz - oz) / l * tl, p.x, p.y, p.z);
+          fx2.tracerSet(p.tracer, p.x - (nx - ox) / l * tl, p.y - (ny - oy) / l * tl, p.z - (nz - oz) / l * tl, p.x, p.y, p.z);
         }
         if (p.rocket) {
           p.smokeT -= dt2;
           if (p.smokeT <= 0) {
             p.smokeT = 0.012;
-            fx.smoke.spawn({ x: p.x + randSpread(0.05), y: p.y, z: p.z + randSpread(0.05), vx: randSpread(0.4), vy: 0.4, vz: randSpread(0.4), s0: 0.25, s1: 1.6, a0: 0.55, a1: 0, life: rand(0.9, 1.5), r: [0.8, 0.78, 0.75], r1: [0.5, 0.5, 0.5], drag: 1.5, rotv: randSpread(2) });
-            fx.glow.spawn({ x: p.x, y: p.y, z: p.z, s0: 0.55, s1: 0.2, a0: 1, a1: 0, life: 0.08, r: [2.5, 1.4, 0.5] });
+            fx2.smoke.spawn({ x: p.x + randSpread(0.05), y: p.y, z: p.z + randSpread(0.05), vx: randSpread(0.4), vy: 0.4, vz: randSpread(0.4), s0: 0.25, s1: 1.6, a0: 0.55, a1: 0, life: rand(0.9, 1.5), r: [0.8, 0.78, 0.75], r1: [0.5, 0.5, 0.5], drag: 1.5, rotv: randSpread(2) });
+            fx2.glow.spawn({ x: p.x, y: p.y, z: p.z, s0: 0.55, s1: 0.2, a0: 1, a1: 0, life: 0.08, r: [2.5, 1.4, 0.5] });
           }
           if (p.loop) p.loop.move(p);
         }
@@ -55800,7 +55842,7 @@ void main() {
         const fh = f.raycast(ox, oy, oz, dx, dy, dz, bt);
         if (fh && fh.t > (opts.minT || 0)) {
           bt = fh.t;
-          best = { kind: "mech", t: fh.t, x: fh.x, y: fh.y, z: fh.z, nx: fh.nx, ny: fh.ny, nz: fh.nz, ref: fh };
+          best = { kind: "mech", t: fh.t, x: fh.x, y: fh.y, z: fh.z, nx: fh.nx, ny: fh.ny, nz: fh.nz, ref: fh.v };
         }
       }
       const ph = G2.props.raycast(ox, oy, oz, dx, dy, dz, bt);
@@ -55835,7 +55877,7 @@ void main() {
       return best;
     }
     applyHit(hit, p) {
-      const G2 = this.G, fx = G2.fx, d = p.def;
+      const G2 = this.G, fx2 = G2.fx, d = p.def;
       const byPlayer = p.owner === "player";
       const dmg = d.damage;
       if (p.rocket) {
@@ -55851,10 +55893,10 @@ void main() {
         case "building":
         case "sprop": {
           const sound = hit.kind === "sprop" && hit.ref.prop ? hit.ref.prop.sound : hit.kind === "ground" && hit.surface === "grass" ? "wood" : "concrete";
-          fx.decal(hit, hit.nx, hit.ny, hit.nz, 1);
-          fx.dust(hit, 3, hit.nx, hit.ny, hit.nz);
-          if (sound === "metal") fx.sparks(hit, 6, hit.nx, hit.ny, hit.nz);
-          else fx.sparks(hit, 2, hit.nx, hit.ny, hit.nz);
+          fx2.decal(hit, hit.nx, hit.ny, hit.nz, 1);
+          fx2.dust(hit, 3, hit.nx, hit.ny, hit.nz);
+          if (sound === "metal") fx2.sparks(hit, 6, hit.nx, hit.ny, hit.nz);
+          else fx2.sparks(hit, 2, hit.nx, hit.ny, hit.nz);
           G2.audio.impact(sound === "metal" ? "metal" : sound === "wood" ? "wood" : sound === "glass" ? "glass" : "concrete", hit, 1);
           break;
         }
@@ -55863,9 +55905,9 @@ void main() {
           G2.props.impulse(r, dx * imp * 12, 3 + dy * imp * 4, dz * imp * 12, hit.x, hit.y, hit.z);
           const dead = G2.props.damage(r, dmg, hit.x, hit.y, hit.z);
           G2.audio.impact(r.sound, hit, 1);
-          if (r.sound === "metal") fx.sparks(hit, 8, hit.nx, hit.ny, hit.nz);
-          else fx.dust(hit, 4, hit.nx, hit.ny, hit.nz, [0.55, 0.42, 0.28]);
-          fx.decal(hit, hit.nx, hit.ny, hit.nz, 0.8);
+          if (r.sound === "metal") fx2.sparks(hit, 8, hit.nx, hit.ny, hit.nz);
+          else fx2.dust(hit, 4, hit.nx, hit.ny, hit.nz, [0.55, 0.42, 0.28]);
+          fx2.decal(hit, hit.nx, hit.ny, hit.nz, 0.8);
           if (byPlayer) {
             G2.ui.hitmarker(dead);
             G2.audio.ui("hit");
@@ -55877,9 +55919,9 @@ void main() {
           const v = hit.ref;
           v.impulse(dx * imp * 40, dz * imp * 40, hit.x, hit.z);
           v.damage(dmg * (byPlayer ? 0.55 : 0.16), "bullet", p.owner);
-          fx.sparks(hit, 10, hit.nx, hit.ny, hit.nz);
-          if (hit.y > v.pos.y + v.def.height * 0.6) fx.glass(hit, 8);
-          fx.decal(hit, hit.nx, hit.ny, hit.nz, 0.9);
+          fx2.sparks(hit, 10, hit.nx, hit.ny, hit.nz);
+          if (hit.y > v.pos.y + v.def.height * 0.6) fx2.glass(hit, 8);
+          fx2.decal(hit, hit.nx, hit.ny, hit.nz, 0.9);
           G2.audio.impact(hit.y > v.pos.y + v.def.height * 0.6 ? "glass" : "metal", hit, 1.1);
           if (byPlayer) {
             G2.ui.hitmarker(v.wrecked);
@@ -55896,8 +55938,8 @@ void main() {
         case "mech": {
           const m = hit.ref;
           m.damage(dmg * (m.isFeind ? 0.6 : 0.18), "bullet", p.owner);
-          fx.sparks(hit, 9, hit.nx, hit.ny, hit.nz);
-          fx.decal(hit, hit.nx, hit.ny, hit.nz, 0.7);
+          fx2.sparks(hit, 9, hit.nx, hit.ny, hit.nz);
+          fx2.decal(hit, hit.nx, hit.ny, hit.nz, 0.7);
           G2.audio.impact("metal", hit, 1.1);
           if (byPlayer) {
             G2.ui.hitmarker(m.dead || m.wrecked);
@@ -55908,7 +55950,7 @@ void main() {
         }
         case "player": {
           G2.player.damage(dmg * 0.33, { x: hit.x - dx * 12, y: hit.y, z: hit.z - dz * 12 }, "shot");
-          fx.blood(hit, dx, dy, dz);
+          fx2.blood(hit, dx, dy, dz);
           break;
         }
       }
@@ -56310,12 +56352,12 @@ void main() {
         this.rbFail = "no vehicle";
         return false;
       }
-      const fx = Math.sin(v.yaw), fz = Math.cos(v.yaw);
-      const ax = v.pos.x + fx * 120, az = v.pos.z + fz * 120;
+      const fx2 = Math.sin(v.yaw), fz = Math.cos(v.yaw);
+      const ax = v.pos.x + fx2 * 120, az = v.pos.z + fz * 120;
       const le = G2.world.nearestLaneEdge(ax, az, (e) => {
         const dx = e.pts[1].x - e.pts[0].x, dz = e.pts[1].z - e.pts[0].z;
         const l = Math.hypot(dx, dz) || 1;
-        return Math.abs((dx * fx + dz * fz) / l) > 0.8;
+        return Math.abs((dx * fx2 + dz * fz) / l) > 0.8;
       });
       if (!le || le.d > 40) {
         this.rbFail = "no aligned lane near " + (le ? le.d.toFixed(0) : "-");
@@ -56326,7 +56368,7 @@ void main() {
         this.rbFail = "dp " + dp.toFixed(0);
         return false;
       }
-      if (((le.x - P.pos.x) * fx + (le.z - P.pos.z) * fz) / dp < 0.6) {
+      if (((le.x - P.pos.x) * fx2 + (le.z - P.pos.z) * fz) / dp < 0.6) {
         this.rbFail = "not ahead";
         return false;
       }
@@ -56339,12 +56381,12 @@ void main() {
         cz = ZS.reduce((b, z) => Math.abs(z - le.z) < Math.abs(b - le.z) ? z : b, ZS[0]);
         cx = le.x;
       }
-      if (Math.max(Math.abs(cx), Math.abs(cz)) > 236) {
+      if (Math.max(Math.abs(cx), Math.abs(cz)) > 316) {
         this.rbFail = "edge of city";
         return false;
       }
       const px2 = alongZ ? 1 : 0, pz2 = alongZ ? 0 : 1;
-      const dirx = alongZ ? 0 : fx > 0 ? 1 : -1, dirz = alongZ ? fz > 0 ? 1 : -1 : 0;
+      const dirx = alongZ ? 0 : fx2 > 0 ? 1 : -1, dirz = alongZ ? fz > 0 ? 1 : -1 : 0;
       const wide = alongZ ? Math.abs(cx) < 1 ? 24 : 14 : Math.abs(cz + 10) < 1 ? 18 : 14;
       const off = wide >= 24 ? 6.2 : wide >= 18 ? 3.4 : 2.3;
       const cars = [];
@@ -56847,6 +56889,17 @@ void main() {
         if (this.deadT > 4) return "remove";
       }
       this.blinkLicht(G2.time);
+      this._lodT = (this._lodT || 0) - dt2;
+      if (this._lodT <= 0) {
+        this._lodT = 1;
+        const nah = Math.hypot(this.pos.x - G2.camera.position.x, this.pos.z - G2.camera.position.z) < 70;
+        if (this._shadow !== nah) {
+          this._shadow = nah;
+          this.mesh.traverse((o) => {
+            if (o.isMesh) o.castShadow = nah;
+          });
+        }
+      }
       this.updateMesh(gy);
       this.updateAABB();
     }
@@ -57104,6 +57157,9 @@ void main() {
       this.wantedState = "";
       this.radioShown = "";
       this.mradioShown = "";
+      this.dmgPool = [];
+      this.dmgList = [];
+      this.dmgVec = null;
       this.buildWheel();
       this.helpVisible = true;
     }
@@ -57197,6 +57253,47 @@ void main() {
       void b.offsetWidth;
       b.classList.add("pop");
     }
+    // Runde 17: Schadenszahl an einer Weltposition (weiss, Kill rot)
+    dmgNumber(x, y2, z, val, kill) {
+      let el = this.dmgPool.pop();
+      if (!el) {
+        el = document.createElement("div");
+        el.className = "dmgnum";
+        this.el.msg.parentElement.appendChild(el);
+      }
+      el.textContent = val;
+      el.classList.toggle("kill", !!kill);
+      el.style.display = "block";
+      this.dmgList.push({ el, x, y: y2, z, t: 0.9 });
+      if (this.dmgList.length > 20) {
+        const alt = this.dmgList.shift();
+        alt.el.style.display = "none";
+        this.dmgPool.push(alt.el);
+      }
+    }
+    updateDmgNumbers(dt2) {
+      const G2 = this.G;
+      if (!this.dmgVec) this.dmgVec = new window.THREE.Vector3();
+      for (let i = this.dmgList.length - 1; i >= 0; i--) {
+        const d = this.dmgList[i];
+        d.t -= dt2;
+        if (d.t <= 0) {
+          d.el.style.display = "none";
+          this.dmgPool.push(d.el);
+          this.dmgList.splice(i, 1);
+          continue;
+        }
+        this.dmgVec.set(d.x, d.y, d.z).project(G2.camera);
+        if (this.dmgVec.z > 1) {
+          d.el.style.display = "none";
+          continue;
+        }
+        const sx = (this.dmgVec.x * 0.5 + 0.5) * window.innerWidth, sy = (-this.dmgVec.y * 0.5 + 0.5) * window.innerHeight;
+        const rise = (0.9 - d.t) * 46;
+        d.el.style.transform = `translate(${sx.toFixed(0)}px, ${(sy - rise).toFixed(0)}px)`;
+        d.el.style.opacity = Math.min(1, d.t / 0.35).toFixed(2);
+      }
+    }
     // Runde 15: Geld-Popup (+1.200 €) unterm Konto
     moneyPop(n2) {
       const e = this.el.moneypop;
@@ -57267,6 +57364,7 @@ void main() {
         this.msgT -= dt2;
         if (this.msgT <= 0) this.el.msg.classList.remove("show");
       }
+      if (this.dmgList.length) this.updateDmgNumbers(dt2);
       this.el.kills.textContent = G2.stats.kills;
       this.el.wrecks.textContent = G2.stats.wrecks;
       if (G2.krieg) this.el.money.textContent = geld(G2.krieg.money);
@@ -57324,7 +57422,7 @@ void main() {
     drawMinimap() {
       const G2 = this.G, P = G2.player, ctx = this.mctx, W = this.mm.width, H = this.mm.height;
       const cx = W / 2, cy = H / 2;
-      const scale = 1.55;
+      const scale = 1.2;
       const yaw = G2.gcam.mode === "drive" ? G2.gcam.yaw : Math.atan2(G2.gcam.flat.x, G2.gcam.flat.z);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.fillStyle = "#3b3f47";
@@ -58024,16 +58122,16 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         const on2 = v.driver && !v.wrecked;
         if (!on2 || dist > 170) continue;
         const s = Math.sin(v.yaw), c = Math.cos(v.yaw);
-        const fx2 = s, fz = c;
+        const fx3 = s, fz = c;
         const hy = v.pos.y + 0.8;
         const brake = v.brakeLights.visible;
         const rev = v.controls.reverse && v.speed < -0.5;
         if (v.driver === "player") {
           for (const side of [-1, 1]) {
             const lx = side * (Wd / 2 - 0.35);
-            this.addDynamic(v.pos.x + lx * c + L / 2 * s, hy, v.pos.z - lx * s + L / 2 * c, 36, 1, 0.94, 0.8, 1300, { dx: fx2, dy: -0.2, dz: fz, outer: 0.5, inner: 0.2 });
+            this.addDynamic(v.pos.x + lx * c + L / 2 * s, hy, v.pos.z - lx * s + L / 2 * c, 36, 1, 0.94, 0.8, 1300, { dx: fx3, dy: -0.2, dz: fz, outer: 0.5, inner: 0.2 });
           }
-        } else this.addDynamic(v.pos.x + L / 2 * s, hy, v.pos.z + L / 2 * c, 32, 1, 0.94, 0.8, 1700, { dx: fx2, dy: -0.2, dz: fz, outer: 0.52, inner: 0.22 });
+        } else this.addDynamic(v.pos.x + L / 2 * s, hy, v.pos.z + L / 2 * c, 32, 1, 0.94, 0.8, 1700, { dx: fx3, dy: -0.2, dz: fz, outer: 0.52, inner: 0.22 });
         const rx = v.pos.x - (L / 2 + 0.15) * s, rz = v.pos.z - (L / 2 + 0.15) * c;
         this.addDynamic(rx, v.pos.y + 0.7, rz, brake ? 10 : 6.5, 1, 0.12, 0.06, brake ? 40 : 10);
         if (rev) this.addDynamic(rx, v.pos.y + 0.7, rz, 8, 1, 0.95, 0.85, 20);
@@ -58063,13 +58161,13 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         if (a.red) this.glow(v.pos.x + 0.3 * c - 0.15 * s, v.pos.y + 1.65, v.pos.z - 0.3 * s - 0.15 * c, 0.8, 0.9, 0.12, 0.08);
         if (a.blue) this.glow(v.pos.x - 0.3 * c - 0.15 * s, v.pos.y + 1.65, v.pos.z + 0.3 * s - 0.15 * c, 0.8, 0.2, 0.35, 0.9);
       }
-      const fx = G2.fx;
-      if (fx.flashes) for (const f of fx.flashes) {
+      const fx2 = G2.fx;
+      if (fx2.flashes) for (const f of fx2.flashes) {
         if (f.t >= 1) continue;
         const k = Math.max(0, 1 - f.t);
         this.addDynamic(f.x, f.y, f.z, f.R, 1, 0.62, 0.3, f.peak * k * k);
       }
-      if (fx.muzzleL && fx.muzzleL.I > 0.5) this.addDynamic(fx.muzzleL.x, fx.muzzleL.y, fx.muzzleL.z, 12, 1, 0.85, 0.6, fx.muzzleL.I);
+      if (fx2.muzzleL && fx2.muzzleL.I > 0.5) this.addDynamic(fx2.muzzleL.x, fx2.muzzleL.y, fx2.muzzleL.z, 12, 1, 0.85, 0.6, fx2.muzzleL.I);
       const MS = G2.mechSys;
       if (MS && MS.mech) {
         for (const l of MS.lights) this.addDynamic(l.x, l.y, l.z, l.R, l.r, l.g, l.b, l.I);
@@ -59109,7 +59207,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       G2.npcs.alertGunfire(this.pos, true, 2);
     }
     updateMissiles(dt2) {
-      const G2 = this.G, Mi2 = MECH.missiles, fx = G2.fx;
+      const G2 = this.G, Mi2 = MECH.missiles, fx2 = G2.fx;
       for (let i = this.missiles.length - 1; i >= 0; i--) {
         const m = this.missiles[i];
         m.age += dt2;
@@ -59151,13 +59249,13 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         m.dist += len;
         if (m.tracer) {
           const tl = Math.min(1.4, m.dist);
-          fx.tracerSet(m.tracer, m.x - _d4.x * tl, m.y - _d4.y * tl, m.z - _d4.z * tl, m.x, m.y, m.z);
+          fx2.tracerSet(m.tracer, m.x - _d4.x * tl, m.y - _d4.y * tl, m.z - _d4.z * tl, m.x, m.y, m.z);
         }
         m.smokeT -= dt2;
         if (m.smokeT <= 0) {
           m.smokeT = 0.012;
-          fx.smoke.spawn({ x: m.x + randSpread(0.08), y: m.y, z: m.z + randSpread(0.08), vx: randSpread(0.5), vy: 0.5, vz: randSpread(0.5), s0: 0.3, s1: 2, a0: 0.6, a1: 0, life: rand(1.2, 2), r: [0.82, 0.8, 0.78], r1: [0.5, 0.5, 0.5], drag: 1.4, rotv: randSpread(2) });
-          fx.glow.spawn({ x: m.x, y: m.y, z: m.z, s0: 0.7, s1: 0.25, a0: 1, a1: 0, life: 0.08, r: [2.6, 1.4, 0.5] });
+          fx2.smoke.spawn({ x: m.x + randSpread(0.08), y: m.y, z: m.z + randSpread(0.08), vx: randSpread(0.5), vy: 0.5, vz: randSpread(0.5), s0: 0.3, s1: 2, a0: 0.6, a1: 0, life: rand(1.2, 2), r: [0.82, 0.8, 0.78], r1: [0.5, 0.5, 0.5], drag: 1.4, rotv: randSpread(2) });
+          fx2.glow.spawn({ x: m.x, y: m.y, z: m.z, s0: 0.7, s1: 0.25, a0: 1, a1: 0, life: 0.08, r: [2.6, 1.4, 0.5] });
         }
         if (m.loop) m.loop.move(m);
         if (i < 4) this.lights.push({ x: m.x, y: m.y, z: m.z, R: 10, r: 1, g: 0.6, b: 0.25, I: 90 });
@@ -59245,7 +59343,16 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         g2.decalT = 3;
         G2.fx.decal(hit, hit.nx, hit.ny, hit.nz, rand(0.18, 0.3));
       }
-      if (hit.kind === "npc") {
+      if (hit.kind === "mech") {
+        const f = hit.ref;
+        const dmg = Gd.damage * (f.isFeind ? 2.2 : 0.18);
+        f.damage(dmg, "bullet", "player");
+        fx.sparks(hit, 6, hit.nx, hit.ny, hit.nz);
+        if (f.isFeind) {
+          G2.ui.hitmarker(f.dead);
+          if (g2.n % 3 === 0 || f.dead) G2.ui.dmgNumber(hit.x, hit.y + 0.4, hit.z, Math.round(dmg), f.dead);
+        }
+      } else if (hit.kind === "npc") {
         G2.npcs.damage(hit.ref, Gd.damage, _d4.x, _d4.y, _d4.z, hit.head, true, hit);
         G2.ui.hitmarker(!!hit.head);
       } else if (hit.kind === "vehicle") {
@@ -59603,7 +59710,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
   function boot(renderer, canvas) {
     const scene = new Scene();
     G.scene = scene;
-    scene.fog = new Fog(1714770, 80, 720);
+    scene.fog = new Fog(1714770, 80, 900);
     const camera = new PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.15, 1900);
     G.camera = camera;
     const sunDir = new Vector3(-0.45, -0.07, 0.89).normalize();
@@ -59641,8 +59748,8 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     G.world = world;
     const props = new Props(scene, world);
     G.props = props;
-    const fx = new FX(scene, (x, z) => world.groundHeight(x, z));
-    G.fx = fx;
+    const fx2 = new FX(scene, (x, z) => world.groundHeight(x, z));
+    G.fx = fx2;
     const audio = new AudioSys();
     G.audio = audio;
     const input = new Input(canvas);
@@ -59678,7 +59785,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     vehicles.onExplode = (p, r, v) => weapons.scheduleExplosion(p, r, 20, 220, v, 0.05);
     props.onExplode = (p) => weapons.scheduleExplosion(p, 5.5, 14, 160, "barrel", 0.12 + Math.random() * 0.25);
     props.onBreak = (rec) => {
-      for (let i = 0; i < 10; i++) fx.chunk(rec.x, rec.y + 0.4, rec.z, (Math.random() - 0.5) * 6, Math.random() * 5 + 1, (Math.random() - 0.5) * 6, 0.9, 0.55, 0.42, 0.28);
+      for (let i = 0; i < 10; i++) fx2.chunk(rec.x, rec.y + 0.4, rec.z, (Math.random() - 0.5) * 6, Math.random() * 5 + 1, (Math.random() - 0.5) * 6, 0.9, 0.55, 0.42, 0.28);
       audio.impact("wood", rec, 1.5);
     };
     ui.weaponChanged();
@@ -59837,8 +59944,8 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
             safe("police", () => police.update(dt2, realDt));
             safe("mech", () => mechSys.update(dt2));
             safe("krieg", () => krieg.update(dt2));
-            safe("props", () => props.update(dt2, audio, fx, propTmp));
-            fx.update(dt2);
+            safe("props", () => props.update(dt2, audio, fx2, propTmp));
+            fx2.update(dt2);
           }
           if (audio.radio) audio.radio.update(player);
           screens.update(realDt);
@@ -59873,7 +59980,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       } else {
         gcam.update(realDt);
         updateSun();
-        fx.update(realDt);
+        fx2.update(realDt);
       }
       lodFar = updateLods(G);
       adaptResolution(rawDt);
