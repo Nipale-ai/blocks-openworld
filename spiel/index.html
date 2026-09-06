@@ -203,6 +203,9 @@
   </div>
   <div id="prompt" class="panel"></div>
   <div id="msg"></div>
+  <div id="titanbar" style="display:none;position:absolute;left:50%;top:64px;transform:translateX(-50%);width:380px"><div id="titan-label" style="font:700 11px var(--mono);letter-spacing:.16em;color:var(--danger);text-align:center;margin-bottom:4px">TITAN</div><div style="height:8px;border-radius:4px;background:rgba(255,255,255,.14);overflow:hidden"><b style="display:block;height:100%;width:100%;background:linear-gradient(90deg,#ff8a7a,#ff4d3d)"></b></div></div>
+  <div id="arena" style="display:none;position:absolute;left:50%;top:88px;transform:translateX(-50%);font:700 12px var(--mono);letter-spacing:.14em;color:var(--accent2)"></div>
+  <div id="bounty" style="display:none;position:absolute;left:50%;bottom:44px;transform:translateX(-50%);font:600 11px var(--mono);letter-spacing:.1em;color:var(--accent)"></div>
   <div id="shop" class="panel">
     <h3>WAFFENKAMMER<span>.</span></h3>
     <div class="sub">Konto <b id="shop-konto">0 €</b> · Ziffer kauft · <b>K</b> schließt</div>
@@ -42585,7 +42588,13 @@ void main() {
     return { name: d.name, sub: `${d.magazine} rd \xB7 ${d.id === "rocket" ? "heavy" : d.auto ? "auto" : "semi"}` };
   });
   var KRIEG = {
-    reward: { feind: 1200, copMech: 400, building: 150, cop: 150, hostile: 200, wreckPolice: 250, wreckCivil: 80 },
+    reward: { feind: 1200, copMech: 400, building: 150, cop: 150, hostile: 200, wreckPolice: 250, wreckCivil: 80, titan: 5e3, arenaWelle: 800 },
+    raubRollen: {
+      // Runde 20: Gegner-Vielfalt
+      sprinter: { hp: 260, speed: 8.4, scale: 0.82, burst: 4, range: 15 },
+      artillery: { hp: 440, speed: 2.2, scale: 1.18, burst: 2, range: 105, weaponId: "rocket", fluchtdistanz: 45 },
+      titan: { hp: 4200, speed: 2.6, scale: 2.3, burst: 14, range: 60, weaponId: "mg" }
+    },
     attribution: 10,
     // s: ein Wrack zahlt nur, wenn der Spieler in diesem Fenster den Treffer setzte
     polizei: {
@@ -48077,6 +48086,37 @@ void main() {
       this.buildSpawns();
       this.buildBoundary();
       this.instanceBuildings();
+      {
+        const wasser = new Mesh(new PlaneGeometry(980, 170), new MeshStandardMaterial({ color: 863027, roughness: 0.18, metalness: 0.35, emissive: 401964, emissiveIntensity: 0.5 }));
+        wasser.rotation.x = -Math.PI / 2;
+        wasser.position.set(0, -0.4, -(EXT + 90));
+        wasser.name = "Wasser";
+        this.group.add(wasser);
+        this.wasserMat = wasser.material;
+        const contGeo = new BoxGeometry(6.1, 2.6, 2.45);
+        const contMat = new MeshStandardMaterial({ color: 16777215, roughness: 0.7, metalness: 0.2 });
+        const conts = new InstancedMesh(contGeo, contMat, 16);
+        conts.name = "Container";
+        conts.castShadow = true;
+        conts.receiveShadow = true;
+        const cF = [[9058858], [2775690], [3832394], [10123818]];
+        let ci2 = 0;
+        for (let row = 0; row < 4 && ci2 < 16; row++) for (let k = 0; k < 4 && ci2 < 16; k++) {
+          _p.set(-228 + row * 152 + row % 2 * 8, 1.3 + k % 2 * 2.6, -(EXT + 14 + k % 3 * 3.4));
+          _q.setFromAxisAngle(UP, row % 2 ? 0.12 : -0.08);
+          _s.set(1, 1, 1);
+          _m.compose(_p, _q, _s);
+          conts.setMatrixAt(ci2, _m);
+          conts.setColorAt(ci2, _c3.set(cF[row % 4][0]));
+          const box2 = AABB.fromCenter(_p.x, 0, _p.z, 6.1, 2.6 + k % 2 * 2.6, 2.45);
+          box2.tag = "prop";
+          this.addStatic(box2, "prop");
+          ci2++;
+        }
+        conts.instanceMatrix.needsUpdate = true;
+        if (conts.instanceColor) conts.instanceColor.needsUpdate = true;
+        this.group.add(conts);
+      }
       this.group.updateMatrixWorld(true);
       this.group.traverse((o) => {
         o.matrixAutoUpdate = false;
@@ -48229,9 +48269,12 @@ void main() {
       const d = Math.hypot(G2.player.pos.x - cx, G2.player.pos.z - cz);
       G2.gcam.addShake(Math.max(0, 1.4 - d / 60));
       G2.police.crime("explosion", { x: cx, y: 0, z: cz });
-      if (G2.krieg && d < 160) {
-        G2.krieg.pay(KRIEG.reward.building);
-        G2.ui.msg("+" + KRIEG.reward.building + " \u20AC", "Geb\xE4ude eingeebnet", 1.4);
+      if (G2.krieg) {
+        G2.krieg.kollapsZaehler = (G2.krieg.kollapsZaehler || 0) + 1;
+        if (d < 160) {
+          G2.krieg.pay(KRIEG.reward.building);
+          G2.ui.msg("+" + KRIEG.reward.building + " \u20AC", "Geb\xE4ude eingeebnet", 1.4);
+        }
       }
     }
     // ---------- ground & slabs ------------------------------------------------------------------
@@ -56647,9 +56690,11 @@ void main() {
       this.cop = !!opts.cop;
       this.weaponId = "mg";
       this.tier = opts.tier || "std";
-      const T = this.cop ? KRIEG.polizei[this.tier] : null;
+      const T = this.cop ? KRIEG.polizei[this.tier] : KRIEG.raubRollen && KRIEG.raubRollen[this.tier] || null;
       this.s = T ? T.scale : 1;
       this.speedMax = T ? T.speed : KRIEG.feind.walkSpeed;
+      this.weaponId = T && T.weaponId ? T.weaponId : "mg";
+      this.flucht = T && T.fluchtdistanz || 0;
       this.mesh = makeMechMesh();
       if (this.s !== 1) this.mesh.scale.setScalar(this.s);
       G2.scene.add(this.mesh);
@@ -56667,7 +56712,8 @@ void main() {
       this.vy = KRIEG.feind.drop.vy0;
       this.yaw = rand(0, Math.PI * 2);
       this.state = "falling";
-      this.hp = this.nest ? KRIEG.feind.hpNest : T ? T.hp : KRIEG.feind.hp;
+      this.hp = this.nest ? KRIEG.feind.hpNest : T && T.hp ? T.hp : KRIEG.feind.hp;
+      this.maxHealth = this.hp;
       this.maxHealth = this.hp;
       this.wrecked = false;
       this.dead = false;
@@ -56677,7 +56723,7 @@ void main() {
       this.torsoYaw = 0;
       this.dmgFlash = 0;
       this.lastHurt = -99;
-      this.burst = { n: 0, t: 0, cd: rand(1.2, 2.2), rounds: T ? T.burst : KRIEG.feind.burst.rounds };
+      this.burst = { n: 0, t: 0, cd: rand(1.2, 2.2), rounds: T && T.burst ? T.burst : KRIEG.feind.burst.rounds, gap: this.weaponId === "rocket" ? 0.5 : KRIEG.feind.burst.gap };
       this.restPose();
       this.updateMesh();
       this.aabb = new AABB(0, 0, 0, 0, 0, 0);
@@ -56948,13 +56994,15 @@ void main() {
         const soll = Math.atan2(dx, dz);
         this.yaw = dampAngle(this.yaw, soll, KRIEG.feind.turnRate * 2, dt2);
         this.torsoYaw = clamp2(angleDelta(this.yaw, soll), -0.7, 0.7);
-        const willLaufen = d > KRIEG.feind.range && !P.dead;
+        const sollRange = this.tier === "artillery" ? KRIEG.raubRollen.artillery.range : this.tier === "sprinter" ? KRIEG.raubRollen.sprinter.range : KRIEG.feind.range;
+        const ruck = this.tier === "artillery" && d < KRIEG.raubRollen.artillery.fluchtdistanz;
+        const willLaufen = ruck ? true : d > sollRange && !P.dead;
         const F = KRIEG.feind;
         this.speed = clamp2(this.speed + (willLaufen ? F.accel : -F.accel * 1.6) * dt2, 0, this.speedMax);
         if (this.speed > 0.05) {
-          const s = Math.sin(this.yaw), c = Math.cos(this.yaw);
-          this.pos.x += dx / d * this.speed * dt2;
-          this.pos.z += dz / d * this.speed * dt2;
+          const richt = ruck ? -1 : 1;
+          this.pos.x += dx / d * this.speed * dt2 * richt;
+          this.pos.z += dz / d * this.speed * dt2 * richt;
         }
         this.phase += dt2 * (2.4 * this.speed / this.speedMax + (this.speed > 0.05 ? 0.4 : 0));
         const B2 = F.burst;
@@ -57026,25 +57074,89 @@ void main() {
       this._prevTs = 1;
       this._attachedMech = null;
       this._anbauten = [];
+      this.loadSave();
+      this.bounty = null;
+      this.bountyT = 6;
+      this.arena = null;
+      this.raubKills = 0;
+      this.titanDead = 0;
+    }
+    // ---------------- Persistenz (Runde 20) ----------------
+    save() {
+      try {
+        localStorage.setItem("blocks.save", JSON.stringify({ m: this.money, u: [...this.owned], k: this.G.stats.kills || 0, w: this.G.stats.wrecks || 0, best: this.arenaBest || 0, titan: this.titanDead }));
+      } catch (e) {
+      }
+    }
+    loadSave() {
+      try {
+        const d = JSON.parse(localStorage.getItem("blocks.save") || "null");
+        if (!d) return;
+        this.money = d.m || 0;
+        this.owned = new Set(d.u || []);
+        this._savedKills = d.k || 0;
+        this._savedWrecks = d.w || 0;
+        this.arenaBest = d.best || 0;
+        this.titanDead = d.titan || 0;
+      } catch (e) {
+      }
+    }
+    wipeSave() {
+      try {
+        localStorage.removeItem("blocks.save");
+      } catch (e) {
+      }
+      location.reload();
     }
     // ---------------- Geld ----------------
     pay(n2) {
       this.money += n2;
       this.G.ui.moneyPop(n2);
+      this.saveSoon();
+    }
+    saveSoon() {
+      this._saveT = 2;
+    }
+    saveTick(dt2) {
+      if (this._saveT > 0) {
+        this._saveT -= dt2;
+        if (this._saveT <= 0) {
+          this.save();
+          if (this.G.stats) {
+            this.G.stats.kills += 0;
+          }
+        }
+      }
     }
     onFeindKill(f) {
       const istCop = f && f.cop;
-      this.pay(istCop ? KRIEG.reward.copMech : KRIEG.reward.feind);
-      this.G.ui.msg("+" + geld(istCop ? KRIEG.reward.copMech : KRIEG.reward.feind), istCop ? "Polizei-Mech verschrottet" : "Raub-Mech verschrottet", 1.6);
+      const istTitan = f && f.tier === "titan";
+      this.pay(istTitan ? KRIEG.reward.titan : istCop ? KRIEG.reward.copMech : KRIEG.reward.feind);
+      this.G.ui.msg("+" + geld(istTitan ? KRIEG.reward.titan : istCop ? KRIEG.reward.copMech : KRIEG.reward.feind), istTitan ? "TITAN ZERLEGT" : istCop ? "Polizei-Mech verschrottet" : "Raub-Mech verschrottet", istTitan ? 3.2 : 1.6);
+      if (!istCop) {
+        this.feilZaeler = (this.feilZaeler || 0) + 1;
+        if (!istTitan) this.raubKills++;
+        if (this.raubKills > 0 && this.raubKills % 5 === 0 && !this.list.some((x) => x.tier === "titan" && !x.dead)) {
+          const p = this.wellenSpawn();
+          if (p) {
+            this.spawnFeind(p.x, p.z, { tier: "titan" });
+            this.G.ui.msg("TITAN-SIGNAL", "Etwas GROSSES kommt runter", 3);
+          }
+        }
+        this.save();
+      }
     }
     onNpcKill(n2) {
-      if (n2.cop) this.pay(KRIEG.reward.cop);
-      else if (n2.hostile) this.pay(KRIEG.reward.hostile);
+      if (n2.cop) {
+        this.pay(KRIEG.reward.cop);
+        this.copKillZaehler = (this.copKillZaehler || 0) + 1;
+      } else if (n2.hostile) this.pay(KRIEG.reward.hostile);
     }
     onVehicleWreck(v) {
       const G2 = this.G;
       if (v.lastHitBy !== "player" || G2.time - (v.lastHitT ?? -99) > KRIEG.attribution) return;
       this.pay(v.def.police ? KRIEG.reward.wreckPolice : KRIEG.reward.wreckCivil);
+      if (v.def.police) this.wreckCopZaehler = (this.wreckCopZaehler || 0) + 1;
     }
     // ---------------- Shop ----------------
     toggleShop() {
@@ -57079,6 +57191,7 @@ void main() {
       this.owned.add(u2.id);
       this.anwenden(u2);
       this.anbauen();
+      this.save();
       this.G.ui.renderShop();
       this.G.ui.msg(u2.name + " EINGEBAUT", "-" + geld(u2.preis), 1.8);
       this.G.audio.ui("kill");
@@ -57154,6 +57267,13 @@ void main() {
       const cx = (b) => (b.lot.minX + b.lot.maxX) / 2, cz = (b) => (b.lot.minZ + b.lot.maxZ) / 2;
       if (stunt) this.spawnFeind(cx(stunt), cz(stunt), { nest: true });
       if (indus) this.spawnFeind(cx(indus), cz(indus), { nest: true });
+      this.pads = this.G.world.buildings.filter((b) => b.aabb.maxY >= 18).slice(0, 8).map((b) => ({ x: b.x, z: b.z, y: b.aabb.maxY }));
+      for (const p of this.pads) {
+        const ring = new window.THREE.Mesh(new window.THREE.TorusGeometry(5.5, 0.28, 8, 36), new window.THREE.MeshStandardMaterial({ color: 1712166, emissive: 6543103, emissiveIntensity: 1.1 }));
+        ring.rotation.x = Math.PI / 2;
+        ring.position.set(p.x, p.y + 0.15, p.z);
+        this.G.scene.add(ring);
+      }
       this.nestsDone = true;
     }
     // Runde 16: Polizei-Mech-Kader — ab 4★ kommen den Cops eigene Walker zu Hilfe (klein, ab 5★ auch schwer).
@@ -57186,7 +57306,19 @@ void main() {
     }
     update(dt2) {
       const G2 = this.G;
-      if (!this.nestsDone && G2.state === "playing" && G2.realTime > 3) this.nester();
+      if (!this.nestsDone && G2.state === "playing" && G2.realTime > 3) {
+        this.nester();
+        if (this._savedKills) {
+          G2.stats.kills += this._savedKills;
+          G2.stats.wrecks += this._savedWrecks || 0;
+          this._savedKills = 0;
+        }
+        this.upgradesLoaden = true;
+        for (const u2 of KRIEG.upgrades) if (this.owned.has(u2.id)) this.anwenden(u2);
+      }
+      this.bountyUpdate(dt2);
+      this.arenaUpdate(dt2);
+      this.stationen(dt2);
       this.polizeiKader(dt2);
       const m = G2.mechSys.mech;
       if (m && !m.wrecked) {
@@ -57201,7 +57333,10 @@ void main() {
           const n2 = Math.min(KRIEG.feind.wave.count(this.wave), KRIEG.feind.wave.maxAlive - alive);
           for (let i = 0; i < n2; i++) {
             const p = this.wellenSpawn();
-            if (p) this.spawnFeind(p.x, p.z);
+            if (!p) continue;
+            const w = Math.random();
+            const tier = this.wave >= 2 && w < 0.2 ? "artillery" : this.wave >= 1 && w < 0.4 ? "sprinter" : "std";
+            this.spawnFeind(p.x, p.z, tier === "std" ? {} : { tier });
           }
           this.wave++;
           this.waveT = KRIEG.feind.wave.every;
@@ -57215,8 +57350,122 @@ void main() {
         }
       }
     }
+    // ---------------- Runde 20: Bounty-Kette (Kampf-Auftraege) ----------------
+    bountyUpdate(dt2) {
+      const G2 = this.G;
+      if (this.saveTick) this.saveTick(dt2);
+      if (this.arena) return;
+      if (!this.bounty) {
+        this.bountyT -= dt2;
+        if (this.bountyT <= 0) this.bountyStart();
+        return;
+      }
+      const B2 = this.bounty;
+      if (B2.ist(G2, B2)) {
+        this.pay(B2.lohn);
+        G2.ui.msg("BOUNTY ERFUELLT", B2.text + " \xB7 +" + geld(B2.lohn), 2.6);
+        this.bounty = null;
+        this.bountyT = 14;
+        this.save();
+      } else if (B2.zeit !== void 0) {
+        B2.rest -= dt2;
+        if (B2.rest <= 0) {
+          G2.ui.msg("BOUNTY VERPASST", B2.text, 2);
+          this.bounty = null;
+          this.bountyT = 20;
+        }
+      } else if (B2.istZero && B2.istZero(G2, B2)) {
+        G2.ui.msg("BOUNTY VERPASST", B2.text, 2);
+        this.bounty = null;
+        this.bountyT = 20;
+      }
+    }
+    bountyStart() {
+      const G2 = this.G;
+      const pool = [
+        { text: "3 Raub-Mechs abschalten", lohn: 900, brauch: { feind: 3 }, ist: (G3, B3) => G3.krieg.feilZaeler >= B3.brauch.feind + B3.startFeind },
+        { text: "8 Streifenwagen verschrotten", lohn: 600, brauch: {}, ist: (G3, B3) => G3.krieg.wreckCopZaehler >= 8 + B3.startWreck },
+        { text: "6 Cops abschalten", lohn: 500, brauch: {}, ist: (G3, B3) => G3.krieg.copKillZaehler >= 6 + B3.startCop },
+        { text: "Ein Geb\xE4ude einebnen", lohn: 400, brauch: {}, ist: (G3, B3) => G3.krieg.kollapsZaehler >= 1 + B3.startKollaps }
+      ];
+      const B2 = pool[Math.floor(Math.random() * pool.length)];
+      B2.startFeind = this.feilZaeler || 0;
+      B2.startWreck = this.wreckCopZaehler || 0;
+      B2.startCop = this.copKillZaehler || 0;
+      B2.startKollaps = this.kollapsZaehler || 0;
+      B2.rest = 240;
+      this.bounty = B2;
+      G2.ui.msg("BOUNTY", B2.text + " \xB7 +" + geld(B2.lohn), 3);
+    }
+    // ---------------- Runde 20: Tankstellen + Dach-Pads ----------------
+    stationen(dt2) {
+      const G2 = this.G, m = G2.mechSys.mech;
+      if (!m || !m.piloted || m.wrecked) return;
+      const unterwegs = this.zoneArt(m.pos.x, m.pos.z, m.pos.y);
+      if (unterwegs && m.fuel < 1) {
+        m.fuel = Math.min(1, m.fuel + dt2 / KRIEG.fuelTime * 4);
+        if (!this._tankMsg) {
+          G2.ui.msg("TANKSTELLE", "D\xFCsen f\xFCllen \xB7 Panzerung schweisst", 1.6);
+          this._tankMsg = true;
+        }
+      } else this._tankMsg = false;
+      if (unterwegs && m.hp < m.maxHealth) m.hp = Math.min(m.maxHealth, m.hp + 45 * dt2);
+    }
+    zoneArt(x, z, y2) {
+      const gas = this.G.world.blocks.find((b) => b.template === "gas");
+      if (gas && x > gas.lot.minX && x < gas.lot.maxX && z > gas.lot.minZ && z < gas.lot.maxZ) return "gas";
+      for (const p of this.pads) {
+        if (Math.hypot(p.x - x, p.z - z) < 7 && Math.abs(p.y - y2) < 3) return "pad";
+      }
+      return null;
+    }
+    // ---------------- Runde 20: Arena-Modus (Plaza-Verteidigung) ----------------
+    arenaToggle() {
+      const G2 = this.G;
+      if (this.arena) {
+        this.arena = null;
+        for (const f of this.list) if (!f.cop) f.damage(9999, "explosion", "system");
+        G2.ui.msg("ARENA VORBEI", "Best: " + (this.arenaBest || 0) + " Wellen", 3);
+        this.save();
+        return;
+      }
+      const plaza = G2.world.blocks.find((b) => b.template === "plaza");
+      if (!plaza) return;
+      const cx = (plaza.lot.minX + plaza.lot.maxX) / 2, cz = (plaza.lot.minZ + plaza.lot.maxZ) / 2;
+      this.arena = { cx, cz, welle: 0, t: 2.5 };
+      G2.ui.msg("ARENA", "Verteidige die Plaza \u2014 5 Wellen", 3.2);
+    }
+    arenaUpdate(dt2) {
+      const A2 = this.arena;
+      if (!A2) return;
+      const G2 = this.G;
+      const feinds = this.list.filter((f) => !f.cop && !f.dead && f.arena);
+      if (!feinds.length) {
+        A2.t -= dt2;
+        if (A2.t <= 0) {
+          A2.welle++;
+          if (A2.welle > 5) {
+            const bonus = 5e3;
+            this.pay(bonus);
+            this.arenaBest = Math.max(this.arenaBest || 0, 5);
+            G2.ui.msg("ARENA GESCHAFFT", "+5000 \u20AC \xB7 Best: " + (this.arenaBest || 0) + " Wellen", 4);
+            this.arena = null;
+            this.save();
+            return;
+          }
+          this.pay(KRIEG.reward.arenaWelle);
+          for (let i = 0; i < 1 + A2.welle; i++) {
+            const a = i / (1 + A2.welle) * 6.283;
+            const f = this.spawnFeind(A2.cx + Math.sin(a) * 55, A2.cz + Math.cos(a) * 55, A2.welle >= 3 && i === 0 ? { tier: "artillery" } : {});
+            f.arena = true;
+          }
+          A2.t = 9;
+          G2.ui.msg("WELLE " + A2.welle + " / 5", "+" + geld(KRIEG.reward.arenaWelle) + " \xB7 N\xE4here dich nicht dem Ausgang", 2.6);
+        }
+      }
+    }
     debug() {
-      return { money: this.money, owned: [...this.owned], feinds: this.list.map((f) => ({ state: f.state, hp: Math.round(f.hp), d: Math.round(Math.hypot(f.pos.x - this.G.player.pos.x, f.pos.z - this.G.player.pos.z)), nest: f.nest, cop: f.cop, tier: f.tier })), wave: this.wave, waveT: +this.waveT.toFixed(1), shop: this.shopOpen, anbauten: this._anbauten.length };
+      return { money: this.money, owned: [...this.owned], feinds: this.list.map((f) => ({ state: f.state, hp: Math.round(f.hp), d: Math.round(Math.hypot(f.pos.x - this.G.player.pos.x, f.pos.z - this.G.player.pos.z)), nest: f.nest, cop: f.cop, tier: f.tier })), wave: this.wave, waveT: +this.waveT.toFixed(1), shop: this.shopOpen, anbauten: this._anbauten.length, arena: this.arena ? this.arena.welle : 0, titan: this.list.some((f) => f.tier === "titan" && !f.dead), bounty: this.bounty ? this.bounty.text : null };
     }
   };
 
@@ -57226,7 +57475,7 @@ void main() {
   var UI = class {
     constructor(G2) {
       this.G = G2;
-      this.el = { hp: $("hpbar"), wname: $("wname"), wammo: $("wammo"), reload: $("reload"), speedo: $("speedo"), kmh: $("kmh"), gear: $("gear"), rpm: $("rpm").firstElementChild, vname: $("vname"), prompt: $("prompt"), msg: $("msg"), vign: $("vignette"), fade: $("fade"), wheel: $("wheel"), wheelName: $("wheel-name"), cross: $("cross"), hitmark: $("hitmark"), controls: $("controls"), kills: $("kills"), wrecks: $("wrecks"), fps: $("fps"), flash: $("flash"), wanted: $("wanted"), stars: Array.from($("stars").children), starsBox: $("stars"), wlabel: $("wlabel"), evade: $("evade").firstElementChild, dmgdir: $("dmgdir"), radio: $("radio"), radioSt: $("radio-st"), radioTt: $("radio-tt"), mmode: $("mmode"), marmour: $("marmour"), mwname: $("mwname"), mwstat: $("mwstat"), mheat: $("mheat"), mfuel: $("mfuel"), mkeys: $("mkeys"), mradio: $("mradio"), mradioSt: $("mradio-st"), mradioTt: $("mradio-tt"), money: $("money"), moneypop: $("moneypop"), shop: $("shop"), shopRows: $("shop-rows") };
+      this.el = { hp: $("hpbar"), wname: $("wname"), wammo: $("wammo"), reload: $("reload"), speedo: $("speedo"), kmh: $("kmh"), gear: $("gear"), rpm: $("rpm").firstElementChild, vname: $("vname"), prompt: $("prompt"), msg: $("msg"), vign: $("vignette"), fade: $("fade"), wheel: $("wheel"), wheelName: $("wheel-name"), cross: $("cross"), hitmark: $("hitmark"), controls: $("controls"), kills: $("kills"), wrecks: $("wrecks"), fps: $("fps"), flash: $("flash"), wanted: $("wanted"), stars: Array.from($("stars").children), starsBox: $("stars"), wlabel: $("wlabel"), evade: $("evade").firstElementChild, dmgdir: $("dmgdir"), radio: $("radio"), radioSt: $("radio-st"), radioTt: $("radio-tt"), mmode: $("mmode"), marmour: $("marmour"), mwname: $("mwname"), mwstat: $("mwstat"), mheat: $("mheat"), mfuel: $("mfuel"), mkeys: $("mkeys"), mradio: $("mradio"), mradioSt: $("mradio-st"), mradioTt: $("mradio-tt"), money: $("money"), moneypop: $("moneypop"), shop: $("shop"), shopRows: $("shop-rows"), titan: $("titanbar"), titanLabel: $("titan-label"), arena: $("arena"), bounty: $("bounty") };
       this.mm = $("mm");
       this.mctx = this.mm.getContext("2d");
       this.hurtT = 0;
@@ -57408,6 +57657,20 @@ void main() {
     }
     update(dt2) {
       const G2 = this.G, P = G2.player;
+      const titan = G2.krieg && G2.krieg.list.find((f) => f.tier === "titan" && !f.dead);
+      if (titan) {
+        this.el.titan.style.display = "block";
+        this.el.titan.firstElementChild.style.width = (100 * titan.hp / titan.maxHealth).toFixed(1) + "%";
+        this.el.titanLabel.textContent = "TITAN \xB7 " + Math.round(titan.hp) + " HP";
+      } else if (this.el.titan.style.display !== "none") this.el.titan.style.display = "none";
+      if (G2.krieg && G2.krieg.arena && this.el.arena) {
+        this.el.arena.textContent = "ARENA \xB7 WELLE " + G2.krieg.arena.welle + " / 5";
+        this.el.arena.style.display = "block";
+      } else if (this.el.arena) this.el.arena.style.display = "none";
+      if (G2.krieg && this.el.bounty) {
+        const B2 = G2.krieg.bounty;
+        this.el.bounty.textContent = B2 ? "BOUNTY: " + B2.text + (B2.rest !== void 0 ? " \xB7 " + Math.ceil(B2.rest) + "s" : "") : "";
+      }
       const hp = clamp2(P.health / 100, 0, 1);
       this.el.hp.firstElementChild.style.width = (hp * 100).toFixed(1) + "%";
       this.el.hp.classList.toggle("low", hp < 0.35);
@@ -58600,6 +58863,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this.armRaise = 0;
       this.aimPoint = new Vector3();
       this.gun = { on: false, hit: null, spin: 0, cd: 0, n: 0, decalT: 0, tr: [], end: new Vector3() };
+      this.rail = { charge: 0, heat: 0, wasFire: false };
       this.lights = [];
       this.loop = null;
       this.smokeT = 0;
@@ -58996,6 +59260,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           return 0.35;
         }
       } else if (moving && fwd > 0 && I2.down("Space") && this.onGround && this.fuel > 0.02) {
+        window.__qaC = { m: moving, f: fwd, sp: I2.down("Space"), og: this.onGround, fu: +this.fuel.toFixed(2), fly: this.flying };
         const fx2 = this.pos.x + Math.sin(this.yaw) * 3, fz2 = this.pos.z + Math.cos(this.yaw) * 3;
         const box2 = G2.world.wallAhead(fx2, fz2, this.pos.y);
         if (box2) {
@@ -59003,6 +59268,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           this.vel.set(0, 0, 0);
           this.speed = 0;
           G2.audio.mechStep(this.pos, 1);
+          window.__climbTry = (window.__climbTry || 0) + 1;
         }
       }
       const wheelOpen = G2.weapons.wheelOpen;
@@ -59012,7 +59278,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         G2.ui.msg("AIM MODE", "strafe \xB7 body follows the crosshair", 1.1);
       }
       this.aimMode = aimMode;
-      if (I2.pressed("KeyQ") && !G2.weapons.wheelOpen) this.selectWeapon(1 - this.weapon);
+      if (I2.pressed("KeyQ") && !G2.weapons.wheelOpen) this.selectWeapon((this.weapon + 1) % 3);
       if (I2.pressed("KeyF") && this.onGround && this.stomp.t < 0 && this.stomp.cd <= 0 && !this.flying) {
         this.stomp.t = 0;
       }
@@ -59212,8 +59478,10 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
             if (this.salvo === 0) this.reloadT = MECH.missiles.reload;
           }
         }
-      } else {
+      } else if (this.weapon === 1) {
         this.gunTrigger(fire && this.overheat <= 0 && this.heat < 1);
+      } else {
+        this.updateRail(fire && this.rail.heat < 1, dt2);
       }
       this.armRaise = damp2(this.armRaise, aiming || this.gun.on || this.firing > 0 || this.weapon === 1 ? 1 : 0, 8, dt2);
       this.wind = clamp2(Math.hypot(this.vel.x, this.vel.y, this.vel.z) / 22, 0, 1);
@@ -59221,15 +59489,16 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     }
     // Runde 13: die zwei Mech-Waffen in der Form, die das Rad erwartet (defs.js weaponWheelItems liefert dieselbe Form zu Fuss)
     wheelItems() {
-      return [{ name: "MISSILES", sub: `${MECH.missiles.salvo} rd \xB7 salvo` }, { name: "MINIGUN", sub: "auto \xB7 heat" }];
+      return [{ name: "MISSILES", sub: `${MECH.missiles.salvo} rd \xB7 salvo` }, { name: "MINIGUN", sub: "auto \xB7 heat" }, { name: "RAILGUN", sub: "aufladen \xB7 durchschlag" }];
     }
     selectWeapon(i) {
-      const w = i ? 1 : 0;
+      const w = Math.max(0, Math.min(2, i | 0));
       if (w === this.weapon) return;
       this.weapon = w;
       this.gunStop();
+      this.rail.charge = 0;
       this.G.audio.ui("tick");
-      this.G.ui.msg(w ? "MINIGUN" : "MISSILES", w ? "hold to fire \xB7 spins up" : `${MECH.missiles.salvo}-round salvo`, 1.2);
+      this.G.ui.msg(w === 0 ? "MISSILES" : w === 1 ? "MINIGUN" : "RAILGUN", w === 0 ? `${MECH.missiles.salvo}-round salvo` : w === 1 ? "hold to fire \xB7 spins up" : "halten zum Aufladen \xB7 durchschlaegt alles", 1.2);
     }
     aim() {
       const G2 = this.G, cam = G2.gcam;
@@ -59558,6 +59827,84 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         const r = hit.ref;
         G2.props.impulse(r, _d4.x * 9, 3, _d4.z * 9, hit.x, hit.y, hit.z);
         if (G2.props.damage(r, Gd.propDamage, hit.x, hit.y, hit.z)) G2.ui.hitmarker(true);
+      }
+    }
+    // ---- Runde 20: Railgun — halten zum Aufladen, Schuss mit Durchschlag (trifft alles auf der Linie) ----
+    updateRail(fire, dt2) {
+      const G2 = this.G, r = this.rail;
+      r.heat = Math.max(0, r.heat - dt2 * 0.45);
+      if (!fire) {
+        if (r.charge > 0 && r.wasFire !== false) {
+        }
+        if (r.charge > 0.99) {
+          this.fireRailgun();
+          r.charge = 0;
+          r.heat = Math.min(1, r.heat + 0.55);
+        } else if (r.charge > 0 && r.wasFire) {
+          r.charge = Math.max(0, r.charge - dt2 * 2);
+        }
+        r.wasFire = fire;
+        return;
+      }
+      r.wasFire = true;
+      r.charge = Math.min(1, r.charge + dt2 / 1.1);
+      if (r.charge < 1) {
+        if (Math.random() < 0.25) G2.audio.ui("tick");
+        this.lights.push({ x: this.pos.x, y: this.pos.y + 5, z: this.pos.z, R: 8, r: 0.5, g: 0.85, b: 1, I: 40 * r.charge });
+        return;
+      }
+      this.fireRailgun();
+      r.charge = 0;
+      r.heat = Math.min(1, r.heat + 0.55);
+    }
+    fireRailgun() {
+      const G2 = this.G;
+      this.P.LaserMuzzle.getWorldPosition(_a4);
+      _d4.subVectors(this.aimPoint, _a4).normalize();
+      G2.audio.gunshot("mg", _a4);
+      G2.audio.explosion(_a4, 0.5);
+      G2.fx.muzzle(_a4, _d4.x, _d4.y, _d4.z, 1.4);
+      G2.gcam.addShake(0.5);
+      G2.gcam.addKick(0, 0, 0, 7);
+      G2.postfx.flash = Math.max(G2.postfx.flash, 0.2);
+      this.lights.push({ x: _a4.x, y: _a4.y, z: _a4.z, R: 16, r: 0.55, g: 0.85, b: 1, I: 260 });
+      let ox = _a4.x, oy = _a4.y, oz = _a4.z;
+      let treffer = 0;
+      for (let seg = 0; seg < 4 && treffer < 4; seg++) {
+        const hit = G2.weapons.raycastWorld(ox, oy, oz, _d4.x, _d4.y, _d4.z, 400, { ignoreMech: true, player: false, ignoreVehicle: null, ignoreNpc: null, minT: 0.4 });
+        const t2 = hit ? hit.t : 400;
+        const ex = ox + _d4.x * t2, ey = oy + _d4.y * t2, ez = oz + _d4.z * t2;
+        const h = G2.fx.tracerAcquire(9427199, 0.16);
+        if (h) {
+          G2.fx.tracerSet(h, ox, oy, oz, ex, ey, ez);
+          setTimeout(() => G2.fx.tracerRelease(h), 90);
+        }
+        if (!hit) break;
+        if (hit.kind === "mech") {
+          const dmg = hit.ref.isFeind ? 520 : 40;
+          hit.ref.damage(dmg, "rail", "player");
+          G2.ui.hitmarker(hit.ref.dead);
+          G2.ui.dmgNumber(hit.x, hit.y + 0.6, hit.z, Math.round(dmg), hit.ref.dead);
+          treffer++;
+        } else if (hit.kind === "vehicle") {
+          hit.ref.damage(260, "rail", "player");
+          hit.ref.impulse(_d4.x * 600, _d4.z * 600, hit.x, hit.z);
+          G2.ui.hitmarker(hit.ref.wrecked);
+          treffer++;
+        } else if (hit.kind === "building") {
+          G2.world.damageBuilding(hit.ref, 340, hit.x, hit.y, hit.z);
+          treffer++;
+        } else if (hit.kind === "npc") {
+          G2.npcs.damage(hit.ref, 500, _d4.x, _d4.y, _d4.z, false, true, hit);
+          treffer++;
+        } else {
+          G2.fx.sparks(hit, 14, hit.nx, hit.ny, hit.nz);
+          G2.fx.decal(hit, hit.nx, hit.ny, hit.nz, 1.4);
+          break;
+        }
+        ox = hit.x + _d4.x * 0.9;
+        oy = hit.y + _d4.y * 0.9;
+        oz = hit.z + _d4.z * 0.9;
       }
     }
     // ---- entry / exit hooks (called by player.js) ---------------------------------------------------------------------------
@@ -60091,6 +60438,21 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     let lodFar = 0;
     const near2 = new Vector3();
     function frame(now) {
+      const rainGeo2 = new BufferGeometry();
+      const rainN2 = 700;
+      const rainPos2 = new Float32Array(rainN2 * 3);
+      for (let i = 0; i < rainN2; i++) {
+        rainPos2[i * 3] = randSpread(60);
+        rainPos2[i * 3 + 1] = Math.random() * 40;
+        rainPos2[i * 3 + 2] = randSpread(60);
+      }
+      rainGeo2.setAttribute("position", new BufferAttribute(rainPos2, 3));
+      const rain2 = new Points(rainGeo2, new PointsMaterial({ color: 10336472, size: 0.16, transparent: true, opacity: 0.55 }));
+      rain2.visible = false;
+      rain2.frustumCulled = false;
+      scene.add(rain2);
+      window.__regen = false;
+      let wetterT2 = 150;
       requestAnimationFrame(frame);
       const rawDt = Math.max(1e-4, (now - last) / 1e3);
       const realDt = Math.min(0.05, rawDt);
@@ -60112,6 +60474,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           G.time += dt2;
           if (!weapons.wheelOpen && (input.dx || input.dy)) gcam.look(input.dx, input.dy);
           if (input.pressed("KeyK") && !weapons.wheelOpen) krieg.toggleShop();
+          if (input.pressed("KeyN")) krieg.arenaToggle();
           if (krieg.shopOpen) krieg.shopInput();
           else if (input.pressed("KeyE") && !player.dead) {
             if (player.state === "vehicle") player.exitVehicle();
@@ -60190,6 +60553,25 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         updateSun();
         fx2.update(realDt);
       }
+      wetterT2 -= realDt;
+      if (wetterT2 <= 0) {
+        wetterT2 = 150;
+        if (Math.random() < 0.45) {
+          window.__regen = !window.__regen;
+          if (window.__regen) ui.msg("REGEN", "die Strasse gl\xE4nzt noch mehr", 2.4);
+        }
+      }
+      rain2.visible = !!window.__regen;
+      if (rain2.visible) {
+        rain2.position.set(camera.position.x, 0, camera.position.z);
+        const rp = rainGeo2.attributes.position;
+        for (let i = 0; i < rainN2; i++) {
+          let y2 = rp.getY(i) - realDt * 32;
+          if (y2 < 0) y2 = 38 + Math.random() * 4;
+          rp.setY(i, y2);
+        }
+        rp.needsUpdate = true;
+      }
       lodFar = updateLods(G);
       adaptResolution(rawDt);
       lighting.update(realDt);
@@ -60198,6 +60580,21 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       postfx.render();
       input.endFrame();
     }
+    const rainGeo = new BufferGeometry();
+    const rainN = 700;
+    const rainPos = new Float32Array(rainN * 3);
+    for (let i = 0; i < rainN; i++) {
+      rainPos[i * 3] = randSpread(60);
+      rainPos[i * 3 + 1] = Math.random() * 40;
+      rainPos[i * 3 + 2] = randSpread(60);
+    }
+    rainGeo.setAttribute("position", new BufferAttribute(rainPos, 3));
+    const rain = new Points(rainGeo, new PointsMaterial({ color: 10336472, size: 0.16, transparent: true, opacity: 0.55 }));
+    rain.visible = false;
+    rain.frustumCulled = false;
+    scene.add(rain);
+    window.__regen = false;
+    let wetterT = 150;
     requestAnimationFrame(frame);
     window.__dbg = {
       start: () => begin(),
@@ -60303,6 +60700,12 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       money: (n2) => {
         krieg.money += n2 === void 0 ? 5e3 : n2;
         return krieg.money;
+      },
+      arena: () => krieg.arenaToggle(),
+      save: () => krieg.save(),
+      wipe: () => krieg.wipeSave(),
+      regen: (on2) => {
+        window.__regen = on2 !== false;
       },
       buy: (id) => krieg.buy(id),
       toggleShop: () => krieg.toggleShop(),
