@@ -48160,7 +48160,7 @@ void main() {
       let best = null;
       for (const b of list) {
         if (b.dead || b.tag !== "building") continue;
-        if (x > b.minX - 0.1 && x < b.maxX + 0.1 && z > b.minZ - 0.1 && z < b.maxZ + 0.1 && b.maxY > feetY + 1.2) {
+        if (x > b.minX - 1.2 && x < b.maxX + 1.2 && z > b.minZ - 1.2 && z < b.maxZ + 1.2 && b.maxY > feetY + 1.2) {
           if (!best || b.maxY > best.maxY) best = b;
         }
       }
@@ -58730,6 +58730,8 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this.stopLoop();
       this.thrust = 0;
       this.flying = false;
+      this.climb = null;
+      this.roll = null;
       _v8.copy(this.pos);
       _v8.y += 3.5;
       G2.weapons.scheduleExplosion(_v8, 9, 22, 200, this, 0.05);
@@ -58959,7 +58961,11 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this.aimPitch = cam.pitch;
       if (this.climb) {
         const box2 = this.climb.box;
-        if (!moving || I2.pressed("Space") || this.fuel <= 1e-3 || this.pos.y + 4.6 * dt2 >= box2.maxY - 0.05) {
+        if (box2.dead) {
+          this.climb = null;
+          this.vel.set(0, 0, 0);
+        }
+        if (!I2.down("KeyW") || I2.pressed("Space") || this.fuel <= 1e-3 || this.pos.y + 4.6 * dt2 >= box2.maxY - 0.05) {
           if (this.pos.y + 4.6 * dt2 >= box2.maxY - 0.05) {
             this.pos.y = box2.maxY;
             const cxb = (box2.minX + box2.maxX) / 2, czb = (box2.minZ + box2.maxZ) / 2;
@@ -58990,7 +58996,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           return 0.35;
         }
       } else if (moving && fwd > 0 && I2.down("Space") && this.onGround && this.fuel > 0.02) {
-        const fx2 = this.pos.x + Math.sin(this.yaw) * 2.2, fz2 = this.pos.z + Math.cos(this.yaw) * 2.2;
+        const fx2 = this.pos.x + Math.sin(this.yaw) * 3, fz2 = this.pos.z + Math.cos(this.yaw) * 3;
         const box2 = G2.world.wallAhead(fx2, fz2, this.pos.y);
         if (box2) {
           this.climb = { box: box2 };
@@ -59578,10 +59584,14 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     beginPilot() {
       this.state = "piloted";
       this.driver = "player";
+      this.climb = null;
+      this.roll = null;
+      this._rollZ = 0;
       this.aimYaw = this.yaw;
       this.torsoYaw = 0;
       this.G.police.mechBoarded && this.G.police.mechBoarded(this);
     }
+    // QA-Fix: Flags nicht in die naechste Boarding-Session schleppen
     endPilot() {
       this.gunStop();
       this.state = "landed";
@@ -60101,7 +60111,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           G.dt = dt2;
           G.time += dt2;
           if (!weapons.wheelOpen && (input.dx || input.dy)) gcam.look(input.dx, input.dy);
-          if (input.pressed("KeyK")) krieg.toggleShop();
+          if (input.pressed("KeyK") && !weapons.wheelOpen) krieg.toggleShop();
           if (krieg.shopOpen) krieg.shopInput();
           else if (input.pressed("KeyE") && !player.dead) {
             if (player.state === "vehicle") player.exitVehicle();
