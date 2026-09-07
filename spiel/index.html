@@ -172,7 +172,7 @@
   <div id="flash"></div>
   <div id="status" class="panel"><span>KILLS <b id="kills">0</b></span><span>WRECKS <b id="wrecks">0</b></span><span>KONTO <b id="money">0 €</b></span></div>
   <div id="moneypop"></div>
-  <div id="wanted"><div id="stars"><i>★</i><i>★</i><i>★</i><i>★</i><i>★</i></div><div id="wlabel"></div><div id="evade"><b></b></div></div>
+  <div id="wanted"><div id="stars"><i>★</i><i>★</i><i>★</i><i>★</i><i>★</i><i>★</i></div><div id="wlabel"></div><div id="evade"><b></b></div></div>
   <div id="dmgdir"></div>
   <div id="minimap"><canvas id="mm" width="420" height="420"></canvas></div>
   <div id="fps"></div>
@@ -1989,12 +1989,12 @@
      * @param {number} [z=0] - The z value of this quaternion.
      * @param {number} [w=1] - The w value of this quaternion.
      */
-    constructor(x = 0, y2 = 0, z = 0, w = 1) {
+    constructor(x = 0, y2 = 0, z = 0, w2 = 1) {
       this.isQuaternion = true;
       this._x = x;
       this._y = y2;
       this._z = z;
-      this._w = w;
+      this._w = w2;
     }
     /**
      * Interpolates between two quaternions via SLERP. This implementation assumes the
@@ -2141,11 +2141,11 @@
      * @param {number} w - The w value of this quaternion.
      * @return {Quaternion} A reference to this quaternion.
      */
-    set(x, y2, z, w) {
+    set(x, y2, z, w2) {
       this._x = x;
       this._y = y2;
       this._z = z;
-      this._w = w;
+      this._w = w2;
       this._onChangeCallback();
       return this;
     }
@@ -2468,8 +2468,8 @@
     slerp(qb, t2) {
       if (t2 === 0) return this;
       if (t2 === 1) return this.copy(qb);
-      const x = this._x, y2 = this._y, z = this._z, w = this._w;
-      let cosHalfTheta = w * qb._w + x * qb._x + y2 * qb._y + z * qb._z;
+      const x = this._x, y2 = this._y, z = this._z, w2 = this._w;
+      let cosHalfTheta = w2 * qb._w + x * qb._x + y2 * qb._y + z * qb._z;
       if (cosHalfTheta < 0) {
         this._w = -qb._w;
         this._x = -qb._x;
@@ -2480,7 +2480,7 @@
         this.copy(qb);
       }
       if (cosHalfTheta >= 1) {
-        this._w = w;
+        this._w = w2;
         this._x = x;
         this._y = y2;
         this._z = z;
@@ -2489,7 +2489,7 @@
       const sqrSinHalfTheta = 1 - cosHalfTheta * cosHalfTheta;
       if (sqrSinHalfTheta <= Number.EPSILON) {
         const s = 1 - t2;
-        this._w = s * w + t2 * this._w;
+        this._w = s * w2 + t2 * this._w;
         this._x = s * x + t2 * this._x;
         this._y = s * y2 + t2 * this._y;
         this._z = s * z + t2 * this._z;
@@ -2499,7 +2499,7 @@
       const sinHalfTheta = Math.sqrt(sqrSinHalfTheta);
       const halfTheta = Math.atan2(sinHalfTheta, cosHalfTheta);
       const ratioA = Math.sin((1 - t2) * halfTheta) / sinHalfTheta, ratioB = Math.sin(t2 * halfTheta) / sinHalfTheta;
-      this._w = w * ratioA + this._w * ratioB;
+      this._w = w2 * ratioA + this._w * ratioB;
       this._x = x * ratioA + this._x * ratioB;
       this._y = y2 * ratioA + this._y * ratioB;
       this._z = z * ratioA + this._z * ratioB;
@@ -2921,10 +2921,10 @@
     applyMatrix4(m) {
       const x = this.x, y2 = this.y, z = this.z;
       const e = m.elements;
-      const w = 1 / (e[3] * x + e[7] * y2 + e[11] * z + e[15]);
-      this.x = (e[0] * x + e[4] * y2 + e[8] * z + e[12]) * w;
-      this.y = (e[1] * x + e[5] * y2 + e[9] * z + e[13]) * w;
-      this.z = (e[2] * x + e[6] * y2 + e[10] * z + e[14]) * w;
+      const w2 = 1 / (e[3] * x + e[7] * y2 + e[11] * z + e[15]);
+      this.x = (e[0] * x + e[4] * y2 + e[8] * z + e[12]) * w2;
+      this.y = (e[1] * x + e[5] * y2 + e[9] * z + e[13]) * w2;
+      this.z = (e[2] * x + e[6] * y2 + e[10] * z + e[14]) * w2;
       return this;
     }
     /**
@@ -4686,12 +4686,12 @@
      * @param {number} [z=0] - The z value of this vector.
      * @param {number} [w=1] - The w value of this vector.
      */
-    constructor(x = 0, y2 = 0, z = 0, w = 1) {
+    constructor(x = 0, y2 = 0, z = 0, w2 = 1) {
       _Vector4.prototype.isVector4 = true;
       this.x = x;
       this.y = y2;
       this.z = z;
-      this.w = w;
+      this.w = w2;
     }
     /**
      * Alias for {@link Vector4#z}.
@@ -4724,11 +4724,11 @@
      * @param {number} w - The value of the w component.
      * @return {Vector4} A reference to this vector.
      */
-    set(x, y2, z, w) {
+    set(x, y2, z, w2) {
       this.x = x;
       this.y = y2;
       this.z = z;
-      this.w = w;
+      this.w = w2;
       return this;
     }
     /**
@@ -4780,8 +4780,8 @@
      * @param {number} w - The value to set.
      * @return {Vector4} A reference to this vector.
      */
-    setW(w) {
-      this.w = w;
+    setW(w2) {
+      this.w = w2;
       return this;
     }
     /**
@@ -4980,12 +4980,12 @@
      * @return {Vector4} A reference to this vector.
      */
     applyMatrix4(m) {
-      const x = this.x, y2 = this.y, z = this.z, w = this.w;
+      const x = this.x, y2 = this.y, z = this.z, w2 = this.w;
       const e = m.elements;
-      this.x = e[0] * x + e[4] * y2 + e[8] * z + e[12] * w;
-      this.y = e[1] * x + e[5] * y2 + e[9] * z + e[13] * w;
-      this.z = e[2] * x + e[6] * y2 + e[10] * z + e[14] * w;
-      this.w = e[3] * x + e[7] * y2 + e[11] * z + e[15] * w;
+      this.x = e[0] * x + e[4] * y2 + e[8] * z + e[12] * w2;
+      this.y = e[1] * x + e[5] * y2 + e[9] * z + e[13] * w2;
+      this.z = e[2] * x + e[6] * y2 + e[10] * z + e[14] * w2;
+      this.w = e[3] * x + e[7] * y2 + e[11] * z + e[15] * w2;
       return this;
     }
     /**
@@ -7777,11 +7777,11 @@
      */
     compose(position, quaternion, scale) {
       const te2 = this.elements;
-      const x = quaternion._x, y2 = quaternion._y, z = quaternion._z, w = quaternion._w;
+      const x = quaternion._x, y2 = quaternion._y, z = quaternion._z, w2 = quaternion._w;
       const x2 = x + x, y22 = y2 + y2, z2 = z + z;
       const xx = x * x2, xy = x * y22, xz = x * z2;
       const yy = y2 * y22, yz = y2 * z2, zz = z * z2;
-      const wx = w * x2, wy = w * y22, wz = w * z2;
+      const wx = w2 * x2, wy = w2 * y22, wz = w2 * z2;
       const sx = scale.x, sy = scale.y, sz = scale.z;
       te2[0] = (1 - (yy + zz)) * sx;
       te2[1] = (xy + wz) * sx;
@@ -9609,7 +9609,7 @@
      */
     closestPointToPoint(p, target) {
       const a = this.a, b = this.b, c = this.c;
-      let v, w;
+      let v, w2;
       _vab.subVectors(b, a);
       _vac.subVectors(c, a);
       _vap.subVectors(p, a);
@@ -9637,19 +9637,19 @@
       }
       const vb = d5 * d2 - d1 * d6;
       if (vb <= 0 && d2 >= 0 && d6 <= 0) {
-        w = d2 / (d2 - d6);
-        return target.copy(a).addScaledVector(_vac, w);
+        w2 = d2 / (d2 - d6);
+        return target.copy(a).addScaledVector(_vac, w2);
       }
       const va = d3 * d6 - d5 * d4;
       if (va <= 0 && d4 - d3 >= 0 && d5 - d6 >= 0) {
         _vbc.subVectors(c, b);
-        w = (d4 - d3) / (d4 - d3 + (d5 - d6));
-        return target.copy(b).addScaledVector(_vbc, w);
+        w2 = (d4 - d3) / (d4 - d3 + (d5 - d6));
+        return target.copy(b).addScaledVector(_vbc, w2);
       }
       const denom = 1 / (va + vb + vc);
       v = vb * denom;
-      w = vc * denom;
-      return target.copy(a).addScaledVector(_vab, v).addScaledVector(_vac, w);
+      w2 = vc * denom;
+      return target.copy(a).addScaledVector(_vab, v).addScaledVector(_vac, w2);
     }
     /**
      * Returns `true` if this triangle is equal with the given one.
@@ -11294,9 +11294,9 @@
      * @return {number} The w component.
      */
     getW(index) {
-      let w = this.array[index * this.itemSize + 3];
-      if (this.normalized) w = denormalize(w, this.array);
-      return w;
+      let w2 = this.array[index * this.itemSize + 3];
+      if (this.normalized) w2 = denormalize(w2, this.array);
+      return w2;
     }
     /**
      * Sets the w component of the vector at the given index.
@@ -11305,9 +11305,9 @@
      * @param {number} w - The value to set.
      * @return {BufferAttribute} A reference to this instance.
      */
-    setW(index, w) {
-      if (this.normalized) w = normalize(w, this.array);
-      this.array[index * this.itemSize + 3] = w;
+    setW(index, w2) {
+      if (this.normalized) w2 = normalize(w2, this.array);
+      this.array[index * this.itemSize + 3] = w2;
       return this;
     }
     /**
@@ -11359,18 +11359,18 @@
      * @param {number} w - The value for the w component to set.
      * @return {BufferAttribute} A reference to this instance.
      */
-    setXYZW(index, x, y2, z, w) {
+    setXYZW(index, x, y2, z, w2) {
       index *= this.itemSize;
       if (this.normalized) {
         x = normalize(x, this.array);
         y2 = normalize(y2, this.array);
         z = normalize(z, this.array);
-        w = normalize(w, this.array);
+        w2 = normalize(w2, this.array);
       }
       this.array[index + 0] = x;
       this.array[index + 1] = y2;
       this.array[index + 2] = z;
-      this.array[index + 3] = w;
+      this.array[index + 3] = w2;
       return this;
     }
     /**
@@ -11537,13 +11537,13 @@
       return this;
     }
     getW(index) {
-      let w = fromHalfFloat(this.array[index * this.itemSize + 3]);
-      if (this.normalized) w = denormalize(w, this.array);
-      return w;
+      let w2 = fromHalfFloat(this.array[index * this.itemSize + 3]);
+      if (this.normalized) w2 = denormalize(w2, this.array);
+      return w2;
     }
-    setW(index, w) {
-      if (this.normalized) w = normalize(w, this.array);
-      this.array[index * this.itemSize + 3] = toHalfFloat(w);
+    setW(index, w2) {
+      if (this.normalized) w2 = normalize(w2, this.array);
+      this.array[index * this.itemSize + 3] = toHalfFloat(w2);
       return this;
     }
     setXY(index, x, y2) {
@@ -11568,18 +11568,18 @@
       this.array[index + 2] = toHalfFloat(z);
       return this;
     }
-    setXYZW(index, x, y2, z, w) {
+    setXYZW(index, x, y2, z, w2) {
       index *= this.itemSize;
       if (this.normalized) {
         x = normalize(x, this.array);
         y2 = normalize(y2, this.array);
         z = normalize(z, this.array);
-        w = normalize(w, this.array);
+        w2 = normalize(w2, this.array);
       }
       this.array[index + 0] = toHalfFloat(x);
       this.array[index + 1] = toHalfFloat(y2);
       this.array[index + 2] = toHalfFloat(z);
-      this.array[index + 3] = toHalfFloat(w);
+      this.array[index + 3] = toHalfFloat(w2);
       return this;
     }
   };
@@ -12086,8 +12086,8 @@
         tmp2.sub(n2.multiplyScalar(n2.dot(t2))).normalize();
         tmp22.crossVectors(n22, t2);
         const test = tmp22.dot(tan2[v]);
-        const w = test < 0 ? -1 : 1;
-        tangentAttribute.setXYZW(v, tmp2.x, tmp2.y, tmp2.z, w);
+        const w2 = test < 0 ? -1 : 1;
+        tangentAttribute.setXYZW(v, tmp2.x, tmp2.y, tmp2.z, w2);
       }
       for (let i = 0, il = groups.length; i < il; ++i) {
         const group = groups[i];
@@ -12656,7 +12656,7 @@
       this.setAttribute("position", new Float32BufferAttribute(vertices, 3));
       this.setAttribute("normal", new Float32BufferAttribute(normals, 3));
       this.setAttribute("uv", new Float32BufferAttribute(uvs, 2));
-      function buildPlane(u2, v, w, udir, vdir, width2, height2, depth2, gridX, gridY, materialIndex) {
+      function buildPlane(u2, v, w2, udir, vdir, width2, height2, depth2, gridX, gridY, materialIndex) {
         const segmentWidth = width2 / gridX;
         const segmentHeight = height2 / gridY;
         const widthHalf = width2 / 2;
@@ -12673,11 +12673,11 @@
             const x = ix * segmentWidth - widthHalf;
             vector[u2] = x * udir;
             vector[v] = y2 * vdir;
-            vector[w] = depthHalf;
+            vector[w2] = depthHalf;
             vertices.push(vector.x, vector.y, vector.z);
             vector[u2] = 0;
             vector[v] = 0;
-            vector[w] = depth2 > 0 ? 1 : -1;
+            vector[w2] = depth2 > 0 ? 1 : -1;
             normals.push(vector.x, vector.y, vector.z);
             uvs.push(ix / gridX);
             uvs.push(1 - iy / gridY);
@@ -14122,9 +14122,9 @@
      * @param {number} w - The value to set.
      * @return {InterleavedBufferAttribute} A reference to this instance.
      */
-    setW(index, w) {
-      if (this.normalized) w = normalize(w, this.array);
-      this.data.array[index * this.data.stride + this.offset + 3] = w;
+    setW(index, w2) {
+      if (this.normalized) w2 = normalize(w2, this.array);
+      this.data.array[index * this.data.stride + this.offset + 3] = w2;
       return this;
     }
     /**
@@ -14167,9 +14167,9 @@
      * @return {number} The w component.
      */
     getW(index) {
-      let w = this.data.array[index * this.data.stride + this.offset + 3];
-      if (this.normalized) w = denormalize(w, this.array);
-      return w;
+      let w2 = this.data.array[index * this.data.stride + this.offset + 3];
+      if (this.normalized) w2 = denormalize(w2, this.array);
+      return w2;
     }
     /**
      * Sets the x and y component of the vector at the given index.
@@ -14220,18 +14220,18 @@
      * @param {number} w - The value for the w component to set.
      * @return {InterleavedBufferAttribute} A reference to this instance.
      */
-    setXYZW(index, x, y2, z, w) {
+    setXYZW(index, x, y2, z, w2) {
       index = index * this.data.stride + this.offset;
       if (this.normalized) {
         x = normalize(x, this.array);
         y2 = normalize(y2, this.array);
         z = normalize(z, this.array);
-        w = normalize(w, this.array);
+        w2 = normalize(w2, this.array);
       }
       this.data.array[index + 0] = x;
       this.data.array[index + 1] = y2;
       this.data.array[index + 2] = z;
-      this.data.array[index + 3] = w;
+      this.data.array[index + 3] = w2;
       return this;
     }
     /**
@@ -15294,9 +15294,9 @@
      * @param {number} w - The constant value.
      * @return {Plane} A reference to this plane.
      */
-    setComponents(x, y2, z, w) {
+    setComponents(x, y2, z, w2) {
       this.normal.set(x, y2, z);
-      this.constant = w;
+      this.constant = w2;
       return this;
     }
     /**
@@ -31183,7 +31183,7 @@
     update() {
       const geometry = this.geometry;
       const pointMap = this.pointMap;
-      const w = 1, h = 1;
+      const w2 = 1, h = 1;
       let nearZ, farZ;
       _camera.projectionMatrixInverse.copy(this.camera.projectionMatrixInverse);
       if (this.camera.reversedDepth === true) {
@@ -31202,23 +31202,23 @@
       }
       setPoint("c", pointMap, geometry, _camera, 0, 0, nearZ);
       setPoint("t", pointMap, geometry, _camera, 0, 0, farZ);
-      setPoint("n1", pointMap, geometry, _camera, -w, -h, nearZ);
-      setPoint("n2", pointMap, geometry, _camera, w, -h, nearZ);
-      setPoint("n3", pointMap, geometry, _camera, -w, h, nearZ);
-      setPoint("n4", pointMap, geometry, _camera, w, h, nearZ);
-      setPoint("f1", pointMap, geometry, _camera, -w, -h, farZ);
-      setPoint("f2", pointMap, geometry, _camera, w, -h, farZ);
-      setPoint("f3", pointMap, geometry, _camera, -w, h, farZ);
-      setPoint("f4", pointMap, geometry, _camera, w, h, farZ);
-      setPoint("u1", pointMap, geometry, _camera, w * 0.7, h * 1.1, nearZ);
-      setPoint("u2", pointMap, geometry, _camera, -w * 0.7, h * 1.1, nearZ);
+      setPoint("n1", pointMap, geometry, _camera, -w2, -h, nearZ);
+      setPoint("n2", pointMap, geometry, _camera, w2, -h, nearZ);
+      setPoint("n3", pointMap, geometry, _camera, -w2, h, nearZ);
+      setPoint("n4", pointMap, geometry, _camera, w2, h, nearZ);
+      setPoint("f1", pointMap, geometry, _camera, -w2, -h, farZ);
+      setPoint("f2", pointMap, geometry, _camera, w2, -h, farZ);
+      setPoint("f3", pointMap, geometry, _camera, -w2, h, farZ);
+      setPoint("f4", pointMap, geometry, _camera, w2, h, farZ);
+      setPoint("u1", pointMap, geometry, _camera, w2 * 0.7, h * 1.1, nearZ);
+      setPoint("u2", pointMap, geometry, _camera, -w2 * 0.7, h * 1.1, nearZ);
       setPoint("u3", pointMap, geometry, _camera, 0, h * 2, nearZ);
-      setPoint("cf1", pointMap, geometry, _camera, -w, 0, farZ);
-      setPoint("cf2", pointMap, geometry, _camera, w, 0, farZ);
+      setPoint("cf1", pointMap, geometry, _camera, -w2, 0, farZ);
+      setPoint("cf2", pointMap, geometry, _camera, w2, 0, farZ);
       setPoint("cf3", pointMap, geometry, _camera, 0, -h, farZ);
       setPoint("cf4", pointMap, geometry, _camera, 0, h, farZ);
-      setPoint("cn1", pointMap, geometry, _camera, -w, 0, nearZ);
-      setPoint("cn2", pointMap, geometry, _camera, w, 0, nearZ);
+      setPoint("cn1", pointMap, geometry, _camera, -w2, 0, nearZ);
+      setPoint("cn2", pointMap, geometry, _camera, w2, 0, nearZ);
       setPoint("cn3", pointMap, geometry, _camera, 0, -h, nearZ);
       setPoint("cn4", pointMap, geometry, _camera, 0, h, nearZ);
       geometry.getAttribute("position").needsUpdate = true;
@@ -42520,27 +42520,27 @@ void main() {
     audio: { cyl: 8, char: "muscle", hornA: 392, hornB: 494 }
   };
   var WANTED = {
-    thresholds: [0, 1, 3, 6, 10, 16],
+    thresholds: [0, 1, 3, 6, 10, 16, 24],
     // wanted points needed for each star
-    evadeTime: [0, 14, 18, 24, 34, 45],
+    evadeTime: [0, 14, 18, 24, 34, 45, 50],
     // seconds out of sight (and out of the search area) to drop one star
-    searchRadius: [0, 45, 60, 75, 95, 120],
+    searchRadius: [0, 45, 60, 75, 95, 120, 130],
     // search area around the last known position (m)
-    cars: [0, 1, 3, 4, 6, 8],
+    cars: [0, 1, 3, 4, 6, 8, 8],
     // pursuit cars on the street
-    officersPerCar: [0, 1, 1, 2, 2, 2],
+    officersPerCar: [0, 1, 1, 2, 2, 2, 2],
     // officers that get out of each car
-    spawnDist: [0, 100, 100, 95, 90, 80],
+    spawnDist: [0, 100, 100, 95, 90, 80, 70],
     // where new units appear (m from the player, projected ahead when moving)
-    pursuitSpeed: [0, 18, 22, 27, 30, 33],
+    pursuitSpeed: [0, 18, 22, 27, 30, 33, 34],
     // m/s
-    roadblockEvery: [0, 0, 0, 20, 14, 10],
+    roadblockEvery: [0, 0, 0, 20, 14, 10, 8],
     // seconds; 0 = none
-    roadblockOfficers: [0, 0, 0, 2, 3, 4],
-    officerWeapon: ["pistol", "pistol", "pistol", "pistol", "mg", "mg"],
-    burstGap: [[9, 9], [2.6, 4], [1.3, 2.4], [0.9, 1.7], [0.7, 1.3], [0.5, 1]],
+    roadblockOfficers: [0, 0, 0, 2, 3, 4, 4],
+    officerWeapon: ["pistol", "pistol", "pistol", "pistol", "mg", "mg", "mg"],
+    burstGap: [[9, 9], [2.6, 4], [1.3, 2.4], [0.9, 1.7], [0.7, 1.3], [0.5, 1], [0.45, 0.9]],
     // seconds between bursts (min, max)
-    maxOfficers: 12,
+    maxOfficers: 14,
     crimes: { gunfire: 0.3, shootPed: 0.8, hitPed: 0.9, killPed: 2.2, ramCar: 0.5, wreckCar: 1.6, carjack: 0.7, explosion: 1.5, shootCop: 1.2, ramCop: 1, hitCop: 1, killCop: 3.2, wreckCop: 2.8 },
     minStars: { gunfire: 1, killPed: 2, explosion: 2, killCop: 3, wreckCop: 3 },
     // a witnessed shot is a star straight away; more shots build up slowly
@@ -42623,8 +42623,11 @@ void main() {
     return { name: d.name, sub: `${d.magazine} rd \xB7 ${d.id === "rocket" ? "heavy" : d.auto ? "auto" : "semi"}` };
   });
   var KRIEG = {
-    reward: { feind: 1200, copMech: 400, building: 150, cop: 150, hostile: 200, wreckPolice: 250, wreckCivil: 80, titan: 5e3, arenaWelle: 800, drone: 100 },
+    reward: { feind: 1200, copMech: 400, building: 150, cop: 150, hostile: 200, wreckPolice: 250, wreckCivil: 80, titan: 5e3, titanElite: 9e3, arenaWelle: 800, drone: 100 },
+    rangXP: [0, 150, 400, 900, 1800],
+    // Runde 22: Rang-Schwellen (kumulativ)
     raubRollen: {
+      schild: { hp: 500, speed: 3.4, scale: 1.05, burst: 5, range: 55 },
       // Runde 20: Gegner-Vielfalt
       sprinter: { hp: 260, speed: 8.4, scale: 0.82, burst: 4, range: 15 },
       artillery: { hp: 440, speed: 2.2, scale: 1.18, burst: 2, range: 105, weaponId: "rocket", fluchtdistanz: 45 },
@@ -42654,15 +42657,42 @@ void main() {
       burst: { rounds: 6, gap: 0.09, cd: [1.4, 2.4] },
       // Minigun-Bursts mit Pausen
       drop: { height: 120, vy0: -55, brakeY: 40, touchdown: -8 },
-      wave: { every: 35, maxAlive: 3, count: (w) => 1 + Math.floor(w / 2), dist: [100, 140] }
+      wave: { every: 35, maxAlive: 3, count: (w2) => 1 + Math.floor(w2 / 2), dist: [100, 140] }
     },
     shop: { key: "KeyK" },
     upgrades: [
+      { id: "lackChaos", name: "Lackierung: Chaos", preis: 500, rang: 0, text: "Rostrot-orange Glow", anbau: [] },
+      { id: "lackNeon", name: "Lackierung: Neon", preis: 500, rang: 0, text: "Cyan-Glow, dunkle Haut", anbau: [] },
+      { id: "lackGold", name: "Lackierung: Gold", preis: 1200, rang: 1, text: "Gold skin \u2014 Geld spricht", anbau: [] },
+      { id: "russ", name: "Russwerfer", preis: 900, rang: 0, text: "Minigun-Treffer setzen Fahrzeuge in Brand", anbau: [] },
+      { id: "zielmarker", name: "Zielmarkierer", preis: 800, rang: 0, text: "Raketen greifen automatisch den naechsten Feind an", anbau: [] },
+      { id: "klappen", name: "Landeklappen", preis: 500, rang: 0, text: "Landung bremst nicht", anbau: [] },
+      { id: "wand", name: "Wand-Absprung", preis: 700, rang: 0, text: "Beim Klettern Space: kraftvoller Absprung", anbau: [] },
+      { id: "dash", name: "Boden-Dash", preis: 600, rang: 0, text: "Shift am Boden: Ausbruchs-Dash", anbau: [] },
+      { id: "scanner", name: "Scanner", preis: 600, rang: 0, text: "Feinde auf der Minimap sichtbar", anbau: [] },
+      { id: "notaus", name: "Notauswurf", preis: 400, rang: 0, text: "L: Waffen kuehlen + Treibstoff, kostet 300 HP", anbau: [] },
       { id: "minigun2", name: "Minigun Mk2", preis: 600, text: "rpm 1500 \u2192 2000 \xB7 Hitze \u221230 %", anbau: [{ teil: "Upgrade_minigunmk2", pivot: "Forearm_R" }] },
       { id: "nanorep", name: "Nanoreparatur", preis: 700, text: "+25 HP/s ab 5 s ohne Treffer", anbau: [{ teil: "Upgrade_nanorep", pivot: "Backpack" }] },
       { id: "raketen2", name: "Raketen Mk2", preis: 800, text: "Salvo 6 \u2192 8 \xB7 schneller nachgeladen \xB7 +27 % Schaden", anbau: [{ teil: "Upgrade_raketenmk2", pivot: "Pod_L" }, { teil: "Upgrade_raketenmk2", pivot: "Pod_R", spiegel: true }] },
       { id: "panzer", name: "Panzerplatten", preis: 900, text: "+600 Panzerung (sofort +600 HP)", anbau: [{ teil: "Upgrade_panzer", pivot: "Torso" }] },
-      { id: "schub2", name: "Schubd\xFCsen Mk2", preis: 1e3, text: "Vorw\xE4rtsschub \xD71,8 \xB7 +50 % Treibstoff", anbau: [{ teil: "Upgrade_schubmk2", pivot: "Knee_L" }, { teil: "Upgrade_schubmk2", pivot: "Knee_R", spiegel: true }] }
+      { id: "schub2", name: "Schubd\xFCsen Mk2", preis: 1e3, text: "Vorw\xE4rtsschub \xD71,8 \xB7 +50 % Treibstoff", anbau: [{ teil: "Upgrade_schubmk2", pivot: "Knee_L" }, { teil: "Upgrade_schubmk2", pivot: "Knee_R", spiegel: true }] },
+      { id: "minigun3", name: "Minigun Mk3", preis: 1400, rang: 1, text: "2800 rpm \xB7 Hitze \u221245 %", anbau: [] },
+      { id: "raketen3", name: "Raketen Mk3", preis: 1600, rang: 1, text: "Salvo 10 \xB7 Splitter \xB7 Tracking", anbau: [] },
+      { id: "panzer3", name: "Panzerplatten Mk3", preis: 1800, rang: 2, text: "+1000 Panzerung \xB7 15 % Racheschaden", anbau: [] },
+      { id: "schub3", name: "Schubd\xFCsen Mk3", preis: 2200, rang: 2, text: "\u2248350 km/h \xB7 Gleitflug", anbau: [] },
+      { id: "nano2", name: "Nanoreparatur Mk2", preis: 1600, rang: 1, text: "+60 HP/s", anbau: [] },
+      { id: "flak", name: "Flak-Munition", preis: 1200, rang: 1, text: "Minigun \xD73 an Drohnen", anbau: [] },
+      { id: "streu", name: "Streukassette", preis: 1400, rang: 1, text: "Raketen explodieren dreifach", anbau: [] },
+      { id: "plasma", name: "Plasmaspitze", preis: 2e3, rang: 2, text: "Railgun-Schuss explodiert (AoE)", anbau: [] },
+      { id: "griff", name: "Luftgriff", preis: 1300, rang: 1, text: "Boost +50 % \xB7 drehen \xD71,5", anbau: [] },
+      { id: "hover", name: "Hover-Feinmodus", preis: 800, rang: 1, text: "Streuung in der Luft \u221250 %", anbau: [] },
+      { id: "schild", name: "Energieschild", preis: 1500, rang: 2, text: "Absorbiert 400 Schaden, laedt nach", anbau: [] },
+      { id: "rauch", name: "Rauchgranaten", preis: 500, rang: 0, text: "J: Cops verlieren die Sichtlinie", anbau: [] },
+      { id: "decoy", name: "Attrappe", preis: 650, rang: 0, text: "I: Feinde greifen eine Schein-Silhouette an", anbau: [] },
+      { id: "emp", name: "EMP-Puls", preis: 1200, rang: 2, text: "U: Verkehr steht 8 s", anbau: [] },
+      { id: "spenden", name: "Bestechungs-Modus", preis: 800, rang: 1, text: "P: Cop-Kills zahlen ohne Wanted", anbau: [] },
+      { id: "sammel", name: "Sammel-Drohne", preis: 1500, rang: 2, text: "Kampf-Loehne +20 %", anbau: [] },
+      { id: "rep", name: "Rep-Drohne", preis: 1200, rang: 1, text: "+10 HP/s dauerhaft", anbau: [] }
     ]
   };
 
@@ -45670,10 +45700,10 @@ void main() {
       m._skip(t3 % 4 ? 4 - t3 % 4 : 0);
     }
     if (c <= 0) return n2;
-    const d = new Ci(t2, f, c, true), D = d._nextUint16(), w = d._nextUint16(), v = d._nextUint32(), B2 = d._nextUint32(), L = d._nextUint32(), A2 = d._nextUint32(), k = [];
+    const d = new Ci(t2, f, c, true), D = d._nextUint16(), w2 = d._nextUint16(), v = d._nextUint32(), B2 = d._nextUint32(), L = d._nextUint32(), A2 = d._nextUint32(), k = [];
     for (let t3 = 0, e2 = Math.max(n2.levelCount, 1); t3 < e2; t3++) k.push({ imageFlags: d._nextUint32(), rgbSliceByteOffset: d._nextUint32(), rgbSliceByteLength: d._nextUint32(), alphaSliceByteOffset: d._nextUint32(), alphaSliceByteLength: d._nextUint32() });
     const I2 = f + d._offset, V = I2 + v, C2 = V + B2, F = C2 + L, O = new Uint8Array(t2.buffer, t2.byteOffset + I2, v), T = new Uint8Array(t2.buffer, t2.byteOffset + V, B2), S3 = new Uint8Array(t2.buffer, t2.byteOffset + C2, L), E2 = new Uint8Array(t2.buffer, t2.byteOffset + F, A2);
-    return n2.globalData = { endpointCount: D, selectorCount: w, imageDescs: k, endpointsData: O, selectorsData: T, tablesData: S3, extendedData: E2 }, n2;
+    return n2.globalData = { endpointCount: D, selectorCount: w2, imageDescs: k, endpointsData: O, selectorsData: T, tablesData: S3, extendedData: E2 }, n2;
   }
 
   // ../../../../../../.hermes/hermes-agent/node_modules/three/examples/jsm/libs/zstddec.module.js
@@ -47061,10 +47091,10 @@ void main() {
   var waiting = /* @__PURE__ */ new Map();
   if (typeof window !== "undefined") window.__assetChunk = (name, b64) => {
     chunks.set(name, b64);
-    const w = waiting.get(name);
-    if (w) {
+    const w2 = waiting.get(name);
+    if (w2) {
       waiting.delete(name);
-      w(b64);
+      w2(b64);
     }
   };
   function loadScript(src) {
@@ -47373,8 +47403,8 @@ void main() {
     g2.setAttribute("color", new BufferAttribute(arr, 3));
     return g2;
   }
-  function box(w, h, d, x, y2, z, hex, rotY = 0) {
-    const g2 = new BoxGeometry(w, h, d);
+  function box(w2, h, d, x, y2, z, hex, rotY = 0) {
+    const g2 = new BoxGeometry(w2, h, d);
     if (rotY) g2.rotateY(rotY);
     g2.translate(x, y2, z);
     return colorize(g2, Array.isArray(hex) ? hex : col(hex));
@@ -47386,8 +47416,8 @@ void main() {
     g2.translate(x, y2, z);
     return colorize(g2, col(hex));
   }
-  function wedge(w, h, d, x, y2, z, hex, ridge = false, rotY = 0) {
-    const hw = w / 2, hd = d / 2;
+  function wedge(w2, h, d, x, y2, z, hex, ridge = false, rotY = 0) {
+    const hw = w2 / 2, hd = d / 2;
     let v;
     if (ridge) v = [-hw, 0, -hd, hw, 0, -hd, hw, 0, hd, -hw, 0, hd, -hw, h, 0, hw, h, 0];
     else v = [-hw, 0, -hd, hw, 0, -hd, hw, 0, hd, -hw, 0, hd, -hw, h, hd, hw, h, hd];
@@ -47553,8 +47583,8 @@ void main() {
       brakes.visible = false;
       brakes.castShadow = false;
       const wheels = [];
-      for (const w of WHEELS) {
-        const wm = o.getObjectByName(w);
+      for (const w2 of WHEELS) {
+        const wm = o.getObjectByName(w2);
         wm.castShadow = shadow;
         wheels.push(wm);
       }
@@ -47655,33 +47685,33 @@ void main() {
   }
   var WALL = [1, 1, 1];
   var _bands = null;
-  function floors(parts, w, d, h, y0, floorH = 3.6, glassH = 1.5, inset = 0.25, glass = PALETTE.glass) {
+  function floors(parts, w2, d, h, y0, floorH = 3.6, glassH = 1.5, inset = 0.25, glass = PALETTE.glass) {
     let y2 = y0;
     const gl = col(glass);
     while (y2 + floorH <= h + 0.01) {
       const wallH = floorH - glassH;
-      parts.push(box(w, wallH, d, 0, y2 + wallH / 2, 0, WALL));
-      parts.push(box(w - inset * 2, glassH, d - inset * 2, 0, y2 + wallH + glassH / 2, 0, gl));
-      if (_bands) _bands.push({ w, d, y: y2 + wallH, h: glassH, inset });
+      parts.push(box(w2, wallH, d, 0, y2 + wallH / 2, 0, WALL));
+      parts.push(box(w2 - inset * 2, glassH, d - inset * 2, 0, y2 + wallH + glassH / 2, 0, gl));
+      if (_bands) _bands.push({ w: w2, d, y: y2 + wallH, h: glassH, inset });
       y2 += floorH;
     }
-    if (y2 < h) parts.push(box(w, h - y2, d, 0, y2 + (h - y2) / 2, 0, WALL));
+    if (y2 < h) parts.push(box(w2, h - y2, d, 0, y2 + (h - y2) / 2, 0, WALL));
     return h;
   }
-  function parapet(parts, w, d, h, t2 = 0.4, ph = 0.9) {
-    parts.push(box(w, ph, t2, 0, h + ph / 2, d / 2 - t2 / 2, WALL), box(w, ph, t2, 0, h + ph / 2, -d / 2 + t2 / 2, WALL), box(t2, ph, d, w / 2 - t2 / 2, h + ph / 2, 0, WALL), box(t2, ph, d, -w / 2 + t2 / 2, h + ph / 2, 0, WALL));
-    parts.push(box(w - 0.4, 0.15, d - 0.4, 0, h + 0.07, 0, PALETTE.roof));
+  function parapet(parts, w2, d, h, t2 = 0.4, ph = 0.9) {
+    parts.push(box(w2, ph, t2, 0, h + ph / 2, d / 2 - t2 / 2, WALL), box(w2, ph, t2, 0, h + ph / 2, -d / 2 + t2 / 2, WALL), box(t2, ph, d, w2 / 2 - t2 / 2, h + ph / 2, 0, WALL), box(t2, ph, d, -w2 / 2 + t2 / 2, h + ph / 2, 0, WALL));
+    parts.push(box(w2 - 0.4, 0.15, d - 0.4, 0, h + 0.07, 0, PALETTE.roof));
   }
-  function roofStuff(parts, w, d, h, rng) {
+  function roofStuff(parts, w2, d, h, rng) {
     const n2 = 1 + Math.floor(rng() * 3);
     for (let i = 0; i < n2; i++) {
       const bw = 1.5 + rng() * 3, bd = 1.5 + rng() * 3, bh = 1.2 + rng() * 2;
-      parts.push(box(bw, bh, bd, (rng() - 0.5) * (w - bw - 2), h + bh / 2, (rng() - 0.5) * (d - bd - 2), PALETTE.metal));
+      parts.push(box(bw, bh, bd, (rng() - 0.5) * (w2 - bw - 2), h + bh / 2, (rng() - 0.5) * (d - bd - 2), PALETTE.metal));
     }
-    if (rng() < 0.5) parts.push(box(2.2, 3.2, 2.2, (rng() - 0.5) * (w - 4), h + 1.6, (rng() - 0.5) * (d - 4), WALL));
+    if (rng() < 0.5) parts.push(box(2.2, 3.2, 2.2, (rng() - 0.5) * (w2 - 4), h + 1.6, (rng() - 0.5) * (d - 4), WALL));
   }
-  function entrance(parts, w, d, ph = 3.4) {
-    parts.push(box(Math.min(6, w * 0.4), ph, 0.3, 0, ph / 2, d / 2 + 0.05, col(PALETTE.glass)), box(Math.min(7, w * 0.45), 0.25, 2.2, 0, ph + 0.1, d / 2 + 1, PALETTE.trim));
+  function entrance(parts, w2, d, ph = 3.4) {
+    parts.push(box(Math.min(6, w2 * 0.4), ph, 0.3, 0, ph / 2, d / 2 + 0.05, col(PALETTE.glass)), box(Math.min(7, w2 * 0.45), 0.25, 2.2, 0, ph + 0.1, d / 2 + 1, PALETTE.trim));
   }
   var BUILDING_KINDS = {
     tower_a: { w: 26, d: 26, h: 84, district: "downtown", build(p, r) {
@@ -47906,8 +47936,8 @@ void main() {
       return null;
     }
     const pos = [], colr = [], sd = [], kd = [];
-    for (const [x, y2, z, w, h, face, rgb, kind2, s] of quads) {
-      const hw = w / 2, hh = h / 2;
+    for (const [x, y2, z, w2, h, face, rgb, kind2, s] of quads) {
+      const hw = w2 / 2, hh = h / 2;
       let v;
       if (face === "down") v = [[-hw, 0, -hh], [hw, 0, -hh], [hw, 0, hh], [-hw, 0, hh]];
       else if (face === "z+") v = [[-hw, -hh, 0], [hw, -hh, 0], [hw, hh, 0], [-hw, hh, 0]];
@@ -48338,6 +48368,7 @@ void main() {
       G2.police.crime("explosion", { x: cx, y: 0, z: cz });
       if (G2.krieg) {
         G2.krieg.kollapsZaehler = (G2.krieg.kollapsZaehler || 0) + 1;
+        G2.krieg.addXP(25);
         if (d < 160) {
           G2.krieg.pay(KRIEG.reward.building);
           G2.ui.msg("+" + KRIEG.reward.building + " \u20AC", "Geb\xE4ude eingeebnet", 1.4);
@@ -48404,9 +48435,9 @@ void main() {
       slabs.receiveShadow = true;
       slabs.name = "Slabs";
       let k = 0;
-      const put = (x, z, w, d, h, y2, hex) => {
+      const put = (x, z, w2, d, h, y2, hex) => {
         _p.set(x, y2, z);
-        _s.set(w, h, d);
+        _s.set(w2, h, d);
         _q.identity();
         _m.compose(_p, _q, _s);
         slabs.setMatrixAt(k, _m);
@@ -48633,15 +48664,15 @@ void main() {
         return false;
       };
       for (let i = 0; i < XS.length; i++) {
-        const X2 = XS[i], w = XW[i];
-        const offs = w >= 24 ? [-5.5, 5.5] : [-3.5, 3.5];
-        const centre = w >= 24 ? [] : [-0.14, 0.14];
+        const X2 = XS[i], w2 = XW[i];
+        const offs = w2 >= 24 ? [-5.5, 5.5] : [-3.5, 3.5];
+        const centre = w2 >= 24 ? [] : [-0.14, 0.14];
         for (let z = -EXT; z < EXT; z += 6) for (const o of offs) if (!inJunction(X2 + o, z + 1.5)) dashes.push([X2 + o, z + 1.5, 0, 3, PALETTE.paintLine]);
         for (let z = -EXT; z < EXT; z += 3) for (const o of centre) if (!inJunction(X2 + o, z + 1.5)) dashes.push([X2 + o, z + 1.5, 0, 3, PALETTE.paintYellow]);
       }
       for (let j = 0; j < ZS.length; j++) {
-        const Z = ZS[j], w = ZW[j];
-        const offs = w >= 18 ? [-4.5, 4.5] : [-3.5, 3.5];
+        const Z = ZS[j], w2 = ZW[j];
+        const offs = w2 >= 18 ? [-4.5, 4.5] : [-3.5, 3.5];
         for (let x = -EXT; x < EXT; x += 6) for (const o of offs) if (!inJunction(x + 1.5, Z + o)) dashes.push([x + 1.5, Z + o, Math.PI / 2, 3, PALETTE.paintLine]);
         for (let x = -EXT; x < EXT; x += 3) for (const o of [-0.14, 0.14]) if (!inJunction(x + 1.5, Z + o)) dashes.push([x + 1.5, Z + o, Math.PI / 2, 3, PALETTE.paintYellow]);
       }
@@ -48682,19 +48713,19 @@ void main() {
       sm.instanceMatrix.needsUpdate = true;
       this.group.add(sm);
       for (let i = 0; i < XS.length; i++) {
-        const X2 = XS[i], w = XW[i];
+        const X2 = XS[i], w2 = XW[i];
         for (let z = -EXT + 20; z < EXT - 10; z += 24) {
           if (inJunction(X2, z)) continue;
-          this.prop("lamp", X2 - w / 2 - 0.9, z, Math.PI / 2 * -1);
-          this.prop("lamp", X2 + w / 2 + 0.9, z + 12 < EXT - 10 ? z + 12 : z, Math.PI / 2);
+          this.prop("lamp", X2 - w2 / 2 - 0.9, z, Math.PI / 2 * -1);
+          this.prop("lamp", X2 + w2 / 2 + 0.9, z + 12 < EXT - 10 ? z + 12 : z, Math.PI / 2);
         }
       }
       for (let j = 0; j < ZS.length; j++) {
-        const Z = ZS[j], w = ZW[j];
+        const Z = ZS[j], w2 = ZW[j];
         for (let x = -EXT + 20; x < EXT - 10; x += 24) {
           if (inJunction(x, Z)) continue;
-          this.prop("lamp", x, Z - w / 2 - 0.9, 0);
-          this.prop("lamp", x + 12 < EXT - 10 ? x + 12 : x, Z + w / 2 + 0.9, Math.PI);
+          this.prop("lamp", x, Z - w2 / 2 - 0.9, 0);
+          this.prop("lamp", x + 12 < EXT - 10 ? x + 12 : x, Z + w2 / 2 + 0.9, Math.PI);
         }
       }
       for (const s of this.medianSegs) for (let z = s.z0 + 6; z < s.z1 - 4; z += 12) this.prop("tree_round", 0, z, rng.range(0, 6));
@@ -48947,8 +48978,8 @@ void main() {
       const shuffled = parked.filter((p) => Math.hypot(p.x - 10, p.z + 30) > 30).sort(() => rng() - 0.5);
       for (let k = 0; k < 40; k++) this.spawns.vehicles.push({ ...shuffled[k], parked: true });
       this.spawns.parkedSpots = parked;
-      const w = this.walk.nodes.map((n2, i) => ({ i, d: Math.hypot(n2.x, n2.z) })).sort((a, b) => a.d - b.d);
-      this.spawns.npcs = w.slice(0, Math.floor(w.length * 0.7)).map((o) => o.i);
+      const w2 = this.walk.nodes.map((n2, i) => ({ i, d: Math.hypot(n2.x, n2.z) })).sort((a, b) => a.d - b.d);
+      this.spawns.npcs = w2.slice(0, Math.floor(w2.length * 0.7)).map((o) => o.i);
     }
     buildBoundary() {
       for (let t2 = -FIELD; t2 < FIELD; t2 += 4) {
@@ -49252,9 +49283,9 @@ void main() {
         rec.x += rec.vx * dt3;
         rec.y += rec.vy * dt3;
         rec.z += rec.vz * dt3;
-        const w = Math.hypot(rec.wx, rec.wy, rec.wz);
-        if (w > 1e-4) {
-          _q2.setFromAxisAngle(_u.set(rec.wx / w, rec.wy / w, rec.wz / w), w * dt3);
+        const w2 = Math.hypot(rec.wx, rec.wy, rec.wz);
+        if (w2 > 1e-4) {
+          _q2.setFromAxisAngle(_u.set(rec.wx / w2, rec.wy / w2, rec.wz / w2), w2 * dt3);
           rec.q.premultiply(_q2).normalize();
         }
         const g2 = world.groundHeight(rec.x, rec.z);
@@ -49276,7 +49307,7 @@ void main() {
           rec.wz *= af;
           _v.set(0, 1, 0).applyQuaternion(rec.q);
           const tilt = Math.acos(clamp2(_v.y, -1, 1));
-          if (w < 3) {
+          if (w2 < 3) {
             if (tilt < 0.75) {
               _q2.setFromAxisAngle(Y, rec.yaw);
               rec.q.slerp(_q2, 1 - Math.exp(-6 * dt3));
@@ -49808,15 +49839,15 @@ void main() {
     const c = hole(clipName);
     const t2 = tt + off, tf = (t2 * c.fps % c.frames + c.frames) % c.frames;
     const f0 = Math.floor(tf), f1 = (f0 + 1) % c.frames, u2 = tf - f0;
-    const w = gewicht(tt);
+    const w2 = gewicht(tt);
     for (let i = 0; i < 16; i++) {
       const b = bones[BONES[i]];
       if (!b) continue;
       lies(c, f0, f1, u2, i, _q4);
-      if (w < 1) b.quaternion.slerp(_q4, w);
+      if (w2 < 1) b.quaternion.slerp(_q4, w2);
       else b.quaternion.copy(_q4);
     }
-    return (c.hipY[f0] + (c.hipY[f1] - c.hipY[f0]) * u2) / 16384 * w;
+    return (c.hipY[f0] + (c.hipY[f1] - c.hipY[f0]) * u2) / 16384 * w2;
   }
   var MECH_OBEN = [
     ["Torso", 2, 0.6],
@@ -49843,21 +49874,21 @@ void main() {
     const c = hole(clipName);
     const t2 = tt + off, tf = (t2 * c.fps % c.frames + c.frames) % c.frames;
     const f0 = Math.floor(tf), f1 = (f0 + 1) % c.frames, u2 = tf - f0;
-    const w = gewicht(tt);
+    const w2 = gewicht(tt);
     for (const [ziel, idx, staerke] of MECH_OBEN) {
       const o = P[ziel];
       if (!o) continue;
       lies(c, f0, f1, u2, idx, _q4);
-      o.quaternion.copy(_r2.copy(_ident).slerp(_q4, staerke * w));
+      o.quaternion.copy(_r2.copy(_ident).slerp(_q4, staerke * w2));
     }
     lies(c, f0, f1, u2, 0, _q4);
     _e2.setFromQuaternion(_q4, "YXZ");
     _e2.y = 0;
     _q4.setFromEuler(_e2);
-    P.Pelvis.quaternion.copy(_r2.copy(_ident).slerp(_q4, 0.35 * w));
-    MECH_BECKEN.dx = bahn(c.hipX, f0, f1, u2) * M_SEIT * w;
-    MECH_BECKEN.dz = bahn(c.hipZ, f0, f1, u2) * M_TIEF * w;
-    MECH_BECKEN.dy = bahn(c.hipY, f0, f1, u2) * M_HOCH * w - M_HOCKE * w;
+    P.Pelvis.quaternion.copy(_r2.copy(_ident).slerp(_q4, 0.35 * w2));
+    MECH_BECKEN.dx = bahn(c.hipX, f0, f1, u2) * M_SEIT * w2;
+    MECH_BECKEN.dz = bahn(c.hipZ, f0, f1, u2) * M_TIEF * w2;
+    MECH_BECKEN.dy = bahn(c.hipY, f0, f1, u2) * M_HOCH * w2 - M_HOCKE * w2;
     return MECH_BECKEN.dy;
   }
 
@@ -49924,8 +49955,8 @@ void main() {
       }
       const sr = ctx.sampleRate, len = sr * 2;
       this.white = ctx.createBuffer(1, len, sr);
-      const w = this.white.getChannelData(0);
-      for (let i = 0; i < len; i++) w[i] = Math.random() * 2 - 1;
+      const w2 = this.white.getChannelData(0);
+      for (let i = 0; i < len; i++) w2[i] = Math.random() * 2 - 1;
       this.brown = ctx.createBuffer(1, len, sr);
       const b = this.brown.getChannelData(0);
       let last = 0;
@@ -50222,15 +50253,15 @@ void main() {
         this.thump(o, t2, 140, 70, 0.04, 0.25 * s);
       }
       if ((kind === "concrete" || kind === "metal") && Math.random() < 0.22) {
-        const w = this.ctx.createOscillator();
-        w.type = "sine";
-        w.frequency.setValueAtTime(rand(2600, 3600), t2);
-        w.frequency.exponentialRampToValueAtTime(700, t2 + 0.2);
+        const w2 = this.ctx.createOscillator();
+        w2.type = "sine";
+        w2.frequency.setValueAtTime(rand(2600, 3600), t2);
+        w2.frequency.exponentialRampToValueAtTime(700, t2 + 0.2);
         const g2 = this.envGain(t2, 0.12, 5e-3, 0.2);
-        w.connect(g2);
+        w2.connect(g2);
         g2.connect(o);
-        w.start(t2);
-        w.stop(t2 + 0.25);
+        w2.start(t2);
+        w2.stop(t2 + 0.25);
       }
       v.kill(t2 + 0.5);
     }
@@ -51864,8 +51895,8 @@ void main() {
   var BONE_RATE = { Hips: 24, Spine: 15, Chest: 12, Head: 8, UpperArm_L: 14, Forearm_L: 12, Hand_L: 14, UpperArm_R: 14, Forearm_R: 12, Hand_R: 16, Thigh_L: 20, Shin_L: 17, Foot_L: 15, Thigh_R: 20, Shin_R: 17, Foot_R: 15 };
   var ARM_BONES = /* @__PURE__ */ new Set(["UpperArm_L", "Forearm_L", "Hand_L", "UpperArm_R", "Forearm_R", "Hand_R", "Chest", "Head"]);
   var GAIT_TARGET = (sp, sprinting) => {
-    const w = smoothstep2(0.25, 1.1, sp), r = smoothstep2(2.4, 4, sp), s = smoothstep2(5.2, 6.8, sp) * (sprinting ? 1 : 0.6);
-    return [1 - w, w * (1 - r), r * (1 - s), s];
+    const w2 = smoothstep2(0.25, 1.1, sp), r = smoothstep2(2.4, 4, sp), s = smoothstep2(5.2, 6.8, sp) * (sprinting ? 1 : 0.6);
+    return [1 - w2, w2 * (1 - r), r * (1 - s), s];
   };
   var HOLDS = {
     pistol: {
@@ -51899,19 +51930,19 @@ void main() {
       }
     });
     const n2 = pts.length / 3, X2 = (i) => pts[3 * i], Y2 = (i) => pts[3 * i + 1], Z = (i) => pts[3 * i + 2];
-    const under = (z, w = 0.03) => {
+    const under = (z, w2 = 0.03) => {
       let y2 = Infinity;
-      for (let i = 0; i < n2; i++) if (Math.abs(Z(i) - z) <= w) y2 = Math.min(y2, Y2(i));
+      for (let i = 0; i < n2; i++) if (Math.abs(Z(i) - z) <= w2) y2 = Math.min(y2, Y2(i));
       return y2;
     };
-    const top = (z, w = 0.03) => {
+    const top = (z, w2 = 0.03) => {
       let y2 = -Infinity;
-      for (let i = 0; i < n2; i++) if (Math.abs(Z(i) - z) <= w) y2 = Math.max(y2, Y2(i));
+      for (let i = 0; i < n2; i++) if (Math.abs(Z(i) - z) <= w2) y2 = Math.max(y2, Y2(i));
       return y2;
     };
-    const halfW = (z, w = 0.03) => {
+    const halfW = (z, w2 = 0.03) => {
       let x = 0;
-      for (let i = 0; i < n2; i++) if (Math.abs(Z(i) - z) <= w) x = Math.max(x, Math.abs(X2(i)));
+      for (let i = 0; i < n2; i++) if (Math.abs(Z(i) - z) <= w2) x = Math.max(x, Math.abs(X2(i)));
       return x;
     };
     const rear = () => {
@@ -52345,8 +52376,8 @@ void main() {
       const turn = clamp2(this.yawRate * (0.25 + this.speed01), -2.5, 2.5);
       {
         const target = clamp2(this.accF * 0.022, -0.2, 0.22);
-        const w = 11, z = 0.32;
-        this.leanV += (w * w * (target - this.lean) - 2 * z * w * this.leanV) * dt3;
+        const w2 = 11, z = 0.32;
+        this.leanV += (w2 * w2 * (target - this.lean) - 2 * z * w2 * this.leanV) * dt3;
         this.lean += this.leanV * dt3;
       }
       {
@@ -53103,13 +53134,13 @@ void main() {
       this.lastHitT = -99;
       this.paintRgb = new Color(paint || d.paint[0]);
       const hb = d.wheelbase / 2, ht2 = d.track / 2;
-      this.wheels = [{ lx: ht2, lz: hb, front: true }, { lx: -ht2, lz: hb, front: true }, { lx: ht2, lz: -hb, front: false }, { lx: -ht2, lz: -hb, front: false }].map((w) => ({ ...w, comp: 0, spin: 0, contact: true, load: d.mass * GRAV / 4, gy: 0, wx: 0, wz: 0, skidD: 0 }));
+      this.wheels = [{ lx: ht2, lz: hb, front: true }, { lx: -ht2, lz: hb, front: true }, { lx: ht2, lz: -hb, front: false }, { lx: -ht2, lz: -hb, front: false }].map((w2) => ({ ...w2, comp: 0, spin: 0, contact: true, load: d.mass * GRAV / 4, gy: 0, wx: 0, wz: 0, skidD: 0 }));
       this.mount = 0.45;
       this.staticComp = d.mass * GRAV / (4 * d.susp.stiffness);
       this.Ipitch = d.mass * d.length * d.length / 12 * 0.9;
       this.Iroll = d.mass * d.width * d.width / 12 * 1.3;
       this.Iyaw = d.mass * (d.length * d.length + d.width * d.width) / 12;
-      for (const w of this.wheels) w.comp = this.staticComp;
+      for (const w2 of this.wheels) w2.comp = this.staticComp;
       this.updateMesh(0);
       this.updateAABB();
     }
@@ -53171,32 +53202,32 @@ void main() {
       this.steer = damp2(this.steer, c.steer * lock, d.steerSpeed * (c.steer === 0 ? 1.7 : 1) / (1 + Math.abs(u2) * 0.025), dt3);
       let Fz = 0, Mp = 0, Mr = 0, contacts = 0;
       const sp = Math.sin(this.pitch), sr = Math.sin(this.roll);
-      for (const w of this.wheels) {
-        w.wx = this.pos.x + w.lx * cy + w.lz * sy;
-        w.wz = this.pos.z - w.lx * sy + w.lz * cy;
-        const mountY = this.pos.y + this.mount - w.lz * sp + w.lx * sr;
-        const gh = world.groundHeight(w.wx, w.wz);
-        w.gy = gh;
+      for (const w3 of this.wheels) {
+        w3.wx = this.pos.x + w3.lx * cy + w3.lz * sy;
+        w3.wz = this.pos.z - w3.lx * sy + w3.lz * cy;
+        const mountY = this.pos.y + this.mount - w3.lz * sp + w3.lx * sr;
+        const gh = world.groundHeight(w3.wx, w3.wz);
+        w3.gy = gh;
         const L = mountY - gh;
         const comp = this.mount + this.staticComp - L;
-        const prev = w.comp;
+        const prev = w3.comp;
         if (comp > -d.susp.travel) {
-          w.contact = true;
+          w3.contact = true;
           contacts++;
           const cc = Math.min(comp, d.susp.travel + 0.25);
           const rate = (cc - prev) / dt3;
-          w.comp = cc;
+          w3.comp = cc;
           let F2 = d.susp.stiffness * cc + d.susp.damping * rate;
           if (cc > d.susp.travel) F2 += (cc - d.susp.travel) * d.susp.stiffness * 10;
           F2 = Math.max(0, F2);
           Fz += F2;
-          Mp += -F2 * w.lz;
-          Mr += F2 * w.lx;
-          w.load = damp2(w.load, clamp2(F2, 0, m * GRAV * 0.5), 14, dt3);
+          Mp += -F2 * w3.lz;
+          Mr += F2 * w3.lx;
+          w3.load = damp2(w3.load, clamp2(F2, 0, m * GRAV * 0.5), 14, dt3);
         } else {
-          w.contact = false;
-          w.load = damp2(w.load, 0, 14, dt3);
-          w.comp = -d.susp.travel;
+          w3.contact = false;
+          w3.load = damp2(w3.load, 0, 14, dt3);
+          w3.comp = -d.susp.travel;
         }
       }
       Mr += -d.susp.rollBar * this.roll * 4;
@@ -53314,9 +53345,9 @@ void main() {
         this.pos.z = clamp2(this.pos.z, -F, F);
         this.vel.multiplyScalar(-0.3);
       }
-      for (const w of this.wheels) {
-        const driven = d.drive === "front" === w.front;
-        w.spin += (u22 / d.wheelRadius + (driven ? this.wheelspin * 40 : 0)) * dt3;
+      for (const w3 of this.wheels) {
+        const driven = d.drive === "front" === w3.front;
+        w3.spin += (u22 / d.wheelRadius + (driven ? this.wheelspin * 40 : 0)) * dt3;
       }
       this.collideStatics();
     }
@@ -53532,10 +53563,10 @@ void main() {
         this.lightsMesh.visible = false;
         return;
       }
-      this.wheels.forEach((w, i) => {
+      this.wheels.forEach((w2, i) => {
         const wm = this.wheelMeshes[i];
-        wm.position.y = clamp2(d.wheelRadius + (w.comp - this.staticComp), d.wheelRadius - d.susp.travel - 0.05, d.wheelRadius + d.susp.travel + 0.2);
-        wm.rotation.set(w.spin, w.front ? this.steer : 0, 0, "YXZ");
+        wm.position.y = clamp2(d.wheelRadius + (w2.comp - this.staticComp), d.wheelRadius - d.susp.travel - 0.05, d.wheelRadius + d.susp.travel + 0.2);
+        wm.rotation.set(w2.spin, w2.front ? this.steer : 0, 0, "YXZ");
       });
       this.brakeLights.visible = !this.wrecked && (this.controls.brake > 0.05 || this.controls.handbrake && !!this.driver);
       this.lightsMesh.material = this.driver && !this.wrecked ? MAT.lights : MAT.lightsOff;
@@ -53547,7 +53578,7 @@ void main() {
           this._nanT = this.G.time;
         }
         if (window.__nanDiag) {
-          const felder = { pos: [this.pos.x, this.pos.y, this.pos.z], vel: [this.vel.x, this.vel.y, this.vel.z], yaw: this.yaw, speed: this.speed, vy: this.vy, yawRate: this.yawRate, steer: this.steer, gear: this.gear, rpm: this.rpm, wheelspin: this.wheelspin, comp: this.wheels.map((w) => w.comp), load: this.wheels.map((w) => w.load) };
+          const felder = { pos: [this.pos.x, this.pos.y, this.pos.z], vel: [this.vel.x, this.vel.y, this.vel.z], yaw: this.yaw, speed: this.speed, vy: this.vy, yawRate: this.yawRate, steer: this.steer, gear: this.gear, rpm: this.rpm, wheelspin: this.wheelspin, comp: this.wheels.map((w2) => w2.comp), load: this.wheels.map((w2) => w2.load) };
           const bad = [];
           for (const k in felder) {
             const v = felder[k];
@@ -53576,10 +53607,10 @@ void main() {
         this.steer = 0;
         this.slip = 0;
         this.skidAcc = 0;
-        for (const w of this.wheels) {
-          w.comp = this.staticComp;
-          w.load = this.def.mass * GRAV / 4;
-          w.skidD = 0;
+        for (const w2 of this.wheels) {
+          w2.comp = this.staticComp;
+          w2.load = this.def.mass * GRAV / 4;
+          w2.skidD = 0;
         }
       } else if (this.G.time - (this._goodT || -9) > 0.5) {
         this._goodT = this.G.time;
@@ -53588,6 +53619,14 @@ void main() {
       }
     }
     update(dt3) {
+      if (this.G.empT > 0 && this.driver !== "player") {
+        this.controls.throttle = 0;
+        this.controls.brake = 1;
+        this.sirenOn = false;
+        this.updateMesh(dt3);
+        this.nanGuard();
+        return;
+      }
       this.nanGuard();
       const G2 = this.G;
       const moving = Math.hypot(this.vel.x, this.vel.z) > 0.03 || Math.abs(this.vy) > 0.05 || Math.abs(this.yawRate) > 0.02;
@@ -53635,16 +53674,16 @@ void main() {
         }
       }
       if (this.awake && this.slip > 0.42 && !this.airborne) {
-        for (const w of this.wheels) {
-          if (!w.contact) continue;
-          const driven = this.def.drive === "front" === w.front;
-          const strength = this.slip * (w.front ? 0.7 : 1) + (driven ? this.wheelspin : 0);
-          w.skidD += Math.hypot(this.vel.x, this.vel.z) * dt3;
-          if (w.skidD > 0.45 && strength > 0.45) {
-            w.skidD = 0;
-            G2.fx.skid(w.wx, w.gy, w.wz, this.yaw + (w.front ? this.steer : 0), strength);
+        for (const w2 of this.wheels) {
+          if (!w2.contact) continue;
+          const driven = this.def.drive === "front" === w2.front;
+          const strength = this.slip * (w2.front ? 0.7 : 1) + (driven ? this.wheelspin : 0);
+          w2.skidD += Math.hypot(this.vel.x, this.vel.z) * dt3;
+          if (w2.skidD > 0.45 && strength > 0.45) {
+            w2.skidD = 0;
+            G2.fx.skid(w2.wx, w2.gy, w2.wz, this.yaw + (w2.front ? this.steer : 0), strength);
           }
-          if (strength > 0.6 && Math.random() < 0.35) G2.fx.tyreSmoke(_p5.set(w.wx, w.gy, w.wz), strength * 0.7);
+          if (strength > 0.6 && Math.random() < 0.35) G2.fx.tyreSmoke(_p5.set(w2.wx, w2.gy, w2.wz), strength * 0.7);
         }
       }
     }
@@ -54521,7 +54560,7 @@ void main() {
         const near2 = Math.hypot(v.pos.x - cp.x, v.pos.z - cp.z) < 90;
         if (v.body.castShadow !== near2) {
           v.body.castShadow = near2;
-          for (const w of v.wheelMeshes) w.castShadow = near2;
+          for (const w2 of v.wheelMeshes) w2.castShadow = near2;
         }
       }
     }
@@ -55855,9 +55894,9 @@ void main() {
       this.cur = i;
       this.applySelection();
       this.G.audio.ui("tick");
-      const w = this.current;
-      if (w.reloading) {
-        w.reloading = false;
+      const w2 = this.current;
+      if (w2.reloading) {
+        w2.reloading = false;
       }
     }
     refill() {
@@ -55867,12 +55906,12 @@ void main() {
       }
       this.applySelection();
     }
-    startReload(w) {
-      if (w.reloading || w.ammo >= w.def.magazine) return;
-      w.reloading = true;
-      w.reloadT = 0;
+    startReload(w2) {
+      if (w2.reloading || w2.ammo >= w2.def.magazine) return;
+      w2.reloading = true;
+      w2.reloadT = 0;
       this.G.audio.ui("reload1");
-      w.clicked = false;
+      w2.clicked = false;
     }
     muzzleWorld(out) {
       const m = this.meshes[this.current.def.id].getObjectByName("muzzle");
@@ -55935,22 +55974,22 @@ void main() {
         for (let k = 0; k < items.length; k++) if (I2.pressed("Digit" + (k + 1))) pick(k);
         if (I2.wheel) pick((curSel + (I2.wheel > 0 ? 1 : items.length - 1)) % items.length);
       }
-      const w = this.current;
-      if (w.reloading) {
-        w.reloadT += dt3;
-        if (!w.clicked && w.reloadT > w.def.reloadTime * 0.6) {
-          w.clicked = true;
+      const w2 = this.current;
+      if (w2.reloading) {
+        w2.reloadT += dt3;
+        if (!w2.clicked && w2.reloadT > w2.def.reloadTime * 0.6) {
+          w2.clicked = true;
           G2.audio.ui("reload2");
         }
-        if (w.reloadT >= w.def.reloadTime) {
-          w.reloading = false;
-          w.ammo = w.def.magazine;
+        if (w2.reloadT >= w2.def.reloadTime) {
+          w2.reloading = false;
+          w2.ammo = w2.def.magazine;
         }
       }
       if (onFoot && !this.wheelOpen) {
-        if (I2.pressed("KeyR")) this.startReload(w);
-        const want = w.def.auto ? I2.mouseDown(0) : I2.mousePressed(0);
-        if (want) this.tryFire(w);
+        if (I2.pressed("KeyR")) this.startReload(w2);
+        const want = w2.def.auto ? I2.mouseDown(0) : I2.mousePressed(0);
+        if (want) this.tryFire(w2);
       }
       for (const s of this.slots) s.heat = Math.max(0, s.heat - dt3 * 1.8);
       this.kick = damp2(this.kick, 0, 11, dt3);
@@ -55967,23 +56006,23 @@ void main() {
         }
       }
     }
-    tryFire(w) {
+    tryFire(w2) {
       const G2 = this.G, P = G2.player, cam = G2.gcam;
-      if (w.reloading) return;
-      if (w.ammo <= 0) {
-        if (!w.def.auto || G2.time > w.nextShot) {
+      if (w2.reloading) return;
+      if (w2.ammo <= 0) {
+        if (!w2.def.auto || G2.time > w2.nextShot) {
           G2.audio.ui("empty");
-          w.nextShot = G2.time + 0.25;
+          w2.nextShot = G2.time + 0.25;
         }
-        this.startReload(w);
+        this.startReload(w2);
         return;
       }
-      if (G2.time < w.nextShot) return;
-      w.nextShot = G2.time + 60 / w.def.rpm;
-      w.ammo--;
+      if (G2.time < w2.nextShot) return;
+      w2.nextShot = G2.time + 60 / w2.def.rpm;
+      w2.ammo--;
       P.firing = 1.6;
       this.shotsFired++;
-      const d = w.def;
+      const d = w2.def;
       const aim = P.aiming;
       _o2.copy(G2.camera.position);
       _d.copy(cam.forward);
@@ -55993,8 +56032,8 @@ void main() {
       this.muzzleWorld(_m7);
       if (!isFinite(_m7.x)) P.chestPos(_m7);
       _d.subVectors(_t2, _m7).normalize();
-      const spread = (aim ? d.spreadAim : d.spreadHip) + d.spreadGrowth * w.heat + (P.speed > 4 ? 0.6 : 0);
-      w.heat = Math.min(1, w.heat + (d.auto ? 0.09 : 0.35));
+      const spread = (aim ? d.spreadAim : d.spreadHip) + d.spreadGrowth * w2.heat + (P.speed > 4 ? 0.6 : 0);
+      w2.heat = Math.min(1, w2.heat + (d.auto ? 0.09 : 0.35));
       if (spread > 0) {
         const a = spread * Math.PI / 180 * Math.sqrt(Math.random());
         const b = rand(0, Math.PI * 2);
@@ -56142,6 +56181,21 @@ void main() {
           best = { kind: "mech", t: mh.t, x: mh.x, y: mh.y, z: mh.z, nx: mh.nx, ny: mh.ny, nz: mh.nz, ref: G2.mechSys.mech };
         }
       }
+      if (G2.krieg && G2.krieg.drones && !opts.ignoreFeind) for (const d of G2.krieg.drones) {
+        if (d.dead) continue;
+        const cx = d.pos.x - ox, cy = d.pos.y - oy, cz = d.pos.z - oz;
+        const tca = cx * dx + cy * dy + cz * dz;
+        if (tca < 0 || tca > bt + 2) continue;
+        const d2 = cx * cx + cy * cy + cz * cz - tca * tca;
+        const R = 0.9;
+        if (d2 < R * R) {
+          const t2 = Math.max(0.1, tca - Math.sqrt(R * R - d2));
+          if (t2 < bt) {
+            bt = t2;
+            best = { kind: "drone", t: t2, x: d.pos.x, y: d.pos.y, z: d.pos.z, nx: -dx, ny: -dy, nz: -dz, ref: d };
+          }
+        }
+      }
       if (G2.krieg && !opts.ignoreFeind) for (const f of G2.krieg.list) {
         if (f.dead || f.state === "falling") continue;
         const fh = f.raycast(ox, oy, oz, dx, dy, dz, bt);
@@ -56240,6 +56294,19 @@ void main() {
           if (byPlayer) this.hits++;
           break;
         }
+        case "drone": {
+          const d2 = hit.ref;
+          const flak = G2.krieg.owned.has("flak") ? 3 : 1;
+          d2.damage(dmg * flak, "bullet", p.owner);
+          fx2.sparks(hit, 6, hit.nx, hit.ny, hit.nz);
+          G2.audio.impact("metal", hit, 0.8);
+          if (byPlayer) {
+            G2.ui.hitmarker(d2.dead);
+            G2.ui.dmgNumber(hit.x, hit.y + 0.4, hit.z, Math.round(dmg * flak), d2.dead);
+            this.hits++;
+          }
+          break;
+        }
         case "mech": {
           const m = hit.ref;
           m.damage(dmg * (m.isFeind ? 0.6 : 0.18), "bullet", p.owner);
@@ -56287,6 +56354,13 @@ void main() {
         const d = Math.hypot(dx, dy, dz);
         const R = radius * 1.5;
         if (d < R) m.damage(damage * (1 - d / R) * 0.4, "explosion", source);
+      }
+      if (G2.krieg && G2.krieg.drones) for (const d of G2.krieg.drones) {
+        if (d.dead) continue;
+        const dx = d.pos.x - pos.x, dy = d.pos.y - pos.y, dz = d.pos.z - pos.z;
+        const dd = Math.hypot(dx, dy, dz);
+        const R = radius * 1.6;
+        if (dd < R) d.damage(damage * (1 - dd / R), "explosion", source);
       }
       if (G2.krieg) for (const f of G2.krieg.list) {
         if (f.dead || f.state === "falling" || source === f) continue;
@@ -56358,6 +56432,7 @@ void main() {
       const G2 = this.G, W = this.W, P = G2.player;
       const pts = W.crimes[kind];
       if (pts === void 0 || P.dead) return;
+      if (kind === "killCop" && G2.krieg && G2.krieg.owned.has("spenden") && G2.krieg.spendenAktiv) return;
       const cd = W.cooldown[kind];
       if (cd && this.time - (this.crimeCd[kind] ?? -99) < cd) return;
       this.crimeCd[kind] = this.time;
@@ -56546,7 +56621,8 @@ void main() {
           }
         }
       }
-      if (G2.mechSys && G2.mechSys.piloted && !P.dead && this.stars > 0) seen = true;
+      if (G2.krieg && G2.krieg.rauchT > 0) {
+      } else if (G2.mechSys && G2.mechSys.piloted && !P.dead && this.stars > 0) seen = true;
       this.seen = seen;
       if (!this.contact && this.stars > 0) {
         this.noContactT += dt3;
@@ -56944,12 +57020,12 @@ void main() {
     polizeilicht() {
       const H = this.P.Head || this.P.Torso;
       if (!H) return;
-      const mk = (hex, emit, w, h, d, x, y2, z) => {
+      const mk = (hex, emit, w2, h, d, x, y2, z) => {
         const m = new MeshStandardMaterial({ color: hex, emissive: emit, emissiveIntensity: 2.4, roughness: 0.5 });
         noteMaterial(m);
         this.lightsMats = this.lightsMats || [];
         if (emit) this.lightsMats.push(m);
-        const mesh = new Mesh(new BoxGeometry(w, h, d), m);
+        const mesh = new Mesh(new BoxGeometry(w2, h, d), m);
         mesh.position.set(x, y2, z);
         return mesh;
       };
@@ -57077,6 +57153,14 @@ void main() {
     }
     damage(amount, kind, source) {
       if (this.dead || this.state === "falling" || amount <= 0) return;
+      if (this.tier === "schild") {
+        const quelle = source === "player" ? G2.player.pos : source && source.pos || G2.player.pos;
+        const aw = Math.abs(angleDelta(this.yaw, Math.atan2(quelle.x - this.pos.x, quelle.z - this.pos.z)));
+        if (aw < 0.9) {
+          amount *= 0.2;
+          this.G.fx.sparks({ x: this.pos.x, y: this.pos.y + 4, z: this.pos.z, nx: 0, ny: 1, nz: 0 }, 4, 0, 1, 0);
+        }
+      }
       this.hp -= amount;
       this.dmgFlash = 1;
       this.lastHurt = this.G.time;
@@ -57121,6 +57205,10 @@ void main() {
     update(dt3) {
       const G2 = this.G, P = G2.player;
       this.dmgFlash = Math.max(0, this.dmgFlash - dt3 * 4);
+      if (G2.empT > 0) {
+        this.updateMesh(this.pos.y);
+        return;
+      }
       if (!isFinite(this.pos.x + this.pos.y + this.pos.z + this.vy + this.yaw + this.speed)) {
         if (this._goodP) {
           this.pos.copy(this._goodP);
@@ -57163,7 +57251,25 @@ void main() {
         this.phase += dt3 * 2.4 * this.speed / this.speedMax;
         if (this.leaveT > 7) return "remove";
       } else if (this.state === "hunt") {
-        const ziel = P.vehicle && P.vehicle.isMech && P.vehicle.piloted ? P.vehicle.pos : P.pos;
+        if (this.tier === "titan") {
+          this.wurfT = (this.wurfT || 6) - dt3;
+          if (this.wurfT <= 0) {
+            this.wurfT = this.elite ? 3 : 5;
+            const autos = G2.vehicles.list.filter((v) => !v.wrecked && Math.hypot(v.pos.x - this.pos.x, v.pos.z - this.pos.z) < 30);
+            const auto = autos[0];
+            if (auto) {
+              const dx2 = P.pos.x - auto.pos.x, dz2 = P.pos.z - auto.pos.z;
+              const dl = Math.hypot(dx2, dz2) || 1;
+              auto.vel.x = dx2 / dl * 32;
+              auto.vel.z = dz2 / dl * 32;
+              auto.vy = 9;
+              auto.wake();
+              G2.audio.explosion(auto.pos, 0.6);
+            }
+          }
+        }
+        const koeder = this.G.krieg.decoy;
+        const ziel = koeder ? { x: koeder.x, y: 0, z: koeder.z } : P.vehicle && P.vehicle.isMech && P.vehicle.piloted ? P.vehicle.pos : P.pos;
         const dx = ziel.x - this.pos.x, dz = ziel.z - this.pos.z;
         const d = Math.hypot(dx, dz) || 1;
         const soll = Math.atan2(dx, dz);
@@ -57277,7 +57383,8 @@ void main() {
         G2.audio.explosion(_a3, 0.7);
         G2.fx.chunk(_a3.x, _a3.y, _a3.z, randSpread(6), 5, randSpread(6), 0.5, 0.3, 0.3, 0.3);
         if (vomSpieler && G2.krieg) {
-          G2.krieg.pay(KRIEG.reward.drone);
+          G2.krieg.pay(KRIEG.reward.drone, true);
+          G2.krieg.addXP(6);
           G2.krieg.droneKills = (G2.krieg.droneKills || 0) + 1;
         }
       }
@@ -57342,6 +57449,19 @@ void main() {
       this.bountyT = 6;
       this.arena = null;
       this.drones = [];
+      this.mines = [];
+      this.mineT = 30;
+      this.milTanks = [];
+      this.milT = 40;
+      this.xp = 0;
+      this.rang = 0;
+      this.combo = 0;
+      this.comboT = 0;
+      this.rauchT = 0;
+      this.decoy = null;
+      this._achievements = [];
+      this._skin = null;
+      this._saveT = 0;
       this.raubKills = 0;
       this.titanDead = 0;
     }
@@ -57373,10 +57493,33 @@ void main() {
       location.reload();
     }
     // ---------------- Geld ----------------
-    pay(n2) {
+    pay(n2, istKill) {
+      const G2 = this.G;
+      let mult = 1;
+      if (istKill && this.combo > 0) mult = Math.min(4, 1 + this.combo);
+      if (istKill && this.owned.has("sammel")) mult *= 1.2;
+      if (window.__nacht && istKill) mult *= 1.5;
+      if (mult > 1) n2 = Math.round(n2 * mult);
       this.money += n2;
-      this.G.ui.moneyPop(n2);
+      G2.ui.moneyPop("+" + n2.toLocaleString("de-DE") + " \u20AC" + (mult > 1 ? " \xD7" + mult.toFixed(1).replace(".0", "") : ""));
       this.saveSoon();
+    }
+    addXP(n2) {
+      this.xp += n2;
+      let r = 0;
+      const T = KRIEG.rangXP;
+      for (let i = 0; i < T.length; i++) if (this.xp >= T[i]) r = i;
+      if (r > this.rang) {
+        this.rang = r;
+        this.G.ui.msg("RANG " + r, "neue Upgrades freigeschaltet", 2.6);
+        this.G.audio.ui("open");
+      }
+    }
+    killFeed(kind) {
+      this.comboT = 5;
+      this.combo = Math.min(3, this.combo + 1);
+      this._comboMax = Math.max(this._comboMax || 0, this.combo);
+      this.addXP(kind);
     }
     saveSoon() {
       this._saveT = 2;
@@ -57395,16 +57538,26 @@ void main() {
     onFeindKill(f) {
       const istCop = f && f.cop;
       const istTitan = f && f.tier === "titan";
-      this.pay(istTitan ? KRIEG.reward.titan : istCop ? KRIEG.reward.copMech : KRIEG.reward.feind);
-      this.G.ui.msg("+" + geld(istTitan ? KRIEG.reward.titan : istCop ? KRIEG.reward.copMech : KRIEG.reward.feind), istTitan ? "TITAN ZERLEGT" : istCop ? "Polizei-Mech verschrottet" : "Raub-Mech verschrottet", istTitan ? 3.2 : 1.6);
+      this.killFeed(istTitan ? 200 : 12);
+      const lohn = istTitan ? f.elite ? KRIEG.reward.titanElite : KRIEG.reward.titan : istCop ? KRIEG.reward.copMech : KRIEG.reward.feind;
+      this.pay(lohn, true);
+      this.G.ui.msg("+" + geld(lohn), istTitan ? f.elite ? "ELITE-TITAN ZERLEGT" : "TITAN ZERLEGT" : istCop ? "Polizei-Mech verschrottet" : "Raub-Mech verschrottet", istTitan ? 3.2 : 1.6);
+      this.xp += 0;
       if (!istCop) {
         this.feilZaeler = (this.feilZaeler || 0) + 1;
         if (!istTitan) this.raubKills++;
         if (this.raubKills > 0 && this.raubKills % 5 === 0 && !this.list.some((x) => x.tier === "titan" && !x.dead)) {
           const p = this.wellenSpawn();
           if (p) {
-            this.spawnFeind(p.x, p.z, { tier: "titan" });
-            this.G.ui.msg("TITAN-SIGNAL", "Etwas GROSSES kommt runter", 3);
+            const elite = this.titanDead >= 2;
+            this.spawnFeind(p.x, p.z, elite ? { tier: "titan", elite: true } : { tier: "titan" });
+            const t2 = this.list[this.list.length - 1];
+            if (elite) {
+              t2.elite = true;
+              t2.hp = 6500;
+              t2.maxHealth = 6500;
+            }
+            this.G.ui.msg("TITAN-SIGNAL", elite ? "ELITE-TITAN \u2014 Autos als Munition" : "Etwas GROSSES kommt runter", 3);
           }
         }
         this.save();
@@ -57476,6 +57629,90 @@ void main() {
       } else if (u2.id === "panzer") {
         const m = this.G.mechSys.mech;
         if (m && !m.wrecked) m.hp += 600;
+      } else if (u2.id === "minigun3") {
+        MECH.gun.rpm = 2800;
+        MECH.gun.heatRate = 0.115;
+      } else if (u2.id === "raketen3") {
+        MECH.missiles.salvo = 10;
+        MECH.missiles.reload = 2.2;
+        MECH.missiles.blast.damage = 200;
+        MECH.missiles.turn = 5.5;
+      } else if (u2.id === "panzer3") {
+        const m = this.G.mechSys.mech;
+        if (m && !m.wrecked) m.hp += 1e3;
+        this.installReflekt(m);
+      } else if (u2.id === "schub3") {
+        MECH.flight.forward = 48;
+        MECH.flight.boostMul = 2.6;
+        MECH.flight.maxUp = 19;
+      } else if (u2.id === "schild") {
+        this.installSchild(this.G.mechSys.mech);
+      } else if (u2.id && u2.id.startsWith("lack")) this.skinAnwenden(u2.id);
+    }
+    installSchild(m) {
+      if (!m || m._schildVerbaut) return;
+      m._schildVerbaut = true;
+      m._schild = 400;
+      const orig = m.damage.bind(m);
+      m.damage = (amount, kind, source) => {
+        if (m._schild > 0 && amount > 0 && !m.wrecked) {
+          const auf = Math.min(m._schild, amount);
+          m._schild -= auf;
+          amount -= auf;
+          this.G.fx.sparks({ x: m.pos.x, y: m.pos.y + 4, z: m.pos.z, nx: 0, ny: 1, nz: 0 }, 6, 0, 1, 0);
+        }
+        if (amount > 0) orig(amount, kind, source);
+      };
+    }
+    installReflekt(m) {
+      if (!m || m._reflektVerbaut) return;
+      m._reflektVerbaut = true;
+      const orig = m.damage.bind(m);
+      m.damage = (amount, kind, source) => {
+        orig(amount, kind, source);
+        if (source && source.pos && source.damage && source !== this.G.mechSys.mech && amount > 8) source.damage(amount * 0.15, "reflekt", m);
+      };
+    }
+    skinAnwenden(id) {
+      const m = this.G.mechSys.mech;
+      this._skin = id;
+      if (!m) return;
+      const sets = { lackChaos: ["#7a2a18", "#ff7a1a"], lackNeon: ["#101820", "#63d6ff"], lackGold: ["#8a6a1a", "#ffd34d"] };
+      const set = sets[id];
+      if (!set) return;
+      m.mesh.traverse((o) => {
+        if (!o.isMesh || !o.material) return;
+        const ms = Array.isArray(o.material) ? o.material : [o.material];
+        ms.forEach((mm) => {
+          if (mm.name === "mech_body") mm.color.set(set[0]);
+          if (mm.name && mm.name.startsWith("mech_glow")) {
+            mm.emissive && mm.emissive.set(set[1]);
+            if (mm.color) mm.color.set(set[1]);
+          }
+          if (mm.name === "mech_accent") {
+            mm.emissive && mm.emissive.set(set[1]);
+          }
+        });
+      });
+    }
+    achievementsCheck() {
+      const G2 = this.G;
+      const liste = [
+        ["ersterTitan", "Erster Titan zerlegt", this.titanDead >= 1, 500],
+        ["titan5", "5 Titanen zerlegt", this.titanDead >= 5, 2500],
+        ["kills100", "100 Abschuesse", (G2.stats.kills || 0) >= 100, 800],
+        ["stadt25", "25 Gebaeude einebnet", (this.kollapsZaehler || 0) >= 25, 1200],
+        ["arena5", "Arena: 5 Wellen", (this.arenaBest || 0) >= 5, 2e3],
+        ["combo4", "Combo \xD74 erreicht", (this._comboMax || 0) >= 3, 600],
+        ["drohnen15", "15 Drohnen abgeschossen", (this.droneKills || 0) >= 15, 700]
+      ];
+      for (const [id, text, ok, lohn] of liste) {
+        if (ok && !this._achievements.includes(id)) {
+          this._achievements.push(id);
+          this.pay(lohn);
+          G2.ui.msg("ERRUNGENSCHAFT", text + " \xB7 +" + geld(lohn), 3);
+          this.save();
+        }
       }
     }
     // GLB-Anbauten an den (neuen) Spielermech haengen; fehlende Teile werden still uebersprungen
@@ -57579,17 +57816,29 @@ void main() {
         }
         this.upgradesLoaden = true;
         for (const u2 of KRIEG.upgrades) if (this.owned.has(u2.id)) this.anwenden(u2);
+        this.rangBerechnen();
       }
       this.bountyUpdate(dt3);
       this.arenaUpdate(dt3);
       this.stationen(dt3);
       this.dronesUpdate(dt3);
+      this.comboT -= dt3;
+      if (this.comboT <= 0) this.combo = 0;
+      this.rauchT = Math.max(0, this.rauchT - dt3);
+      this._achT = (this._achT || 0) - dt3;
+      if (this._achT <= 0) {
+        this._achT = 1.5;
+        this.achievementsCheck();
+      }
+      this.minenUpdate(dt3);
+      this.militaerUpdate(dt3);
       if (G2.mechSys && G2.mechSys.mech && G2.mechSys.mech.piloted && !this.drones.length && Math.random() < dt3 / 45) this.drohnenSchwarm();
       this.polizeiKader(dt3);
       const m = G2.mechSys.mech;
       if (m && !m.wrecked) {
         m.maxHealth = MECH.maxHealth + (this.owned.has("panzer") ? 600 : 0);
-        if (this.owned.has("nanorep") && G2.time - (m.lastHurt ?? -99) > 5 && m.hp < m.maxHealth) m.hp = Math.min(m.maxHealth, m.hp + 25 * dt3);
+        const repRate = 25 + (this.owned.has("nano2") ? 35 : 0) + (this.owned.has("rep") ? 10 : 0);
+        if ((this.owned.has("nanorep") || this.owned.has("rep")) && G2.time - (m.lastHurt ?? -99) > 5 && m.hp < m.maxHealth) m.hp = Math.min(m.maxHealth, m.hp + repRate * dt3);
         if (this._attachedMech !== m) this.anbauen();
       }
       if (m && m.piloted && !m.wrecked) {
@@ -57600,8 +57849,8 @@ void main() {
           for (let i = 0; i < n2; i++) {
             const p = this.wellenSpawn();
             if (!p) continue;
-            const w = Math.random();
-            const tier = this.wave >= 2 && w < 0.2 ? "artillery" : this.wave >= 1 && w < 0.4 ? "sprinter" : "std";
+            let tier = this.wave >= 2 && w < 0.2 ? "artillery" : this.wave >= 1 && w < 0.4 ? "sprinter" : "std";
+            if (this.wave >= 4 && w > 0.85) tier = "schild";
             this.spawnFeind(p.x, p.z, tier === "std" ? {} : { tier });
           }
           if (this.wave % 3 === 0) this.drohnenSchwarm();
@@ -57700,6 +57949,7 @@ void main() {
       if (unterwegs && m.hp < m.maxHealth) m.hp = Math.min(m.maxHealth, m.hp + 45 * dt3);
     }
     zoneArt(x, z, y2) {
+      if (!this.pads) return null;
       const gas = this.G.world.blocks.find((b) => b.template === "gas");
       if (gas && x > gas.lot.minX && x < gas.lot.maxX && z > gas.lot.minZ && z < gas.lot.maxZ) return "gas";
       for (const p of this.pads) {
@@ -57749,6 +57999,93 @@ void main() {
           }
           A2.t = 9;
           G2.ui.msg("WELLE " + A2.welle + " / 5", "+" + geld(KRIEG.reward.arenaWelle) + " \xB7 N\xE4here dich nicht dem Ausgang", 2.6);
+        }
+      }
+    }
+    rangBerechnen() {
+      let r = 0;
+      const T = KRIEG.rangXP;
+      for (let i = 0; i < T.length; i++) if (this.xp >= T[i]) r = i;
+      this.rang = r;
+    }
+    // ---------------- Runde 22: Minen (4+ Sterne) ----------------
+    minenUpdate(dt3) {
+      const G2 = this.G;
+      this.mineT -= dt3;
+      if (G2.police.stars >= 4 && this.mines.length < 10 && this.mineT <= 0) {
+        for (let i = 0; i < 5; i++) {
+          const a = rand(0, 6.28), d = rand(40, 90);
+          const x = clamp2(G2.player.pos.x + Math.sin(a) * d, -300, 300), z = clamp2(G2.player.pos.z + Math.cos(a) * d, -300, 300);
+          const mine = { x, z, mesh: new window.THREE.Mesh(new window.THREE.SphereGeometry(0.5, 10, 8), new window.THREE.MeshStandardMaterial({ color: 1707277, emissive: 16722458, emissiveIntensity: 1.6 })) };
+          mine.mesh.position.set(x, G2.world.groundHeight(x, z) + 0.3, z);
+          G2.scene.add(mine.mesh);
+          this.mines.push(mine);
+        }
+        this.mineT = 50;
+      }
+      for (let i = this.mines.length - 1; i >= 0; i--) {
+        const m = this.mines[i];
+        const quellen = [G2.player, ...G2.mechSys.mech && G2.mechSys.mech.piloted ? [G2.mechSys.mech] : [], ...G2.krieg.list.filter((f) => !f.dead && f.state === "hunt")];
+        for (const q of quellen) {
+          if (Math.hypot((q.pos.x || 0) - m.x, (q.pos.z || 0) - m.z) < 2.4 && Math.abs((q.pos.y || 0) - (m.mesh.position.y || 0)) < 4) {
+            G2.weapons.scheduleExplosion({ x: m.x, y: m.mesh.position.y + 0.5, z: m.z }, 6, 18, 140, "mine", 0.02);
+            G2.fx.explosion({ x: m.x, y: m.mesh.position.y, z: m.z }, 5);
+            G2.scene.remove(m.mesh);
+            this.mines.splice(i, 1);
+            break;
+          }
+        }
+      }
+    }
+    // ---------------- Runde 22: Militaer bei 6 Sternen (feindliche Panzer) ----------------
+    militaerUpdate(dt3) {
+      const G2 = this.G;
+      if (G2.police.stars < 6) {
+        this.milTanks.forEach((v) => {
+          if (!v.wrecked) {
+            v.controls.brake = 1;
+            v.controls.throttle = 0;
+          }
+        });
+        return;
+      }
+      const lebend = this.milTanks.filter((v) => !v.wrecked);
+      if (lebend.length < 2) {
+        this.milT -= dt3;
+        if (this.milT <= 0) {
+          const a = rand(0, 6.28);
+          const v = this.G.vehicles.spawnTank(G2.player.pos.x + Math.sin(a) * 90, G2.player.pos.z + Math.cos(a) * 90);
+          v.militaer = true;
+          v.paintRgb = new window.THREE.Color("#5a3a1a");
+          this.milTanks.push(v);
+          this.milT = 12;
+          G2.ui.msg("MILITAER", "Panzer angekommen \u2014 Deckung suchen", 3);
+        }
+      }
+      for (const v of this.milTanks) {
+        if (v.wrecked || !v.ai && v.driver !== "player") {
+          if (!v.milAi) {
+            v.milAi = { t: 0 };
+          }
+        }
+        v.milAi = v.milAi || { t: 0 };
+        v.milAi.t -= dt3;
+        const dx = G2.player.pos.x - v.pos.x, dz = G2.player.pos.z - v.pos.z;
+        const d = Math.hypot(dx, dz) || 1;
+        v.controls.steer = clamp2(angleDelta(v.yaw, Math.atan2(dx, dz)) * 2, -1, 1);
+        v.controls.throttle = d > 30 ? 1 : 0.2;
+        v.controls.brake = 0;
+        v.wake();
+        v.driver = v.driver || "ai";
+        if (v.milAi.t <= 0 && d < 90) {
+          v.milAi.t = 3.2;
+          const mzl = v.mesh.getObjectByName("TankMuzzle");
+          if (mzl) {
+            mzl.getWorldPosition(_a3);
+            _b3.set(G2.player.pos.x - _a3.x, G2.player.pos.y + 1 - _a3.y, G2.player.pos.z - _a3.z).normalize();
+            G2.weapons.spawnProjectile(_a3, _b3, G2.weapons.slots[2].def, v);
+            G2.audio.gunshot("mg", _a3);
+          }
         }
       }
     }
@@ -57834,8 +58171,8 @@ void main() {
       this.el.wheelName.textContent = it2 ? it2.name : "";
     }
     weaponChanged() {
-      const w = this.G.weapons.current;
-      this.el.wname.textContent = w.def.name;
+      const w2 = this.G.weapons.current;
+      this.el.wname.textContent = w2.def.name;
     }
     prompt(text) {
       if (text === this.promptText) return;
@@ -58000,9 +58337,9 @@ void main() {
       const hp = clamp2(P.health / 100, 0, 1);
       this.el.hp.firstElementChild.style.width = (hp * 100).toFixed(1) + "%";
       this.el.hp.classList.toggle("low", hp < 0.35);
-      const w = G2.weapons.current;
-      this.el.wammo.innerHTML = `<em>${w.ammo}</em> / ${w.def.magazine}`;
-      this.el.reload.textContent = w.reloading ? "RELOADING" + ".".repeat(1 + Math.floor(w.reloadT / w.def.reloadTime * 3)) : "";
+      const w2 = G2.weapons.current;
+      this.el.wammo.innerHTML = `<em>${w2.ammo}</em> / ${w2.def.magazine}`;
+      this.el.reload.textContent = w2.reloading ? "RELOADING" + ".".repeat(1 + Math.floor(w2.reloadT / w2.def.reloadTime * 3)) : "";
       this.el.cross.classList.toggle("hit", this.hitT > 0);
       if (this.hitT > 0) {
         this.hitT -= dt3;
@@ -58044,7 +58381,7 @@ void main() {
       if (this.dmgList.length) this.updateDmgNumbers(dt3);
       this.el.kills.textContent = G2.stats.kills;
       this.el.wrecks.textContent = G2.stats.wrecks;
-      if (G2.krieg) this.el.money.textContent = geld(G2.krieg.money);
+      if (G2.krieg) this.el.money.textContent = geld(G2.krieg.money) + (G2.krieg.rang ? " \xB7 RANG " + G2.krieg.rang : "");
       if (this.moneyPopT > 0) {
         this.moneyPopT -= dt3;
         if (this.moneyPopT <= 0) this.el.moneypop.classList.remove("show");
@@ -58158,6 +58495,27 @@ void main() {
         ctx.fillRect(-0.4, 1.4, 0.8, 1.2);
         ctx.restore();
       }
+      if (G2.krieg && G2.krieg.owned.has("scanner")) {
+        for (const f of G2.krieg.list) {
+          if (f.dead || Math.abs(f.pos.x - px2) > range || Math.abs(f.pos.z - pz2) > range) continue;
+          ctx.fillStyle = f.tier === "titan" ? "#ff2a1a" : "#ff9a4a";
+          ctx.beginPath();
+          ctx.arc(f.pos.x - px2, f.pos.z - pz2, f.tier === "titan" ? 3 : 1.8, 0, 6.28);
+          ctx.fill();
+        }
+        for (const d of G2.krieg.drones) {
+          if (d.dead) continue;
+          ctx.fillStyle = "#63d6ff";
+          ctx.beginPath();
+          ctx.arc(d.pos.x - px2, d.pos.z - pz2, 1.6, 0, 6.28);
+          ctx.fill();
+        }
+        for (const m of G2.krieg.mines) {
+          if (Math.abs(m.x - px2) > range || Math.abs(m.z - pz2) > range) continue;
+          ctx.fillStyle = "#ff2a1a";
+          ctx.fillRect(m.x - px2 - 1, m.z - pz2 - 1, 2, 2);
+        }
+      }
       for (const n2 of G2.npcs.list) {
         if (n2.dead || Math.abs(n2.pos.x - px2) > range || Math.abs(n2.pos.z - pz2) > range) continue;
         ctx.fillStyle = n2.cop ? "#4a7cff" : n2.state === "engage" ? "#ff5a4a" : n2.hostile ? "#ff9a4a" : "#f2efe6";
@@ -58248,11 +58606,11 @@ void main() {
       this.matComp = new ShaderMaterial({ vertexShader: VS, fragmentShader: COMPOSITE, uniforms: { tScene: { value: null }, tBloom1: { value: null }, tBloom2: { value: null }, exposure: { value: this.exposure }, bloom1: { value: opts.bloom1 ?? 0.22 }, bloom2: { value: opts.bloom2 ?? 0.28 }, vignette: { value: opts.vignette ?? 0.22 }, flash: { value: 0 }, hurt: { value: 0 }, tint: { value: 0 }, streak: { value: 0 }, tintCol: { value: new Vector3(1, 0.2, 0.15) }, contrast: { value: opts.contrast ?? 0.35 }, saturation: { value: opts.saturation ?? 1.1 }, liftCol: { value: new Vector3(0.01, 0.016, 0.034) }, gainCol: { value: new Vector3(1.05, 1, 0.93) } }, depthTest: false, depthWrite: false });
       this.setSize(renderer.domElement.width, renderer.domElement.height);
     }
-    setSize(w, h) {
-      this.rtScene.setSize(w, h);
-      const w2 = Math.max(1, Math.floor(w / 2)), h2 = Math.max(1, Math.floor(h / 2)), w4 = Math.max(1, Math.floor(w / 4)), h4 = Math.max(1, Math.floor(h / 4));
-      this.rtA.setSize(w2, h2);
-      this.rtB.setSize(w2, h2);
+    setSize(w2, h) {
+      this.rtScene.setSize(w2, h);
+      const w22 = Math.max(1, Math.floor(w2 / 2)), h2 = Math.max(1, Math.floor(h / 2)), w4 = Math.max(1, Math.floor(w2 / 4)), h4 = Math.max(1, Math.floor(h / 4));
+      this.rtA.setSize(w22, h2);
+      this.rtB.setSize(w22, h2);
       this.rtC.setSize(w4, h4);
       this.rtD.setSize(w4, h4);
     }
@@ -58479,11 +58837,11 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this.pools.count = 0;
       this.G.scene.add(this.pools);
     }
-    pool(x, y2, z, yaw, w, l, k) {
+    pool(x, y2, z, yaw, w2, l, k) {
       if (this.poolI >= this.poolN) return;
       _p6.set(x, y2 + 0.035, z);
       _q6.setFromAxisAngle(UP2, yaw);
-      _s4.set(w, 1, l);
+      _s4.set(w2, 1, l);
       _m8.compose(_p6, _q6, _s4);
       this.pools.setMatrixAt(this.poolI, _m8);
       this.pools.setColorAt(this.poolI, _c6.setRGB(k, k * 0.94, k * 0.8));
@@ -58755,16 +59113,16 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         if (b.kind === "bridge_ramp") continue;
         const a = b.aabb;
         const y2 = W.groundHeight(b.x, b.z) + 0.025;
-        const w = a.maxX - a.minX, d = a.maxZ - a.minZ, cx = (a.minX + a.maxX) / 2, cz = (a.minZ + a.maxZ) / 2;
-        recs.push([cx, y2, a.maxZ + SK / 2, w + SK * 2, SK, 0], [cx, y2, a.minZ - SK / 2, w + SK * 2, SK, Math.PI], [a.maxX + SK / 2, y2, cz, d + SK * 2, SK, -Math.PI / 2], [a.minX - SK / 2, y2, cz, d + SK * 2, SK, Math.PI / 2]);
+        const w2 = a.maxX - a.minX, d = a.maxZ - a.minZ, cx = (a.minX + a.maxX) / 2, cz = (a.minZ + a.maxZ) / 2;
+        recs.push([cx, y2, a.maxZ + SK / 2, w2 + SK * 2, SK, 0], [cx, y2, a.minZ - SK / 2, w2 + SK * 2, SK, Math.PI], [a.maxX + SK / 2, y2, cz, d + SK * 2, SK, -Math.PI / 2], [a.minX - SK / 2, y2, cz, d + SK * 2, SK, Math.PI / 2]);
       }
       const im = new InstancedMesh(sg, new MeshBasicMaterial({ color: 0, map: skirtTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), recs.length);
       im.name = "AOSkirts";
       im.renderOrder = 1;
-      recs.forEach(([x, y2, z, w, d, rot], i) => {
+      recs.forEach(([x, y2, z, w2, d, rot], i) => {
         _p6.set(x, y2, z);
         _q6.setFromAxisAngle(UP2, rot);
-        _s4.set(w, 1, d);
+        _s4.set(w2, 1, d);
         _m8.compose(_p6, _q6, _s4);
         im.setMatrixAt(i, _m8);
       });
@@ -58772,11 +59130,11 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       scene.add(im);
       this.skirts = im;
     }
-    blob(x, y2, z, yaw, w, l, k) {
+    blob(x, y2, z, yaw, w2, l, k) {
       if (this.blobI >= this.blobN) return;
       _p6.set(x, y2 + 0.02, z);
       _q6.setFromAxisAngle(UP2, yaw);
-      _s4.set(w * k, 1, l * k);
+      _s4.set(w2 * k, 1, l * k);
       _m8.compose(_p6, _q6, _s4);
       this.blobs.setMatrixAt(this.blobI++, _m8);
     }
@@ -58875,8 +59233,8 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
   };
   function emisQuads(list) {
     const pos = [], col2 = [], seed = [], kind = [];
-    list.forEach(([x, y2, z, w, h, face, rgb, kd], i) => {
-      const hw = w / 2, hh = h / 2;
+    list.forEach(([x, y2, z, w2, h, face, rgb, kd], i) => {
+      const hw = w2 / 2, hh = h / 2;
       let v;
       if (face === "down") v = [[-hw, 0, -hh], [hw, 0, -hh], [hw, 0, hh], [-hw, 0, hh]];
       else if (face === "z+") v = [[-hw, -hh, 0], [hw, -hh, 0], [hw, hh, 0], [-hw, hh, 0]];
@@ -59458,9 +59816,11 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     // ---- landing --------------------------------------------------------------------------------------------------------
     land(gy, vImpact, callIn) {
       const G2 = this.G;
+      const slipX = this.G.krieg.owned.has("klappen") ? this.vel.x : 0, slipZ = this.G.krieg.owned.has("klappen") ? this.vel.z : 0;
       this.pos.y = gy;
-      this.vel.set(0, 0, 0);
+      this.vel.set(slipX * 0.7, 0, slipZ * 0.7);
       this.onGround = true;
+      this.speed = Math.hypot(slipX, slipZ) * 0.7;
       this.flying = false;
       this.airT = 0;
       this.landT = 0;
@@ -59567,6 +59927,15 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
             this.landT = 1;
             G2.ui.msg("DACH ERREICHT", "Blick von oben \u2014 die Stadt gehoert dir", 1.4);
           }
+          if (I2.pressed("Space") && this.G.krieg.owned.has("wand")) {
+            this.vel.y = 9;
+            const s = Math.sin(this.yaw), c = Math.cos(this.yaw);
+            this.vel.x = -s * 11;
+            this.vel.z = -c * 11;
+            this.flying = true;
+            this.onGround = false;
+            this._roll = { dir: 1, t: 0 };
+          }
           this.climb = null;
           this.vel.set(0, 0, 0);
         } else {
@@ -59642,8 +60011,15 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       }
       const sp = this.speed;
       if (this.onGround) {
-        const target = moving && !stomping ? MECH.walkSpeed : 0;
-        const a = target > sp ? MECH.accel : MECH.decel;
+        if (I2.down("ShiftLeft") && this.dashT === void 0 || this.dashT > 0) this.dashT = (this.dashT || 0) - dt3;
+        if (I2.down("ShiftLeft") && moving && !stomping && (this.dashT || 0) <= 0 && this.G.krieg.owned.has("dash")) {
+          this.dashT = 2;
+          this.speed = MECH.walkSpeed * 3.2;
+          const f = this.G.krieg;
+          f._dashFx = true;
+        }
+        const target = moving && !stomping ? this.dashT > 0 ? MECH.walkSpeed * 3.2 : MECH.walkSpeed : 0;
+        const a = target > sp ? MECH.accel * 3 : MECH.decel;
         this.speed = sp + clamp2(target - sp, -a * dt3, a * dt3);
         if (aimMode) {
           const d = angleDelta(this.yaw, this.aimYaw);
@@ -59688,9 +60064,10 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         }
         this.fuel = Math.min(1, this.fuel + dt3 / F.refuelTime);
       } else {
+        const griff = G2.krieg.owned.has("griff") ? 1.5 : 1;
         const boost = I2.down("ShiftLeft") && this.fuel > 1e-3;
         const cap = F.forward * (boost ? F.boostMul : 1);
-        const acc = F.forward * 1.6 * (boost ? F.boostAccel : 1);
+        const acc = F.forward * 1.6 * (boost ? F.boostAccel * griff : 1);
         const ax = wx * acc, az = wz * acc;
         this.vel.x += ax * dt3;
         this.vel.z += az * dt3;
@@ -59710,7 +60087,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         if (aimMode || moving) {
           const want = aimMode ? this.aimYaw : Math.atan2(wx, wz);
           const d = angleDelta(this.yaw, want);
-          const mx = MECH.turnRate * F.turnAir * dt3;
+          const mx = MECH.turnRate * F.turnAir * griff * dt3;
           this.yaw += clamp2(d, -mx, mx);
         }
         if (I2.pressed("KeyF") && !stomping && this.stomp.cd <= 0) {
@@ -59818,13 +60195,13 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       return [{ name: "MISSILES", sub: `${MECH.missiles.salvo} rd \xB7 salvo` }, { name: "MINIGUN", sub: "auto \xB7 heat" }, { name: "RAILGUN", sub: "aufladen \xB7 durchschlag" }];
     }
     selectWeapon(i) {
-      const w = Math.max(0, Math.min(2, i | 0));
-      if (w === this.weapon) return;
-      this.weapon = w;
+      const w2 = Math.max(0, Math.min(2, i | 0));
+      if (w2 === this.weapon) return;
+      this.weapon = w2;
       this.gunStop();
       this.rail.charge = 0;
       this.G.audio.ui("tick");
-      this.G.ui.msg(w === 0 ? "MISSILES" : w === 1 ? "MINIGUN" : "RAILGUN", w === 0 ? `${MECH.missiles.salvo}-round salvo` : w === 1 ? "hold to fire \xB7 spins up" : "halten zum Aufladen \xB7 durchschlaegt alles", 1.2);
+      this.G.ui.msg(w2 === 0 ? "MISSILES" : w2 === 1 ? "MINIGUN" : "RAILGUN", w2 === 0 ? `${MECH.missiles.salvo}-round salvo` : w2 === 1 ? "hold to fire \xB7 spins up" : "halten zum Aufladen \xB7 durchschlaegt alles", 1.2);
     }
     aim() {
       const G2 = this.G, cam = G2.gcam;
@@ -59983,6 +60360,29 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       _d4.normalize();
       const track = this.aimHit && (this.aimHit.kind === "vehicle" || this.aimHit.kind === "npc") ? this.aimHit.ref : null;
       const m = { x: _v8.x, y: _v8.y, z: _v8.z, vx: _d4.x * Mi2.speed, vy: _d4.y * Mi2.speed, vz: _d4.z * Mi2.speed, age: 0, life: Mi2.life, target: this.aimPoint.clone(), track, smokeT: 0, loop: G2.audio.rocketLoop(_v8), tracer: G2.fx.tracerAcquire(16756832, 0.1), dist: 0 };
+      if (this.G.krieg && this.G.krieg.owned.has("zielmarker")) {
+        let best = null, bd = 26;
+        for (const f of this.G.krieg.list) {
+          if (f.dead || f.state === "falling") continue;
+          const dd = Math.hypot(f.pos.x - this.aimPoint.x, f.pos.z - this.aimPoint.z);
+          if (dd < bd) {
+            bd = dd;
+            best = f;
+          }
+        }
+        for (const dr of this.G.krieg.drones) {
+          if (dr.dead) continue;
+          const dd = Math.hypot(dr.pos.x - this.aimPoint.x, dr.pos.z - this.aimPoint.z);
+          if (dd < bd) {
+            bd = dd;
+            best = dr;
+          }
+        }
+        if (best) {
+          m.target = best;
+          m.track = best;
+        }
+      }
       this.missiles.push(m);
       G2.audio.missileLaunch(_v8);
       G2.fx.muzzle(_v8, _d4.x, _d4.y, _d4.z, 0.6, false);
@@ -60026,6 +60426,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         if (hit || m.age >= m.life || dl < 2.5 && m.age > 0.3) {
           const p = hit || { x: nx, y: ny, z: nz };
           if (G2.world) G2.world.damageBuildingsAt(p.x, p.y, p.z, Mi2.blast.radius * 1.6, Mi2.blast.damage * 2.4);
+          if (G2.krieg.owned.has("streu")) for (let sb = 0; sb < 3; sb++) G2.weapons.scheduleExplosion({ x: p.x + randSpread(7), y: p.y + 1, z: p.z + randSpread(7) }, Mi2.blast.radius * 0.7, Mi2.blast.impulse * 0.6, Mi2.blast.damage * 0.7, "player", 0.15 + sb * 0.1);
           G2.weapons.explode(p, Mi2.blast.radius, Mi2.blast.impulse, Mi2.blast.damage, "player");
           this.removeMissile(i);
           continue;
@@ -60098,7 +60499,8 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       g2.n++;
       this.P.LaserMuzzle.getWorldPosition(_a4);
       _d4.subVectors(this.aimPoint, _a4).normalize();
-      const sp = Gd.spread * (0.5 + this.heat) * Math.PI / 180;
+      const hoverFein = this.G.krieg && this.G.krieg.owned.has("hover") && this.flying ? 0.5 : 1;
+      const sp = Gd.spread * (0.5 + this.heat) * hoverFein * Math.PI / 180;
       _d4.x += rand(-sp, sp);
       _d4.y += rand(-sp, sp) * 0.7;
       _d4.z += rand(-sp, sp);
@@ -60131,7 +60533,14 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         G2.fx.decal(hit, hit.nx, hit.ny, hit.nz, rand(0.18, 0.3));
       }
       if (hit.kind === "building" && hit.ref && hit.ref.hp !== void 0) G2.world.damageBuilding(hit.ref, Gd.damage * 0.8, hit.x, hit.y, hit.z);
-      if (hit.kind === "mech") {
+      if (hit.kind === "drone") {
+        const d = hit.ref;
+        const dmg = Gd.damage * (this.G.krieg.owned.has("flak") ? 9 : 3);
+        d.damage(dmg, "bullet", "player");
+        G2.fx.sparks(hit, 5, hit.nx, hit.ny, hit.nz);
+        G2.ui.hitmarker(d.dead);
+        if (g2.n % 3 === 0 || d.dead) G2.ui.dmgNumber(hit.x, hit.y + 0.3, hit.z, Math.round(dmg), d.dead);
+      } else if (hit.kind === "mech") {
         const f = hit.ref;
         const dmg = Gd.damage * (f.isFeind ? 2.2 : 0.18);
         f.damage(dmg, "bullet", "player");
@@ -60149,6 +60558,10 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         v.impulse(_d4.x * 260, _d4.z * 260, hit.x, hit.z);
         if (Math.random() < 0.25) G2.fx.glass(hit, 2);
         G2.ui.hitmarker(false);
+        if (this.G.krieg.owned.has("russ")) {
+          v._russBis = this.G.time + 4;
+          G2.fx.glow.spawn({ x: hit.x, y: hit.y + 0.4, z: hit.z, s0: 0.8, s1: 0.2, a0: 1, a1: 0, life: 0.25, r: [2.5, 1.2, 0.4] });
+        }
       } else if (hit.kind === "prop") {
         const r = hit.ref;
         G2.props.impulse(r, _d4.x * 9, 3, _d4.z * 9, hit.x, hit.y, hit.z);
@@ -60226,6 +60639,9 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         } else {
           G2.fx.sparks(hit, 14, hit.nx, hit.ny, hit.nz);
           G2.fx.decal(hit, hit.nx, hit.ny, hit.nz, 1.4);
+          if (G2.krieg.owned.has("plasma")) {
+            G2.weapons.explode({ x: hit.x, y: hit.y, z: hit.z }, 5, 14, 90, "player");
+          }
           break;
         }
         ox = hit.x + _d4.x * 0.9;
@@ -60396,13 +60812,13 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       tg(P.Shoulder_R, -0.03 * g2 * sw, 0, 0.04 * g2 * sw, ks);
       if (this.wings.length) {
         this.wingPhase += dt3 * (2.2 + 4.2 * flyK);
-        for (const w of this.wings) {
-          const flap = Math.sin(this.wingPhase - w.i * 0.45);
+        for (const w2 of this.wings) {
+          const flap = Math.sin(this.wingPhase - w2.i * 0.45);
           tg(
-            w.o,
-            flyK * (0.34 + w.i * 0.06) + flyK * 0.12 * flap + 0.09 * land + 0.05 * g2 * Math.sin(ph - 0.6 + w.i * 0.3) + 0.3 * crump,
+            w2.o,
+            flyK * (0.34 + w2.i * 0.06) + flyK * 0.12 * flap + 0.09 * land + 0.05 * g2 * Math.sin(ph - 0.6 + w2.i * 0.3) + 0.3 * crump,
             0,
-            w.s * (flyK * (0.2 + w.i * 0.17) + flyK * 0.06 * flap + 0.03 * g2 * sw),
+            w2.s * (flyK * (0.2 + w2.i * 0.17) + flyK * 0.06 * flap + 0.03 * g2 * sw),
             ks
           );
         }
@@ -60682,9 +61098,9 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       G.warmupMs = Math.round(performance.now() - t0);
     }
     const onResize = () => {
-      const w = window.innerWidth, h = window.innerHeight;
-      renderer.setSize(w, h, false);
-      camera.aspect = w / h;
+      const w2 = window.innerWidth, h = window.innerHeight;
+      renderer.setSize(w2, h, false);
+      camera.aspect = w2 / h;
       camera.updateProjectionMatrix();
       postfx.setSize(renderer.domElement.width, renderer.domElement.height);
     };
@@ -60803,6 +61219,44 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           if (input.pressed("KeyK") && !weapons.wheelOpen) krieg.toggleShop();
           if (input.pressed("KeyN")) krieg.arenaToggle();
           if (input.pressed("KeyO")) ui.settingsToggle();
+          if (input.pressed("KeyJ")) {
+            if (krieg.owned.has("rauch")) {
+              krieg.rauchT = 6;
+              ui.msg("RAUCH", "Cops sehen nichts mehr", 1.6);
+              const pp = player.pos;
+              for (let i = 0; i < 6; i++) fx2.smoke.spawn({ x: pp.x + randSpread(2), y: pp.y + 1, z: pp.z + randSpread(2), vx: randSpread(1), vy: 1.4, vz: randSpread(1), s0: 2, s1: 7, a0: 0.6, a1: 0, life: 2.6, r: [0.4, 0.4, 0.42], r1: [0.3, 0.3, 0.3], drag: 1.2, rotv: randSpread(2) });
+            } else ui.msg("RAUCHGRANATEN", "erst in der Waffenkammer kaufen", 1.4);
+          }
+          if (input.pressed("KeyI")) {
+            if (krieg.owned.has("decoy")) {
+              krieg.decoy = { x: player.pos.x + Math.sin(player.yaw + 1.5) * 8, z: player.pos.z + Math.cos(player.yaw + 1.5) * 8, t: 12 };
+              ui.msg("ATTRAPPE", "12 s lang Koeder", 1.6);
+            } else ui.msg("ATTRAPPE", "erst kaufen", 1.2);
+          }
+          if (input.pressed("KeyU")) {
+            if (krieg.owned.has("emp")) {
+              G.empT = 8;
+              ui.msg("EMP", "Verkehr steht \u2014 8 Sekunden", 2);
+            } else ui.msg("EMP", "erst kaufen", 1.2);
+          }
+          if (input.pressed("KeyL")) {
+            const m = player.vehicle && player.vehicle.isMech ? player.vehicle : null;
+            if (m && krieg.owned.has("notaus")) {
+              m.gunStop && m.gunStop();
+              m.rail && (m.rail.heat = 0);
+              m.overheat = 0;
+              if (m.reloadT) m.reloadT = 0;
+              m.fuel = Math.min(1, m.fuel + 0.3);
+              m.damage(300, "notaus", "notaus");
+              ui.msg("NOTAUSWURF", "Waffen kuehlen + Treibstoff", 1.6);
+            }
+          }
+          if (input.pressed("KeyP")) {
+            if (krieg.owned.has("spenden")) {
+              krieg.spendenAktiv = !krieg.spendenAktiv;
+              ui.msg("BESTECHUNG", krieg.spendenAktiv ? "AN \u2014 Cop-Kills zahlen ohne Wanted" : "AUS", 1.8);
+            } else ui.msg("BESTECHUNG", "erst kaufen", 1.2);
+          }
           if (ui.settingsOpen) {
             for (let i = 1; i <= 4; i++) if (input.pressed("Digit" + i)) ui.settingsAktion(i);
             if (input.pressed("KeyO") === false && input.pressed("Escape")) ui.settingsToggle();
@@ -60888,9 +61342,42 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       wetterT2 -= realDt;
       if (wetterT2 <= 0) {
         wetterT2 = 150;
+        window.__nacht = !window.__nacht;
+        if (window.__nacht) {
+          postfx.exposure = 0.72;
+          G.hemi.intensity = 0.55;
+          ui.msg("NACHT", "Gefahren-Bonus: alle Kampf-Loehne \xD71,5", 2.6);
+        } else {
+          postfx.exposure = 1;
+          G.hemi.intensity = 1.05;
+        }
         if (Math.random() < 0.45) {
           window.__regen = !window.__regen;
           if (window.__regen) ui.msg("REGEN", "die Strasse gl\xE4nzt noch mehr", 2.4);
+        }
+      }
+      if (G.empT > 0) G.empT -= realDt;
+      if (krieg.decoy) {
+        krieg.decoy.t -= realDt;
+        if (krieg.decoy.t <= 0) krieg.decoy = null;
+      }
+      if (!window.__settingsGeladen) {
+        window.__settingsGeladen = true;
+        try {
+          const st = JSON.parse(localStorage.getItem("blocks.settings") || "null");
+          if (st) {
+            sun.castShadow = st.shadow !== false;
+            if (st.bloom === false) {
+              postfx.bloom1 = 0;
+              postfx.bloom2 = 0;
+            }
+            if (st.dpr) {
+              G.dpr = st.dpr;
+              renderer.setPixelRatio(G.dpr);
+              postfx.setSize(renderer.domElement.width, renderer.domElement.height);
+            }
+          }
+        } catch (e) {
         }
       }
       rain2.visible = !!window.__regen;
