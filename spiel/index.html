@@ -218,6 +218,7 @@
     <h3>WAFFENKAMMER<span>.</span></h3>
     <div class="sub">Konto <b id="shop-konto">0 €</b> · Ziffer kauft · <b>K</b> schließt</div>
     <div id="shop-rows"></div>
+    <div id="shop-hinweis" style="margin-top:12px;font:500 11px var(--mono);color:var(--ink-dim);letter-spacing:.08em"></div>
     <div class="hinweis">Upgrades wirken sofort — Raub-Mechs zahlen 1.200 € pro Abschuss.</div>
   </div>
   <div id="wheel">
@@ -58505,10 +58506,12 @@ void main() {
       const rows = KRIEG_UPGRADES_VIEW.map((u2, i) => {
         const hat = K2.owned.has(u2.id);
         const reicht = K2.money >= u2.preis;
-        return `<div class="srow ${hat ? "hat" : reicht ? "kaufbar" : "teuer"}"><span class="skey">${i + 1}</span><span class="sname">${u2.name}<small>${u2.text}</small></span><span class="spreis">${hat ? "EINGEBAUT" : geld(u2.preis)}</span></div>`;
+        const rangNeed = (u2.rang || 0) > K2.rang ? `<small class="srang">RANG ${u2.rang} n\xF6tig \u2014 XP durch Kills</small>` : "";
+        return `<div class="srow ${hat ? "hat" : reicht ? "kaufbar" : "teuer"}"><span class="skey">${i + 1}</span><span class="sname">${u2.name}<small>${u2.text}${rangNeed}</small></span><span class="spreis">${hat ? "EINGEBAUT" : geld(u2.preis)}</span></div>`;
       }).join("");
       this.el.shopRows.innerHTML = rows;
-      this.el.shop.querySelector("#shop-konto").textContent = geld(K2.money);
+      this.el.shop.querySelector("#shop-konto").textContent = geld(K2.money) + (K2.rang ? " \xB7 RANG " + K2.rang + " \xB7 " + K2.xp + " XP" : "");
+      this.el.shop.querySelector("#shop-hinweis").innerHTML = "Zifferntaste 1\u20139, 0 = kaufen \xB7 <b>greifhaken/dash/russ zuerst</b> \u2014 g\xFCnstige Upgrades brauchen keinen Rang";
     }
     settingsToggle() {
       const el = this.el.settings;
@@ -60356,19 +60359,14 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           }
         }
         if (I2.pressed("KeyC") && !this.grapple && this.G.krieg.owned.has("greifhaken") && this.fuel > 0.05) {
-          const richt = Math.atan2(this.aimPoint.y - (this.pos.y + 4), Math.hypot(this.aimPoint.x - this.pos.x, this.aimPoint.z - this.pos.z));
-          const dirH = Math.atan2(this.aimPoint.x - this.pos.x, this.aimPoint.z - this.pos.z);
-          const dx3 = Math.sin(dirH) * Math.cos(richt), dy3 = Math.sin(richt), dz3 = Math.cos(dirH) * Math.cos(richt);
-          _a4.set(this.pos.x, this.pos.y + 4, this.pos.z);
-          const hit = G2.weapons.raycastWorld(_a4.x, _a4.y, _a4.z, dx3, dy3, dz3, 70, { ignoreMech: true, player: false, ignoreVehicle: null, ignoreNpc: null, ignoreFeind: false, minT: 3 });
-          if (hit && (hit.kind === "building" || hit.kind === "sprop" || hit.kind === "prop")) {
-            this.grapple = { x: hit.x, y: hit.y, z: hit.z, t: 0 };
-            window.__grapHit = { kind: hit.kind, t: +hit.t.toFixed(1) };
+          const dist = Math.hypot(this.aimPoint.x - this.pos.x, this.aimPoint.y - this.pos.y, this.aimPoint.z - this.pos.z);
+          if (dist > 6 && dist < 70) {
+            this.grapple = { x: this.aimPoint.x, y: this.aimPoint.y, z: this.aimPoint.z, t: 0 };
             this.fuel = Math.max(0, this.fuel - 0.12);
             G2.audio.ui("open");
             const h2 = G2.fx.tracerAcquire(16765562, 0.2);
             this._grapTracer = h2;
-          } else G2.ui.msg("GREIFHAKEN", "kein Hakenpunkt in Reichweite", 0.9);
+          } else G2.ui.msg("GREIFHAKEN", dist >= 70 ? "zu weit weg" : "zu nah", 0.9);
         }
         if (this.grapple) {
           const gp = this.grapple;
@@ -60417,6 +60415,24 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         this.gunTrigger(fire && this.overheat <= 0 && this.heat < 1);
       } else {
         this.updateRail(fire && this.rail.heat < 1, dt3);
+      }
+      this.pos.x += this.vel.x * dt3;
+      this.pos.z += this.vel.z * dt3;
+      this.pos.y += this.vel.y * dt3;
+      this.collide(dt3);
+      const g2 = G2.world.surfaceHeight(this.pos.x, this.pos.z, this.pos.y);
+      if (this.pos.y <= g2 + 1e-3) {
+        if (!this.onGround) {
+          this.land(g2, -this.vel.y, false);
+        }
+        this.pos.y = g2;
+        this.vel.y = 0;
+        this.onGround = true;
+        this.flying = false;
+        this.airT = 0;
+      } else if (this.onGround && this.pos.y > g2 + 0.6) this.onGround = false;
+      if (this.onGround) {
+        this.pos.y = g2;
       }
       this.prevVel.copy(this.vel);
       this.prevYaw = this.yaw;
