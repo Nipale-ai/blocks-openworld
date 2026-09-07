@@ -206,6 +206,14 @@
   <div id="titanbar" style="display:none;position:absolute;left:50%;top:64px;transform:translateX(-50%);width:380px"><div id="titan-label" style="font:700 11px var(--mono);letter-spacing:.16em;color:var(--danger);text-align:center;margin-bottom:4px">TITAN</div><div style="height:8px;border-radius:4px;background:rgba(255,255,255,.14);overflow:hidden"><b style="display:block;height:100%;width:100%;background:linear-gradient(90deg,#ff8a7a,#ff4d3d)"></b></div></div>
   <div id="arena" style="display:none;position:absolute;left:50%;top:88px;transform:translateX(-50%);font:700 12px var(--mono);letter-spacing:.14em;color:var(--accent2)"></div>
   <div id="bounty" style="display:none;position:absolute;left:50%;bottom:44px;transform:translateX(-50%);font:600 11px var(--mono);letter-spacing:.1em;color:var(--accent)"></div>
+  <div id="settings" style="display:none;position:absolute;left:50%;top:50%;transform:translateX(-50%);min-width:340px" class="panel">
+    <h3 style="font:800 20px var(--sans);margin-bottom:12px">EINSTELLUNGEN<span style="color:var(--accent)">.</span></h3>
+    <div class="srow"><span class="skey">1</span><span class="sname">Schatten<small>Kamera-Naehe nur</small></span><span class="spreis" id="set-schatten">AN</span></div>
+    <div class="srow"><span class="skey">2</span><span class="sname">Bloom<small>Licht-Glow</small></span><span class="spreis" id="set-bloom">AN</span></div>
+    <div class="srow"><span class="skey">3</span><span class="sname">Aufloesung<small>0.8 / 1.1 / 1.5</small></span><span class="spreis" id="set-dpr">1.25</span></div>
+    <div class="srow"><span class="skey">4</span><span class="sname">Regen<small>Wetter</small></span><span class="spreis" id="set-regen">AUS</span></div>
+    <div style="margin-top:12px;font:500 11px var(--mono);color:var(--ink-dim)">O schliesst · Einstellungen werden gespeichert</div>
+  </div>
   <div id="shop" class="panel">
     <h3>WAFFENKAMMER<span>.</span></h3>
     <div class="sub">Konto <b id="shop-konto">0 €</b> · Ziffer kauft · <b>K</b> schließt</div>
@@ -997,8 +1005,8 @@
   function lerp(x, y2, t2) {
     return (1 - t2) * x + t2 * y2;
   }
-  function damp(x, y2, lambda, dt2) {
-    return lerp(x, y2, 1 - Math.exp(-lambda * dt2));
+  function damp(x, y2, lambda, dt3) {
+    return lerp(x, y2, 1 - Math.exp(-lambda * dt3));
   }
   function pingpong(x, length = 1) {
     return length - Math.abs(euclideanModulo(x, length * 2) - length);
@@ -18719,9 +18727,9 @@
       initCatmullRom: function(x0, x1, x2, x3, tension) {
         init(x1, x2, tension * (x2 - x0), tension * (x3 - x1));
       },
-      initNonuniformCatmullRom: function(x0, x1, x2, x3, dt0, dt1, dt2) {
+      initNonuniformCatmullRom: function(x0, x1, x2, x3, dt0, dt1, dt22) {
         let t1 = (x1 - x0) / dt0 - (x2 - x0) / (dt0 + dt1) + (x2 - x1) / dt1;
-        let t2 = (x2 - x1) / dt1 - (x3 - x1) / (dt1 + dt2) + (x3 - x2) / dt2;
+        let t2 = (x2 - x1) / dt1 - (x3 - x1) / (dt1 + dt22) + (x3 - x2) / dt22;
         t1 *= dt1;
         t2 *= dt1;
         init(x1, x2, t1, t2);
@@ -18794,13 +18802,13 @@
         const pow = this.curveType === "chordal" ? 0.5 : 0.25;
         let dt0 = Math.pow(p0.distanceToSquared(p1), pow);
         let dt1 = Math.pow(p1.distanceToSquared(p2), pow);
-        let dt2 = Math.pow(p2.distanceToSquared(p32), pow);
+        let dt22 = Math.pow(p2.distanceToSquared(p32), pow);
         if (dt1 < 1e-4) dt1 = 1;
         if (dt0 < 1e-4) dt0 = dt1;
-        if (dt2 < 1e-4) dt2 = dt1;
-        px.initNonuniformCatmullRom(p0.x, p1.x, p2.x, p32.x, dt0, dt1, dt2);
-        py.initNonuniformCatmullRom(p0.y, p1.y, p2.y, p32.y, dt0, dt1, dt2);
-        pz.initNonuniformCatmullRom(p0.z, p1.z, p2.z, p32.z, dt0, dt1, dt2);
+        if (dt22 < 1e-4) dt22 = dt1;
+        px.initNonuniformCatmullRom(p0.x, p1.x, p2.x, p32.x, dt0, dt1, dt22);
+        py.initNonuniformCatmullRom(p0.y, p1.y, p2.y, p32.y, dt0, dt1, dt22);
+        pz.initNonuniformCatmullRom(p0.z, p1.z, p2.z, p32.z, dt0, dt1, dt22);
       } else if (this.curveType === "catmullrom") {
         px.initCatmullRom(p0.x, p1.x, p2.x, p32.x, this.tension);
         py.initCatmullRom(p0.y, p1.y, p2.y, p32.y, this.tension);
@@ -42086,23 +42094,23 @@ void main() {
   };
   var sign2 = (v) => v < 0 ? -1 : v > 0 ? 1 : 0;
   var TAU = Math.PI * 2;
-  var damp2 = (a, b, lambda, dt2) => lerp2(a, b, 1 - Math.exp(-lambda * dt2));
+  var damp2 = (a, b, lambda, dt3) => lerp2(a, b, 1 - Math.exp(-lambda * dt3));
   var wrapAngle = (a) => {
     a = (a + Math.PI) % TAU;
     if (a < 0) a += TAU;
     return a - Math.PI;
   };
   var angleDelta = (from, to) => wrapAngle(to - from);
-  var dampAngle = (a, b, lambda, dt2) => a + angleDelta(a, b) * (1 - Math.exp(-lambda * dt2));
-  function smoothDamp(current, target, velObj, smoothTime, dt2, maxSpeed = Infinity) {
+  var dampAngle = (a, b, lambda, dt3) => a + angleDelta(a, b) * (1 - Math.exp(-lambda * dt3));
+  function smoothDamp(current, target, velObj, smoothTime, dt3, maxSpeed = Infinity) {
     smoothTime = Math.max(1e-4, smoothTime);
     const omega = 2 / smoothTime;
-    const x = omega * dt2;
+    const x = omega * dt3;
     const exp = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
     let change = current - target;
     const maxChange = maxSpeed * smoothTime;
     change = clamp2(change, -maxChange, maxChange);
-    const temp = (velObj.v + omega * change) * dt2;
+    const temp = (velObj.v + omega * change) * dt3;
     velObj.v = (velObj.v - omega * temp) * exp;
     let out = current - change + (change + temp) * exp;
     if (target - current > 0 === out > target) {
@@ -42582,13 +42590,40 @@ void main() {
     enterTime: 3,
     exitTime: 2.6
   };
+  VEHICLE_DEFS.tank = {
+    name: "Tank",
+    id: "tank",
+    length: 6,
+    width: 3.4,
+    height: 2.6,
+    mass: 26e3,
+    seat: { x: 0, y: 1.9, z: -0.2 },
+    exitOffset: 2.2,
+    engine: { idle: 600, redline: 2200, gears: [3.2, 2.1, 1.4], final: 3.4, torque: 900, curve: "diesel" },
+    topSpeed: 11,
+    wheelRadius: 0.45,
+    wheelbase: 3.6,
+    track: 2.6,
+    steerMax: 0.5,
+    steerSpeed: 2.2,
+    susp: { stiffness: 52e3, damping: 9e3, travel: 0.5 },
+    gripLat: 5.2,
+    gripLong: 1.25,
+    gripRearMul: 1,
+    dragCoef: 1.6,
+    brakeForce: 26e3,
+    handbrakeForce: 12e3,
+    drive: "rear",
+    paint: ["#3d4532"],
+    police: false
+  };
   VEHICLE_DEFS.mech = { name: "Mech", id: "mech", mech: true, length: 4.2, width: 4.2, height: 6.1, mass: 38e3, seat: MECH.seat, exitOffset: MECH.exitOffset, paint: ["#1c2026"], police: false };
   var weaponWheelItems = () => WEAPON_ORDER.map((id) => {
     const d = WEAPON_DEFS[id];
     return { name: d.name, sub: `${d.magazine} rd \xB7 ${d.id === "rocket" ? "heavy" : d.auto ? "auto" : "semi"}` };
   });
   var KRIEG = {
-    reward: { feind: 1200, copMech: 400, building: 150, cop: 150, hostile: 200, wreckPolice: 250, wreckCivil: 80, titan: 5e3, arenaWelle: 800 },
+    reward: { feind: 1200, copMech: 400, building: 150, cop: 150, hostile: 200, wreckPolice: 250, wreckCivil: 80, titan: 5e3, arenaWelle: 800, drone: 100 },
     raubRollen: {
       // Runde 20: Gegner-Vielfalt
       sprinter: { hp: 260, speed: 8.4, scale: 0.82, burst: 4, range: 15 },
@@ -45532,7 +45567,7 @@ void main() {
   var ht = 9;
   var gt = 15;
   var xt = 16;
-  var dt = 22;
+  var dt2 = 22;
   var Ft = 37;
   var Et = 43;
   var te = 76;
@@ -46205,7 +46240,7 @@ void main() {
     [te]: RedFormat,
     [Et]: RGBAFormat,
     [Ft]: RGBAFormat,
-    [dt]: RGFormat,
+    [dt2]: RGFormat,
     [xt]: RGFormat,
     [gt]: RedFormat,
     [ht]: RedFormat,
@@ -46245,7 +46280,7 @@ void main() {
     [te]: HalfFloatType,
     [Et]: UnsignedByteType,
     [Ft]: UnsignedByteType,
-    [dt]: UnsignedByteType,
+    [dt2]: UnsignedByteType,
     [xt]: UnsignedByteType,
     [gt]: UnsignedByteType,
     [ht]: UnsignedByteType,
@@ -47400,6 +47435,38 @@ void main() {
     return makeCharacterRig("player");
   }
   var copVestParts = null;
+  function makeTankMesh() {
+    const g2 = new Group();
+    g2.name = "Tank";
+    const hull = new MeshStandardMaterial({ color: 4015410, roughness: 0.8, metalness: 0.25 });
+    const dark = new MeshStandardMaterial({ color: 2303774, roughness: 0.9, metalness: 0.2 });
+    const rumpf = new Mesh(new BoxGeometry(3.2, 1.1, 5.6), hull);
+    rumpf.position.y = 0.95;
+    rumpf.castShadow = true;
+    g2.add(rumpf);
+    for (const sx of [-1.45, 1.45]) {
+      const kette = new Mesh(new BoxGeometry(0.62, 0.72, 5.9), dark);
+      kette.position.set(sx, 0.42, 0);
+      g2.add(kette);
+    }
+    const turm = new Group();
+    turm.name = "Turret";
+    turm.position.set(0, 1.75, -0.2);
+    const top = new Mesh(new BoxGeometry(2.2, 0.75, 2.8), hull);
+    top.castShadow = true;
+    turm.add(top);
+    const rohr = new Mesh(new CylinderGeometry(0.13, 0.15, 3.6, 10), dark);
+    rohr.rotation.x = Math.PI / 2;
+    rohr.position.set(0, 0.1, 2.6);
+    turm.add(rohr);
+    const muffleer = new Object3D();
+    muffleer.name = "TankMuzzle";
+    muffleer.position.set(0, 0.1, 4.4);
+    turm.add(muffleer);
+    g2.add(turm);
+    g2.userData.turret = turm;
+    return g2;
+  }
   function makeNpcMesh(rng, armed = false, cop = false) {
     const rig = cop ? makeCharacterRig("officer", rng.range(0.98, 1.06)) : makeCharacterRig(rng.pick(CIVILIANS), rng.range(0.93, 1.06));
     if (cop && rig.bones.Chest) {
@@ -49173,7 +49240,7 @@ void main() {
         this.damage(rec, damage * (1 - d / radius) * 0.6);
       }
     }
-    update(dt2, audio, fx2, tmp2) {
+    update(dt3, audio, fx2, tmp2) {
       const world = this.world;
       const grid = this.grid;
       grid.map.clear();
@@ -49181,13 +49248,13 @@ void main() {
       const near2 = tmp2.near || (tmp2.near = []);
       for (const rec of this.dynamic) {
         if (!rec.awake || !rec.alive) continue;
-        rec.vy -= 18 * dt2;
-        rec.x += rec.vx * dt2;
-        rec.y += rec.vy * dt2;
-        rec.z += rec.vz * dt2;
+        rec.vy -= 18 * dt3;
+        rec.x += rec.vx * dt3;
+        rec.y += rec.vy * dt3;
+        rec.z += rec.vz * dt3;
         const w = Math.hypot(rec.wx, rec.wy, rec.wz);
         if (w > 1e-4) {
-          _q2.setFromAxisAngle(_u.set(rec.wx / w, rec.wy / w, rec.wz / w), w * dt2);
+          _q2.setFromAxisAngle(_u.set(rec.wx / w, rec.wy / w, rec.wz / w), w * dt3);
           rec.q.premultiply(_q2).normalize();
         }
         const g2 = world.groundHeight(rec.x, rec.z);
@@ -49200,10 +49267,10 @@ void main() {
             fx2 && fx2.dust(rec, 2, 0, 1, 0);
           } else rec.vy = 0;
           rec.onGround = true;
-          const f = Math.exp(-5 * dt2);
+          const f = Math.exp(-5 * dt3);
           rec.vx *= f;
           rec.vz *= f;
-          const af = Math.exp(-4 * dt2);
+          const af = Math.exp(-4 * dt3);
           rec.wx *= af;
           rec.wy *= af;
           rec.wz *= af;
@@ -49212,7 +49279,7 @@ void main() {
           if (w < 3) {
             if (tilt < 0.75) {
               _q2.setFromAxisAngle(Y, rec.yaw);
-              rec.q.slerp(_q2, 1 - Math.exp(-6 * dt2));
+              rec.q.slerp(_q2, 1 - Math.exp(-6 * dt3));
             } else {
               _u.set(_v.x, 0, _v.z);
               if (_u.lengthSq() < 1e-4) _u.set(1, 0, 0);
@@ -49220,7 +49287,7 @@ void main() {
               _q2.setFromUnitVectors(Y, _u);
               const yq = new Quaternion().setFromAxisAngle(Y, rec.yaw);
               _q2.multiply(yq);
-              rec.q.slerp(_q2, 1 - Math.exp(-5 * dt2));
+              rec.q.slerp(_q2, 1 - Math.exp(-5 * dt3));
             }
           }
         }
@@ -49271,7 +49338,7 @@ void main() {
         this.writeMatrix(rec);
         const sp = Math.hypot(rec.vx, rec.vz), ws = Math.hypot(rec.wx, rec.wy, rec.wz);
         if (rec.onGround && sp < 0.08 && ws < 0.15 && Math.abs(rec.vy) < 0.01) {
-          rec.sleepT = (rec.sleepT || 0) + dt2;
+          rec.sleepT = (rec.sleepT || 0) + dt3;
           if (rec.sleepT > 0.6) {
             rec.awake = false;
             rec.vx = rec.vz = rec.vy = 0;
@@ -49345,29 +49412,29 @@ void main() {
       if (this.parts.length >= this.cap) this.parts.shift();
       this.parts.push({ x: o.x, y: o.y, z: o.z, vx: o.vx || 0, vy: o.vy || 0, vz: o.vz || 0, s0: o.s0, s1: o.s1 ?? o.s0, a0: o.a0 ?? 1, a1: o.a1 ?? 0, life: o.life, age: 0, r: o.r || [1, 1, 1], r1: o.r1 || o.r || [1, 1, 1], rot: o.rot || rand(0, 6.28), rotv: o.rotv || 0, grav: o.grav || 0, drag: o.drag || 0, ground: o.ground });
     }
-    update(dt2) {
+    update(dt3) {
       let k = 0;
       const P = this.aPos.array, S3 = this.aSize.array, C2 = this.aCol.array, A2 = this.aAlpha.array, R = this.aRot.array;
       for (let i = this.parts.length - 1; i >= 0; i--) {
         const p = this.parts[i];
-        p.age += dt2;
+        p.age += dt3;
         if (p.age >= p.life) {
           this.parts[i] = this.parts[this.parts.length - 1];
           this.parts.pop();
           continue;
         }
         const t2 = p.age / p.life;
-        p.vy -= p.grav * dt2;
+        p.vy -= p.grav * dt3;
         if (p.drag) {
-          const d = Math.exp(-p.drag * dt2);
+          const d = Math.exp(-p.drag * dt3);
           p.vx *= d;
           p.vy *= d;
           p.vz *= d;
         }
-        p.x += p.vx * dt2;
-        p.y += p.vy * dt2;
-        p.z += p.vz * dt2;
-        p.rot += p.rotv * dt2;
+        p.x += p.vx * dt3;
+        p.y += p.vy * dt3;
+        p.z += p.vz * dt3;
+        p.rot += p.rotv * dt3;
         if (p.ground !== void 0 && p.y < p.ground) {
           p.y = p.ground;
           p.vy = 0;
@@ -49456,23 +49523,23 @@ void main() {
       for (let i = 0; i < 3; i++) this.flashes.push({ x: 0, y: -50, z: 0, R: 30, t: 1, peak: 0 });
       this.muzzleL = { x: 0, y: -50, z: 0, I: 0 };
     }
-    update(dt2) {
-      this.time += dt2;
-      this.smoke.update(dt2);
-      this.glow.update(dt2);
+    update(dt3) {
+      this.time += dt3;
+      this.smoke.update(dt3);
+      this.glow.update(dt3);
       let k = 0;
       for (let i = this.debris.length - 1; i >= 0; i--) {
         const d = this.debris[i];
-        d.age += dt2;
+        d.age += dt3;
         if (d.age > d.life) {
           this.debris[i] = this.debris[this.debris.length - 1];
           this.debris.pop();
           continue;
         }
-        d.vy -= 14 * dt2;
-        d.x += d.vx * dt2;
-        d.y += d.vy * dt2;
-        d.z += d.vz * dt2;
+        d.vy -= 14 * dt3;
+        d.x += d.vx * dt3;
+        d.y += d.vy * dt3;
+        d.z += d.vz * dt3;
         const g2 = this.groundFn(d.x, d.z) + 0.06;
         if (d.y < g2) {
           d.y = g2;
@@ -49481,7 +49548,7 @@ void main() {
           d.vz *= 0.7;
           d.wv *= 0.5;
         }
-        d.rot += d.wv * dt2;
+        d.rot += d.wv * dt3;
         _p3.set(d.x, d.y, d.z);
         _q3.setFromEuler(new Euler(d.rot, d.rot * 0.7, 0));
         const sc = d.size * (d.age > d.life - 0.4 ? (d.life - d.age) / 0.4 : 1);
@@ -49498,7 +49565,7 @@ void main() {
       }
       for (const r of this.rings) {
         if (!r.mesh.visible) continue;
-        r.t += dt2 / 0.45;
+        r.t += dt3 / 0.45;
         if (r.t >= 1) {
           r.mesh.visible = false;
           continue;
@@ -49509,9 +49576,9 @@ void main() {
       }
       for (const l of this.flashes) {
         if (l.t >= 1) continue;
-        l.t += dt2 / 0.5;
+        l.t += dt3 / 0.5;
       }
-      this.muzzleL.I *= Math.exp(-dt2 * 40);
+      this.muzzleL.I *= Math.exp(-dt3 * 40);
     }
     // ---- particles ----
     sparks(p, n2, nx, ny, nz, big = false) {
@@ -49713,11 +49780,11 @@ void main() {
       DANCE.aus = AUS;
     }
   }
-  function danceTick(dt2) {
-    if (DANCE.on) DANCE.t += dt2;
+  function danceTick(dt3) {
+    if (DANCE.on) DANCE.t += dt3;
     else if (DANCE.aus > 0) {
-      DANCE.t += dt2;
-      DANCE.aus = Math.max(0, DANCE.aus - dt2);
+      DANCE.t += dt3;
+      DANCE.aus = Math.max(0, DANCE.aus - dt3);
     }
   }
   function danceAktiv() {
@@ -50390,9 +50457,9 @@ void main() {
       if (!this.ready) return;
       const t2 = this.ctx.currentTime, v = this.voice(p, 10, "sfx", 260, 0.7), o = v.out;
       const notes = on2 ? [[0, 110], [0.28, 165], [0.55, 220], [0.85, 330]] : [[0, 330], [0.25, 220], [0.5, 165], [0.75, 110]];
-      for (const [dt2, f] of notes) {
-        this.thump(o, t2 + dt2, f, f * 1.01, 0.5, 0.35, "triangle");
-        this.thump(o, t2 + dt2, f * 2, f * 2, 0.3, 0.12, "sine");
+      for (const [dt3, f] of notes) {
+        this.thump(o, t2 + dt3, f, f * 1.01, 0.5, 0.35, "triangle");
+        this.thump(o, t2 + dt3, f * 2, f * 2, 0.3, 0.12, "sine");
       }
       {
         const s = this.ctx.createOscillator();
@@ -50628,11 +50695,11 @@ void main() {
       this.o3 = mk("sine", 0.1);
       sys.sirens.add(this);
     }
-    update(dt2, p, mode, doppler = 1, volume = 1) {
+    update(dt3, p, mode, doppler = 1, volume = 1) {
       if (!this.alive) return;
       const ctx = this.sys.ctx, t2 = ctx.currentTime;
       this.mode = mode;
-      this.phase += dt2 * (mode === "yelp" ? 3.4 : 0.44);
+      this.phase += dt3 * (mode === "yelp" ? 3.4 : 0.44);
       const ph = this.phase % 1;
       const s = 0.5 - 0.5 * Math.cos(ph * Math.PI * 2);
       const f = 620 * Math.pow(2, 0.95 * Math.pow(s, 0.9)) * doppler;
@@ -51187,7 +51254,7 @@ void main() {
       this.ticks++;
     }
     // pro Bild aus main.js. mech = der Mech (oder null), innen = sitzt der Spieler drin
-    update(mech, innen, dt2, spieler) {
+    update(mech, innen, dt3, spieler) {
       if (mech) this.mech = mech;
       if (spieler) this.spieler = spieler;
       const mechTanzt = !!mech && mech.onGround && !mech.wrecked && !mech.flying;
@@ -51228,19 +51295,19 @@ void main() {
           pn2.positionZ.setTargetAtTime(fin(p.z), t2, 0.05);
         } else pn2.setPosition(p.x, p.y, p.z);
       }
-      if (dt2 > 1e-4 && this.ausMech) {
-        const vx = (MECH_BECKEN.dx - this.pdx) / dt2, vy = (MECH_BECKEN.dy - this.pdy) / dt2, vz = (MECH_BECKEN.dz - this.pdz) / dt2;
+      if (dt3 > 1e-4 && this.ausMech) {
+        const vx = (MECH_BECKEN.dx - this.pdx) / dt3, vy = (MECH_BECKEN.dy - this.pdy) / dt3, vz = (MECH_BECKEN.dz - this.pdz) / dt3;
         this.pdx = MECH_BECKEN.dx;
         this.pdy = MECH_BECKEN.dy;
         this.pdz = MECH_BECKEN.dz;
         const v = Math.hypot(vx, vz) + Math.abs(vy) * 1.3;
-        this.seitTick += dt2;
+        this.seitTick += dt3;
         if (v > this.spitze) this.spitze = v;
         else if (this.spitze > 0.35 && v < this.spitze * 0.45 && this.seitTick > 0.16) {
           this.servo(this.sys.ctx.currentTime, clamp2(this.spitze / 1.6, 0.25, 1), Math.abs(vy) * 1.3 > Math.hypot(vx, vz));
           this.spitze = 0;
           this.seitTick = 0;
-        } else this.spitze *= Math.pow(0.35, dt2);
+        } else this.spitze *= Math.pow(0.35, dt3);
       }
     }
     debug() {
@@ -51347,6 +51414,71 @@ void main() {
     }
     mouseReleased(b = 0) {
       return (this.btnReleased & 1 << b) !== 0;
+    }
+    pollGamepad() {
+      const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+      let p = null;
+      for (const q of pads) if (q && q.connected) {
+        p = q;
+        break;
+      }
+      if (!p) {
+        if (this._gpHad) {
+          for (const k of ["KeyW", "KeyS", "KeyA", "KeyD", "ShiftLeft", "Space"]) {
+            this.keys.delete(k);
+            this.releasedSet.add(k);
+          }
+          this.buttons &= ~(1 | 4);
+          this._gpHad = false;
+        }
+        return;
+      }
+      this._gpHad = true;
+      const dz = (v) => Math.abs(v) < 0.2 ? 0 : v;
+      const stick = { f: -dz(p.axes[1] || 0), s: dz(p.axes[0] || 0) };
+      this.dx += dz(p.axes[2] || 0) * 16;
+      this.dy += dz(p.axes[3] || 0) * 11;
+      const halte = (k, an2) => {
+        if (an2 && !this.keys.has(k)) this.pressedSet.add(k);
+        if (an2) this.keys.add(k);
+        else if (this.keys.has(k)) {
+          this.keys.delete(k);
+          this.releasedSet.add(k);
+        }
+      };
+      halte("KeyW", stick.f > 0.35 || p.buttons[12] && p.buttons[12].pressed);
+      halte("KeyS", stick.f < -0.35 || p.buttons[13] && p.buttons[13].pressed);
+      halte("KeyA", stick.s < -0.35);
+      halte("KeyD", stick.s > 0.35);
+      halte("ShiftLeft", stick.f > 0.88 || p.buttons[10] && p.buttons[10].pressed);
+      halte("Space", !!(p.buttons[0] && p.buttons[0].pressed));
+      const druck = (i) => !!(p.buttons[i] && p.buttons[i].pressed);
+      const rt = druck(7), lt = druck(6);
+      if (rt && !this._gpRT) {
+        this.btnPressed |= 1;
+      }
+      if (!rt && this._gpRT) {
+        this.btnReleased |= 1;
+      }
+      this._gpRT = rt;
+      if (this._gpRT) this.buttons |= 1;
+      else this.buttons &= ~1;
+      if (lt && !this._gpLT) {
+        this.btnPressed |= 4;
+      }
+      if (!lt && this._gpLT) {
+        this.btnReleased |= 4;
+      }
+      this._gpLT = lt;
+      if (this._gpLT) this.buttons |= 4;
+      else this.buttons &= ~4;
+      halte("KeyF", druck(1));
+      halte("KeyR", druck(2));
+      halte("KeyQ", druck(4));
+      halte("KeyB", druck(5));
+      halte("Tab", druck(3));
+      halte("KeyK", druck(9));
+      halte("KeyG", druck(8));
     }
     endFrame() {
       this.pressedSet.clear();
@@ -51529,19 +51661,19 @@ void main() {
       }
       return best;
     }
-    update(dt2) {
+    update(dt3) {
       const G2 = this.G, P = G2.player, cam = this.cam;
-      this.time += dt2;
-      this.recoilP = damp2(this.recoilP, 0, this.recover, dt2);
-      this.recoilY = damp2(this.recoilY, 0, this.recover, dt2);
-      this.shake = damp2(this.shake, 0, 6, dt2);
-      this.fovPunch = damp2(this.fovPunch, 0, 7, dt2);
-      this.kick.x = damp2(this.kick.x, 0, 9, dt2);
-      this.kick.y = damp2(this.kick.y, 0, 9, dt2);
-      this.kick.z = damp2(this.kick.z, 0, 9, dt2);
-      if (this.mode === "foot") this.updateFoot(dt2);
-      else if (this.mode === "mech") this.updateMech(dt2);
-      else this.updateDrive(dt2);
+      this.time += dt3;
+      this.recoilP = damp2(this.recoilP, 0, this.recover, dt3);
+      this.recoilY = damp2(this.recoilY, 0, this.recover, dt3);
+      this.shake = damp2(this.shake, 0, 6, dt3);
+      this.fovPunch = damp2(this.fovPunch, 0, 7, dt3);
+      this.kick.x = damp2(this.kick.x, 0, 9, dt3);
+      this.kick.y = damp2(this.kick.y, 0, 9, dt3);
+      this.kick.z = damp2(this.kick.z, 0, 9, dt3);
+      if (this.mode === "foot") this.updateFoot(dt3);
+      else if (this.mode === "mech") this.updateMech(dt3);
+      else this.updateDrive(dt3);
       const gh = G2.world.groundHeight(cam.position.x, cam.position.z);
       if (cam.position.y < gh + 0.45) cam.position.y = gh + 0.45;
       cam.lookAt(_look);
@@ -51554,32 +51686,32 @@ void main() {
         cam.rotateZ(Math.sin(tm * 37) * 0.5 * s * 0.02);
       }
       cam.position.add(this.kick);
-      const fov2 = damp2(cam.fov, this.fovTarget + this.fovPunch, 8, dt2);
+      const fov2 = damp2(cam.fov, this.fovTarget + this.fovPunch, 8, dt3);
       if (Math.abs(fov2 - cam.fov) > 0.01) {
         cam.fov = fov2;
         cam.updateProjectionMatrix();
       }
       cam.updateMatrixWorld();
     }
-    smoothPivot(target, st, dt2) {
+    smoothPivot(target, st, dt3) {
       if (!this.initialised) {
         this.pivot.copy(target);
         this.pv.x.v = this.pv.y.v = this.pv.z.v = 0;
         this.initialised = true;
       }
-      this.pivot.x = smoothDamp(this.pivot.x, target.x, this.pv.x, st, dt2);
-      this.pivot.y = smoothDamp(this.pivot.y, target.y, this.pv.y, st * 1.6, dt2);
-      this.pivot.z = smoothDamp(this.pivot.z, target.z, this.pv.z, st, dt2);
+      this.pivot.x = smoothDamp(this.pivot.x, target.x, this.pv.x, st, dt3);
+      this.pivot.y = smoothDamp(this.pivot.y, target.y, this.pv.y, st * 1.6, dt3);
+      this.pivot.z = smoothDamp(this.pivot.z, target.z, this.pv.z, st, dt3);
     }
-    updateFoot(dt2) {
+    updateFoot(dt3) {
       const P = this.G.player, cam = this.cam;
       _t.set(P.pos.x, P.pos.y + 1.5, P.pos.z);
       const aim = P.aiming ? 1 : 0;
-      this.aimBlend = damp2(this.aimBlend, aim, 14, dt2);
+      this.aimBlend = damp2(this.aimBlend, aim, 14, dt3);
       const dist = 4.1 - this.aimBlend * 2.3, shoulder = 0.42 + this.aimBlend * 0.28;
       this.fovTarget = 62 - this.aimBlend * 16;
       const pitch = this.pitch + this.recoilP, yaw = this.yaw + this.recoilY;
-      this.smoothPivot(_t, 0.045, dt2);
+      this.smoothPivot(_t, 0.045, dt3);
       const cp = Math.cos(pitch);
       _f.set(cp * Math.sin(yaw), Math.sin(pitch), cp * Math.cos(yaw));
       _r3.set(-Math.cos(yaw), 0, Math.sin(yaw));
@@ -51593,7 +51725,7 @@ void main() {
       _o.copy(_p4).addScaledVector(_f, -dist);
       const t2 = this.sweep(_p4, _o, null);
       const allowed = Math.max(0.35, dist * t2 - (t2 < 1 ? 0.15 : 0));
-      this.curDist = allowed < this.curDist ? allowed : damp2(this.curDist, allowed, 5, dt2);
+      this.curDist = allowed < this.curDist ? allowed : damp2(this.curDist, allowed, 5, dt3);
       this.lift = 0;
       this.roll = 0;
       this.blocked = t2 < 1;
@@ -51602,16 +51734,16 @@ void main() {
     }
     // Round 10: the mech camera — mouse-driven like on foot, pivot at the mech's chest, a long boom that the entry set piece
     // pulls out to (push-out is damped at λ 1.6 → ~2.5 s from the walking boom to 15.5 m; pull-in on obstruction is immediate)
-    updateMech(dt2) {
+    updateMech(dt3) {
       const G2 = this.G, P = G2.player, cam = this.cam, m = P.vehicle;
-      if (!m) return this.updateFoot(dt2);
+      if (!m) return this.updateFoot(dt3);
       const aim = m.piloted && G2.input.mouseDown(2) ? 1 : 0;
-      this.aimBlend = damp2(this.aimBlend, aim, 10, dt2);
+      this.aimBlend = damp2(this.aimBlend, aim, 10, dt3);
       _t.set(m.pos.x, m.pos.y + 4.7 - 1.7 * (m.crumple || 0), m.pos.z);
       const dist = 15.5 - this.aimBlend * 7.5, shoulder = 2.2 + this.aimBlend * 0.8;
       this.fovTarget = 66 - this.aimBlend * 18;
       const pitch = clamp2(this.pitch + this.recoilP, -0.8, 1), yaw = this.yaw + this.recoilY;
-      this.smoothPivot(_t, 0.06, dt2);
+      this.smoothPivot(_t, 0.06, dt3);
       const cp = Math.cos(pitch);
       _f.set(cp * Math.sin(yaw), Math.sin(pitch), cp * Math.cos(yaw));
       _r3.set(-Math.cos(yaw), 0, Math.sin(yaw));
@@ -51625,9 +51757,9 @@ void main() {
       _o.copy(_p4).addScaledVector(_f, -dist);
       const t2 = this.sweep(_p4, _o, null);
       const allowed = Math.max(4.5, dist * t2 - (t2 < 1 ? 0.3 : 0));
-      this.curDist = allowed < this.curDist ? allowed : damp2(this.curDist, allowed, 1.6, dt2);
+      this.curDist = allowed < this.curDist ? allowed : damp2(this.curDist, allowed, 1.6, dt3);
       const short = clamp2((8.5 - this.curDist) / 4, 0, 1);
-      this.lift = damp2(this.lift, short * 3.6, 6, dt2);
+      this.lift = damp2(this.lift, short * 3.6, 6, dt3);
       this.roll = 0;
       this.blocked = t2 < 1;
       cam.position.copy(_p4).addScaledVector(_f, -this.curDist);
@@ -51635,30 +51767,30 @@ void main() {
       _look.copy(_p4).addScaledVector(_f, 40);
       _look.y -= this.lift * 0.5;
     }
-    updateDrive(dt2) {
+    updateDrive(dt3) {
       const G2 = this.G, P = G2.player, cam = this.cam, v = P.vehicle;
       const sp = Math.abs(v.speed);
       _t.set(v.pos.x, v.pos.y + 1.15, v.pos.z);
-      this.orbitTimer += dt2;
+      this.orbitTimer += dt3;
       if (this.orbitTimer > 1.6) {
-        this.driveOffset = damp2(this.driveOffset, 0, 3, dt2);
-        this.drivePitch = damp2(this.drivePitch, 0, 3, dt2);
+        this.driveOffset = damp2(this.driveOffset, 0, 3, dt3);
+        this.drivePitch = damp2(this.drivePitch, 0, 3, dt3);
       }
       if (v.speed < -2.5) this.revView = true;
       else if (v.speed > -0.6) this.revView = false;
       const headYaw = this.revView ? v.yaw + Math.PI : v.yaw;
-      this.yaw = dampAngle(this.yaw, headYaw + this.driveOffset, 5.5 + sp * 0.08, dt2);
-      const accel = dt2 > 0 ? (v.speed - this.prevSpeed) / dt2 : 0;
+      this.yaw = dampAngle(this.yaw, headYaw + this.driveOffset, 5.5 + sp * 0.08, dt3);
+      const accel = dt3 > 0 ? (v.speed - this.prevSpeed) / dt3 : 0;
       this.prevSpeed = v.speed;
-      this.accel = damp2(this.accel, clamp2(accel, -14, 14), 5, dt2);
-      this.boomAccel = damp2(this.boomAccel, clamp2(this.accel * 0.075, -0.8, 0.7), 4, dt2);
+      this.accel = damp2(this.accel, clamp2(accel, -14, 14), 5, dt3);
+      this.boomAccel = damp2(this.boomAccel, clamp2(this.accel * 0.075, -0.8, 0.7), 4, dt3);
       const dist = 6.2 + clamp2(sp * 0.05, 0, 2.6) + this.boomAccel;
       const pitch = -0.2 + this.drivePitch;
       this.pitch = pitch;
       this.fovTarget = 64 + clamp2(sp / 55, 0, 1) * 16;
       const latG = (v.vel.x * Math.cos(v.yaw) - v.vel.z * Math.sin(v.yaw)) * v.yawRate;
-      this.roll = damp2(this.roll, clamp2(-latG * 6e-3, -0.05, 0.05), 6, dt2);
-      this.smoothPivot(_t, 0.03, dt2);
+      this.roll = damp2(this.roll, clamp2(-latG * 6e-3, -0.05, 0.05), 6, dt3);
+      this.smoothPivot(_t, 0.03, dt3);
       const cp = Math.cos(pitch);
       _f.set(cp * Math.sin(this.yaw), Math.sin(pitch), cp * Math.cos(this.yaw));
       _r3.set(-Math.cos(this.yaw), 0, Math.sin(this.yaw));
@@ -51704,9 +51836,9 @@ void main() {
         off.init = true;
       }
       const lam = 7;
-      off.back = damp2(off.back, chosen[0], lam, dt2);
-      off.side = damp2(off.side, chosen[1], lam, dt2);
-      off.up = damp2(off.up, chosen[2], lam, dt2);
+      off.back = damp2(off.back, chosen[0], lam, dt3);
+      off.side = damp2(off.side, chosen[1], lam, dt3);
+      off.up = damp2(off.up, chosen[2], lam, dt3);
       _cand.copy(this.pivot).addScaledVector(_flat, -off.back).addScaledVector(_r3, off.side).setY(this.pivot.y + off.up);
       if (this.sweep(this.pivot, _cand, v) < 0.999) {
         off.back = chosen[0];
@@ -51954,31 +52086,31 @@ void main() {
     get speed() {
       return Math.hypot(this.vel.x, this.vel.z);
     }
-    update(dt2) {
+    update(dt3) {
       const G2 = this.G;
       if (this.dead) {
-        this.deadT += dt2;
-        this.poseDead(dt2);
+        this.deadT += dt3;
+        this.poseDead(dt3);
         if (this.deadT > 3.2) this.respawn();
         return;
       }
       if (this.state === "vehicle") {
-        this.updateInVehicle(dt2);
+        this.updateInVehicle(dt3);
         return;
       }
       if (this.state === "entering") {
-        if (this.vehicle && this.vehicle.isMech) this.updateEnteringMech(dt2);
-        else this.updateEntering(dt2);
+        if (this.vehicle && this.vehicle.isMech) this.updateEnteringMech(dt3);
+        else this.updateEntering(dt3);
         return;
       }
       if (this.state === "exiting") {
-        this.updateExitingMech(dt2);
+        this.updateExitingMech(dt3);
         return;
       }
-      this.updateFoot(dt2);
-      if (G2.time - this.lastHurt > PLAYER.regenDelay && this.health < PLAYER.maxHealth) this.health = Math.min(PLAYER.maxHealth, this.health + PLAYER.regenRate * dt2);
+      this.updateFoot(dt3);
+      if (G2.time - this.lastHurt > PLAYER.regenDelay && this.health < PLAYER.maxHealth) this.health = Math.min(PLAYER.maxHealth, this.health + PLAYER.regenRate * dt3);
     }
-    updateFoot(dt2) {
+    updateFoot(dt3) {
       const G2 = this.G, I2 = G2.input, cam = G2.gcam, world = G2.world;
       const fwd = (I2.down("KeyW") ? 1 : 0) - (I2.down("KeyS") ? 1 : 0), side = (I2.down("KeyD") ? 1 : 0) - (I2.down("KeyA") ? 1 : 0);
       let wx = cam.flat.x * fwd + cam.right.x * side, wz = cam.flat.z * fwd + cam.right.z * side;
@@ -52010,25 +52142,25 @@ void main() {
         const dvx = tvx - this.vel.x, dvz = tvz - this.vel.z, dv = Math.hypot(dvx, dvz);
         const aMax = moving ? (this.sprinting ? 10 : 12) + 2 * (1 - this.speed01) : 14;
         if (dv > 1e-6) {
-          const k = Math.min(1, aMax * dt2 / dv);
+          const k = Math.min(1, aMax * dt3 / dv);
           this.vel.x += dvx * k;
           this.vel.z += dvz * k;
         }
       } else {
         const acc = PLAYER.accel * PLAYER.airControl;
-        this.vel.x = damp2(this.vel.x, tvx, acc / Math.max(1, spd * 0.6), dt2);
-        this.vel.z = damp2(this.vel.z, tvz, acc / Math.max(1, spd * 0.6), dt2);
+        this.vel.x = damp2(this.vel.x, tvx, acc / Math.max(1, spd * 0.6), dt3);
+        this.vel.z = damp2(this.vel.z, tvz, acc / Math.max(1, spd * 0.6), dt3);
       }
       if (this.onGround) this.coyote = 0.12;
-      else this.coyote -= dt2;
+      else this.coyote -= dt3;
       if (I2.pressed("Space") && this.coyote > 0 && !this.aiming) {
         this.vel.y = PLAYER.jumpSpeed;
         this.onGround = false;
         this.coyote = 0;
         G2.audio.footstep(this.pos, 1, world.surfaceAt(this.pos.x, this.pos.z));
       }
-      this.vel.y -= PLAYER.gravity * dt2;
-      const nx = this.pos.x + this.vel.x * dt2, nz = this.pos.z + this.vel.z * dt2;
+      this.vel.y -= PLAYER.gravity * dt3;
+      const nx = this.pos.x + this.vel.x * dt3, nz = this.pos.z + this.vel.z * dt3;
       const gh = world.groundHeight(nx, nz);
       if (gh - this.pos.y > 0.55) {
         this.vel.x *= -0.1;
@@ -52037,7 +52169,7 @@ void main() {
         this.pos.x = nx;
         this.pos.z = nz;
       }
-      this.pos.y += this.vel.y * dt2;
+      this.pos.y += this.vel.y * dt3;
       const g2 = world.groundHeight(this.pos.x, this.pos.z);
       const wasAir = !this.onGround;
       if (this.pos.y <= g2 + 1e-3) {
@@ -52053,14 +52185,14 @@ void main() {
         this.airT = 0;
       } else {
         this.onGround = this.pos.y - g2 < 0.05 && this.vel.y <= 0;
-        if (!this.onGround) this.airT += dt2;
+        if (!this.onGround) this.airT += dt3;
       }
-      this.collide(dt2);
+      this.collide(dt3);
       const camYaw = Math.atan2(cam.flat.x, cam.flat.z);
-      if (this.aiming || this.firing > 0) this.yaw = dampAngle(this.yaw, camYaw, 22, dt2);
+      if (this.aiming || this.firing > 0) this.yaw = dampAngle(this.yaw, camYaw, 22, dt3);
       else if (moving) {
-        const ny = dampAngle(this.yaw, Math.atan2(wx, wz), 12 - 5 * this.speed01, dt2);
-        const mx = (6.5 - 3 * this.speed01) * dt2;
+        const ny = dampAngle(this.yaw, Math.atan2(wx, wz), 12 - 5 * this.speed01, dt3);
+        const mx = (6.5 - 3 * this.speed01) * dt3;
         this.yaw += clamp2(angleDelta(this.yaw, ny), -mx, mx);
       }
       const sp = this.speed;
@@ -52068,20 +52200,20 @@ void main() {
       if (this.onGround && sp > 0.3) {
         const stride = (0.6 + sp * 0.14) * (1 - 0.3 * clamp2(-this.dirF, 0, 1));
         const prev = this.phase;
-        this.phase += (this.dirF < -0.3 ? -1 : 1) * sp / stride * dt2 * Math.PI;
+        this.phase += (this.dirF < -0.3 ? -1 : 1) * sp / stride * dt3 * Math.PI;
         if (Math.floor(prev / Math.PI) !== Math.floor(this.phase / Math.PI)) G2.audio.footstep(this.pos, clamp2(sp / 7, 0.3, 1), world.surfaceAt(this.pos.x, this.pos.z));
       } else if (this.onGround) {
-        this.phase = damp2(this.phase, Math.round(this.phase / Math.PI) * Math.PI, 10, dt2);
+        this.phase = damp2(this.phase, Math.round(this.phase / Math.PI) * Math.PI, 10, dt3);
       }
-      this.firing = Math.max(0, this.firing - dt2);
-      this.landT = Math.max(0, this.landT - dt2);
-      this.hitT = Math.max(0, this.hitT - dt2);
+      this.firing = Math.max(0, this.firing - dt3);
+      this.landT = Math.max(0, this.landT - dt3);
+      this.hitT = Math.max(0, this.hitT - dt3);
       this.root.position.copy(this.pos);
       this.root.rotation.set(0, this.yaw, 0);
-      if (danceAktiv()) this.poseDance(dt2, moving, sp);
-      else this.poseFoot(dt2, moving, sp);
+      if (danceAktiv()) this.poseDance(dt3, moving, sp);
+      else this.poseFoot(dt3, moving, sp);
     }
-    collide(dt2) {
+    collide(dt3) {
       const G2 = this.G, r = this.radius, p = this.pos;
       const list = G2.world.statics.query(p.x - r, p.z - r, p.x + r, p.z + r, _near2);
       for (const b of list) {
@@ -52164,13 +52296,13 @@ void main() {
     }
     // ----- animation -----------------------------------------------------------------------------
     // rate = one λ for every bone (seated, dead, airborne); without it each bone settles at its own BONE_RATE (round 7)
-    applyPose(dt2, rate = null) {
+    applyPose(dt3, rate = null) {
       const a = this.armRaise;
       for (const name of BONES2) {
         const b = this.bones[name], t2 = this.target[name];
         let r = rate || BONE_RATE[name];
         if (!rate && a > 0 && ARM_BONES.has(name)) r = lerp2(r, 24, a);
-        const k = 1 - Math.exp(-r * dt2);
+        const k = 1 - Math.exp(-r * dt3);
         b.rotation.x += (t2.x - b.rotation.x) * k;
         b.rotation.y += (t2.y - b.rotation.y) * k;
         b.rotation.z += (t2.z - b.rotation.z) * k;
@@ -52187,41 +52319,41 @@ void main() {
     //  - weight: the body drops on every foot plant (cos 2ph), leans into acceleration and against braking, banks into turns, the
     //    head and chest look into a turn before the body is round it
     //  - idle: breathing through spine / chest / shoulders / head, a slow weight shift from hip to hip, glances every 2–5 s, a fidget
-    poseFoot(dt2, moving, sp) {
+    poseFoot(dt3, moving, sp) {
       const T = this.target;
       this.resetTargets();
       const G2 = this.G;
       const t2 = G2.time;
       const ph = this.phase;
       const gt2 = GAIT_TARGET(sp, this.sprinting);
-      for (let i = 0; i < 4; i++) this.gait[i] = damp2(this.gait[i], gt2[i], 7, dt2);
+      for (let i = 0; i < 4; i++) this.gait[i] = damp2(this.gait[i], gt2[i], 7, dt3);
       const [gIdle, gWalk, gRun, gSprint] = this.gait;
       const gMove = 1 - gIdle;
       const fx2 = Math.sin(this.yaw), fz = Math.cos(this.yaw), rx = -fz, rz = fx2;
       if (sp > 0.4) {
-        this.dirF = damp2(this.dirF, clamp2((this.vel.x * fx2 + this.vel.z * fz) / sp, -1, 1), 9, dt2);
-        this.dirR = damp2(this.dirR, clamp2((this.vel.x * rx + this.vel.z * rz) / sp, -1, 1), 9, dt2);
+        this.dirF = damp2(this.dirF, clamp2((this.vel.x * fx2 + this.vel.z * fz) / sp, -1, 1), 9, dt3);
+        this.dirR = damp2(this.dirR, clamp2((this.vel.x * rx + this.vel.z * rz) / sp, -1, 1), 9, dt3);
       }
       const back = clamp2(-this.dirF, 0, 1) * gMove, strafe = this.dirR * gMove * (1 - back);
-      const idt = dt2 > 1e-5 ? 1 / dt2 : 0;
+      const idt = dt3 > 1e-5 ? 1 / dt3 : 0;
       const ax = (this.vel.x - this.prevVel.x) * idt, az = (this.vel.z - this.prevVel.z) * idt;
       this.prevVel.copy(this.vel);
-      this.accF = damp2(this.accF, clamp2(ax * fx2 + az * fz, -30, 30), 14, dt2);
-      this.accR = damp2(this.accR, clamp2(ax * rx + az * rz, -30, 30), 14, dt2);
-      this.yawRate = damp2(this.yawRate, clamp2(angleDelta(this.prevYaw, this.yaw) * idt, -8, 8), 10, dt2);
+      this.accF = damp2(this.accF, clamp2(ax * fx2 + az * fz, -30, 30), 14, dt3);
+      this.accR = damp2(this.accR, clamp2(ax * rx + az * rz, -30, 30), 14, dt3);
+      this.yawRate = damp2(this.yawRate, clamp2(angleDelta(this.prevYaw, this.yaw) * idt, -8, 8), 10, dt3);
       this.prevYaw = this.yaw;
       const turn = clamp2(this.yawRate * (0.25 + this.speed01), -2.5, 2.5);
       {
         const target = clamp2(this.accF * 0.022, -0.2, 0.22);
         const w = 11, z = 0.32;
-        this.leanV += (w * w * (target - this.lean) - 2 * z * w * this.leanV) * dt2;
-        this.lean += this.leanV * dt2;
+        this.leanV += (w * w * (target - this.lean) - 2 * z * w * this.leanV) * dt3;
+        this.lean += this.leanV * dt3;
       }
       {
         const k = 484, c = 22;
         const target = this.onGround ? Math.sin(ph) * gMove : 0;
-        this.armSwV += (k * (target - this.armSw) - c * this.armSwV) * dt2;
-        this.armSw += this.armSwV * dt2;
+        this.armSwV += (k * (target - this.armSw) - c * this.armSwV) * dt3;
+        this.armSw += this.armSwV * dt3;
       }
       if (this.onGround) {
         const side = Math.abs(strafe);
@@ -52308,15 +52440,15 @@ void main() {
           T.Forearm_R.x += Math.sin(t2 * 0.7 + 2) * 0.015 * gIdle;
           this.rootY += (Math.cos(t2 * 0.74) - 1) * 4e-3 * gIdle;
           const gl = this.glance;
-          gl.next -= dt2;
+          gl.next -= dt3;
           if (gl.next <= 0) {
             const back2 = Math.random() < 0.45;
             gl.ty = back2 ? 0 : (Math.random() * 2 - 1) * 0.4;
             gl.tx = back2 ? 0 : (Math.random() * 2 - 1) * 0.12;
             gl.next = 2 + Math.random() * 3;
           }
-          gl.x = damp2(gl.x, gl.tx, 4, dt2);
-          gl.y = damp2(gl.y, gl.ty, 4, dt2);
+          gl.x = damp2(gl.x, gl.tx, 4, dt3);
+          gl.y = damp2(gl.y, gl.ty, 4, dt3);
           T.Head.y += gl.y * gIdle;
           T.Head.x += gl.x * gIdle;
           T.Chest.y += gl.y * 0.25 * gIdle;
@@ -52336,22 +52468,22 @@ void main() {
         T.Spine.x = 0.15;
         this.rootY = 0;
       }
-      this.poseArms(dt2);
+      this.poseArms(dt3);
       if (this.hitT > 0) {
         T.Spine.x += this.hitT * 0.6;
         T.Chest.z += this.hitT * 0.3;
       }
       this.rig.mesh.position.y = this.rootY;
-      this.applyPose(dt2, this.onGround ? null : 10);
+      this.applyPose(dt3, this.onGround ? null : 10);
     }
     // Round 8: the weapon holds. The weapon is placed first (anchor on the torso, orientation from the hold + camera pitch + kick), then both
     // arms are solved to it: right wrist so that the WeaponSocket lands on the grip, right hand oriented so the barrel follows the weapon;
     // left wrist so the palm closes on the weapon's left-hand point, fingers along the hold's finger direction. Torso and head take the
     // blade / cheek additions. Everything is written into the targets, so the usual per-bone settle still applies (arms snap while aiming).
-    poseArms(dt2) {
+    poseArms(dt3) {
       const T = this.target, G2 = this.G, W = G2.weapons.current;
       const raise = this.aiming || this.firing > 0 ? 1 : 0;
-      this.armRaise = damp2(this.armRaise, raise, 12, dt2);
+      this.armRaise = damp2(this.armRaise, raise, 12, dt3);
       const a = this.armRaise;
       const pitch = clamp2(G2.gcam.pitch + G2.gcam.recoilP, -1, 1.1);
       T.Head.x += a * (-pitch * 0.5);
@@ -52481,15 +52613,15 @@ void main() {
     // Zeit kommt aus der gemeinsamen Uhr DANCE.t, damit Spieler, Mech und NPCs synchron laufen.
     // Mocap laeuft direkt auf den Knochen-Quaternionen — nicht ueber target/applyPose, weil das
     // Euler-Winkel daempft und bei den grossen Winkeln eines Tanzes kippen wuerde.
-    poseDance(dt2, moving, sp) {
+    poseDance(dt3, moving, sp) {
       const aus = !DANCE.on;
-      if (aus) this.poseFoot(dt2, moving, sp);
+      if (aus) this.poseFoot(dt3, moving, sp);
       const hip = poseDanceRig(this.bones, DANCE.t);
       if (!aus) this.resetTargets();
       this.root.position.y = this.pos.y;
       this.rig.mesh.position.y = (aus ? this.rig.mesh.position.y : 0) + hip;
     }
-    poseSeated(dt2) {
+    poseSeated(dt3) {
       const T = this.target;
       this.resetTargets();
       const s = this.vehicle ? this.vehicle.controls.steer : 0;
@@ -52508,9 +52640,9 @@ void main() {
       T.Hand_R.z = -s * 0.5;
       T.Head.y = s * 0.25;
       this.rig.mesh.position.y = 0;
-      this.applyPose(dt2, 12);
+      this.applyPose(dt3, 12);
     }
-    poseDead(dt2) {
+    poseDead(dt3) {
       const T = this.target;
       this.resetTargets();
       T.UpperArm_L.set(-0.6, 0, 1.2);
@@ -52522,7 +52654,7 @@ void main() {
       const k = clamp2(this.deadT / 0.5, 0, 1);
       this.root.rotation.set(-Math.PI / 2 * k, this.yaw, 0.3 * k);
       this.root.position.y = this.pos.y + 0.16 * k;
-      this.applyPose(dt2, 8);
+      this.applyPose(dt3, 8);
     }
     // ----- vehicles ------------------------------------------------------------------------------
     enterVehicle(v) {
@@ -52547,17 +52679,17 @@ void main() {
       G2.gcam.setMode("drive");
       return true;
     }
-    updateEntering(dt2) {
+    updateEntering(dt3) {
       const G2 = this.G, v = this.vehicle;
-      this.enterT += dt2;
+      this.enterT += dt3;
       const k = clamp2(this.enterT / 0.45, 0, 1);
       v.seatWorld(_v5);
       const ex = v.exitWorld(this.enterFrom, _w);
       this.pos.lerpVectors(ex, _v5, k);
       this.root.position.copy(this.pos);
-      this.yaw = dampAngle(this.yaw, v.yaw, 10, dt2);
+      this.yaw = dampAngle(this.yaw, v.yaw, 10, dt3);
       this.root.rotation.set(0, this.yaw, 0);
-      this.poseSeated(dt2);
+      this.poseSeated(dt3);
       if (k >= 1) {
         this.state = "vehicle";
         v.driver = "player";
@@ -52568,18 +52700,18 @@ void main() {
         this.root.rotation.set(0, 0, 0);
       }
     }
-    updateInVehicle(dt2) {
+    updateInVehicle(dt3) {
       const v = this.vehicle;
       this.pos.copy(v.pos);
       this.pos.y += 0.2;
       this.yaw = v.yaw;
-      this.poseSeated(dt2);
+      this.poseSeated(dt3);
       if (v.isMech && v.wrecked && !this.dead) {
         this.die("explosion");
         return;
       }
       this.speed01 = 0;
-      if (this.G.time - this.lastHurt > PLAYER.regenDelay && this.health < PLAYER.maxHealth) this.health = Math.min(PLAYER.maxHealth, this.health + PLAYER.regenRate * dt2);
+      if (this.G.time - this.lastHurt > PLAYER.regenDelay && this.health < PLAYER.maxHealth) this.health = Math.min(PLAYER.maxHealth, this.health + PLAYER.regenRate * dt3);
     }
     exitVehicle() {
       if (this.state !== "vehicle") return false;
@@ -52664,9 +52796,9 @@ void main() {
       }
       return m.seatWorld(out);
     }
-    updateEnteringMech(dt2) {
+    updateEnteringMech(dt3) {
       const G2 = this.G, m = this.vehicle;
-      this.enterT += dt2;
+      this.enterT += dt3;
       const t2 = this.enterT, F = this.climbF;
       const climbEnd = _Player.CLIMB[_Player.CLIMB.length - 1][0];
       if (m.wrecked) {
@@ -52679,17 +52811,17 @@ void main() {
         this.pos.lerpVectors(this.enterFrom, _v5, u2);
         this.pos.y = G2.world.groundHeight(this.pos.x, this.pos.z);
         const dx = _v5.x - this.enterFrom.x, dz = _v5.z - this.enterFrom.z;
-        if (dx * dx + dz * dz > 0.05) this.yaw = dampAngle(this.yaw, Math.atan2(dx, dz), 12, dt2);
-        this.phase += 4.5 * dt2 * Math.PI;
+        if (dx * dx + dz * dz > 0.05) this.yaw = dampAngle(this.yaw, Math.atan2(dx, dz), 12, dt3);
+        this.phase += 4.5 * dt3 * Math.PI;
         this.root.position.copy(this.pos);
         this.root.rotation.set(0, this.yaw, 0);
-        this.poseClimb(dt2, 0, true);
+        this.poseClimb(dt3, 0, true);
       } else if (t2 < climbEnd) {
         this.climbPoint(m, t2, this.pos);
-        this.yaw = dampAngle(this.yaw, m.yaw + Math.PI, 10, dt2);
+        this.yaw = dampAngle(this.yaw, m.yaw + Math.PI, 10, dt3);
         this.root.position.copy(this.pos);
         this.root.rotation.set(0, this.yaw, 0);
-        this.poseClimb(dt2, (t2 - 0.5) / (climbEnd - 0.5), false);
+        this.poseClimb(dt3, (t2 - 0.5) / (climbEnd - 0.5), false);
       } else {
         if (!F.seated) {
           F.seated = true;
@@ -52700,7 +52832,7 @@ void main() {
         }
         this.pos.copy(m.pos);
         this.yaw = m.yaw;
-        this.poseSeated(dt2);
+        this.poseSeated(dt3);
         if (!F.powered && t2 > climbEnd + 0.12) {
           F.powered = true;
           m.powerUp();
@@ -52724,9 +52856,9 @@ void main() {
       G2.weapons.setVisible(false);
       return true;
     }
-    updateExitingMech(dt2) {
+    updateExitingMech(dt3) {
       const G2 = this.G, m = this.vehicle;
-      this.enterT += dt2;
+      this.enterT += dt3;
       const t2 = this.enterT, F = this.climbF;
       const climbEnd = _Player.CLIMB[_Player.CLIMB.length - 1][0];
       if (m.wrecked) {
@@ -52735,7 +52867,7 @@ void main() {
       }
       if (t2 < 0.45) {
         this.pos.copy(m.pos);
-        this.poseSeated(dt2);
+        this.poseSeated(dt3);
       } else {
         if (!F.out) {
           F.out = true;
@@ -52745,17 +52877,17 @@ void main() {
         const tt = clamp2(climbEnd - (t2 - 0.45), 0, climbEnd);
         if (tt > 0.5) {
           this.climbPoint(m, tt, this.pos);
-          this.poseClimb(dt2, (tt - 0.5) / (climbEnd - 0.5), false);
+          this.poseClimb(dt3, (tt - 0.5) / (climbEnd - 0.5), false);
         } else {
           m.localPoint(0, 0, 2.75, this.pos);
           this.pos.y = G2.world.groundHeight(this.pos.x, this.pos.z);
-          this.poseClimb(dt2, 0, true);
+          this.poseClimb(dt3, 0, true);
           if (!F.closed) {
             F.closed = true;
             m.closeHatch();
           }
         }
-        this.yaw = dampAngle(this.yaw, m.yaw + Math.PI, 10, dt2);
+        this.yaw = dampAngle(this.yaw, m.yaw + Math.PI, 10, dt3);
         this.root.position.copy(this.pos);
         this.root.rotation.set(0, this.yaw, 0);
       }
@@ -52779,7 +52911,7 @@ void main() {
       }
     }
     // climbing pose: hands reach up alternately, knees drive; u = 0…1 along the climb, walk = the short walk-up before it
-    poseClimb(dt2, u2, walk) {
+    poseClimb(dt3, u2, walk) {
       const T = this.target;
       this.resetTargets();
       if (walk) {
@@ -52794,7 +52926,7 @@ void main() {
         T.Forearm_R.x = -0.4;
         T.Spine.x = 0.05;
         this.rig.mesh.position.y = 0;
-        this.applyPose(dt2);
+        this.applyPose(dt3);
         return;
       }
       const ph = u2 * Math.PI * 4;
@@ -52818,7 +52950,7 @@ void main() {
       T.Head.x = -0.55;
       T.Hips.y = 0.1 * sw;
       this.rig.mesh.position.y = 0;
-      this.applyPose(dt2, 14);
+      this.applyPose(dt3, 14);
     }
     // ----- health ---------------------------------------------------------------------------------
     damage(amount, from, kind, direct = false) {
@@ -52914,12 +53046,24 @@ void main() {
       const d = this.def;
       this.name = d.name;
       this.id = _Vehicle.nextId++;
-      this.mesh = makeVehicleMesh(type, paint);
-      G2.scene.add(this.mesh);
-      this.body = this.mesh.getObjectByName("body");
-      this.brakeLights = this.mesh.getObjectByName("brakeLights");
-      this.lightsMesh = this.mesh.getObjectByName("lights");
-      this.wheelMeshes = ["wheel_FL", "wheel_FR", "wheel_RL", "wheel_RR"].map((n2) => this.mesh.getObjectByName(n2));
+      if (type === "tank") {
+        this.mesh = makeTankMesh();
+        G2.scene.add(this.mesh);
+        this.body = this.mesh.children[0];
+        this.brakeLights = new Object3D();
+        this.lightsMesh = new Object3D();
+        this.wheelMeshes = [];
+        this.beaconL = null;
+        this.beaconR = null;
+        this.kanonCd = 0;
+      } else {
+        this.mesh = makeVehicleMesh(type, paint);
+        G2.scene.add(this.mesh);
+        this.body = this.mesh.getObjectByName("body");
+        this.brakeLights = this.mesh.getObjectByName("brakeLights");
+        this.lightsMesh = this.mesh.getObjectByName("lights");
+        this.wheelMeshes = ["wheel_FL", "wheel_FR", "wheel_RL", "wheel_RR"].map((n2) => this.mesh.getObjectByName(n2));
+      }
       this.pos = new Vector3(x, G2.world.groundHeight(x, z), z);
       this.yaw = yaw;
       this.pitch = 0;
@@ -53019,12 +53163,12 @@ void main() {
       return this.localPoint(sides[0], 0, 0.3, out);
     }
     // ---------------- physics -----------------------------------------------------------------
-    step(dt2) {
+    step(dt3) {
       const d = this.def, m = d.mass, c = this.controls, world = this.G.world;
       const sy = Math.sin(this.yaw), cy = Math.cos(this.yaw);
       let u2 = this.vel.x * sy + this.vel.z * cy, v = this.vel.x * cy - this.vel.z * sy;
       const lock = d.steerMax / (1 + Math.abs(u2) * 0.085);
-      this.steer = damp2(this.steer, c.steer * lock, d.steerSpeed * (c.steer === 0 ? 1.7 : 1) / (1 + Math.abs(u2) * 0.025), dt2);
+      this.steer = damp2(this.steer, c.steer * lock, d.steerSpeed * (c.steer === 0 ? 1.7 : 1) / (1 + Math.abs(u2) * 0.025), dt3);
       let Fz = 0, Mp = 0, Mr = 0, contacts = 0;
       const sp = Math.sin(this.pitch), sr = Math.sin(this.roll);
       for (const w of this.wheels) {
@@ -53040,7 +53184,7 @@ void main() {
           w.contact = true;
           contacts++;
           const cc = Math.min(comp, d.susp.travel + 0.25);
-          const rate = (cc - prev) / dt2;
+          const rate = (cc - prev) / dt3;
           w.comp = cc;
           let F2 = d.susp.stiffness * cc + d.susp.damping * rate;
           if (cc > d.susp.travel) F2 += (cc - d.susp.travel) * d.susp.stiffness * 10;
@@ -53048,16 +53192,16 @@ void main() {
           Fz += F2;
           Mp += -F2 * w.lz;
           Mr += F2 * w.lx;
-          w.load = damp2(w.load, clamp2(F2, 0, m * GRAV * 0.5), 14, dt2);
+          w.load = damp2(w.load, clamp2(F2, 0, m * GRAV * 0.5), 14, dt3);
         } else {
           w.contact = false;
-          w.load = damp2(w.load, 0, 14, dt2);
+          w.load = damp2(w.load, 0, 14, dt3);
           w.comp = -d.susp.travel;
         }
       }
       Mr += -d.susp.rollBar * this.roll * 4;
       this.airborne = contacts === 0;
-      if (this.airborne) this.airT += dt2;
+      if (this.airborne) this.airT += dt3;
       else this.airT = 0;
       const Ff = this.wheels[0].load + this.wheels[1].load, Fr = this.wheels[2].load + this.wheels[3].load;
       const eng = d.engine;
@@ -53070,8 +53214,8 @@ void main() {
       if (Math.abs(u2) < 3) rpm = Math.max(rpm, eng.idle + thr * eng.redline * 0.42);
       rpm = clamp2(rpm, eng.idle, eng.redline * 1.02);
       rpm += this.wheelspin * (eng.redline - rpm) * 0.85;
-      this.rpm = damp2(this.rpm, rpm, 14, dt2);
-      this.shiftT -= dt2;
+      this.rpm = damp2(this.rpm, rpm, 14, dt3);
+      this.shiftT -= dt3;
       if (this.gear > 0 && this.shiftT <= 0) {
         if (this.rpm > eng.redline * 0.93 && this.gear < eng.gears.length) {
           this.gear++;
@@ -53089,23 +53233,23 @@ void main() {
       const limit = d.gripLong * Fdriven;
       if (Math.abs(Fdrive) > limit && contacts) {
         const excess = clamp2((Math.abs(Fdrive) - limit) / Math.max(1, limit), 0, 1);
-        this.wheelspin = damp2(this.wheelspin, Math.min(1, 0.35 + excess * 1.2), 8, dt2);
+        this.wheelspin = damp2(this.wheelspin, Math.min(1, 0.35 + excess * 1.2), 8, dt3);
         Fdrive = sign2(Fdrive) * limit * 0.85;
-      } else this.wheelspin = damp2(this.wheelspin, 0, 7, dt2);
+      } else this.wheelspin = damp2(this.wheelspin, 0, 7, dt3);
       if (this.airborne) Fdrive = 0;
       let Fbrake = clamp2(c.brake, 0, 1) * d.brakeForce + (c.handbrake ? d.handbrakeForce : 0);
       if (this.airborne) Fbrake = 0;
       const over = Math.max(0, Math.abs(u2) - d.topSpeed);
       const Fdrag = -(0.5 * 1.2 * d.dragCoef * 2.4 * u2 * Math.abs(u2)) - 0.014 * m * GRAV * Math.tanh(u2) - sign2(u2) * over * over * 60;
       let Fx = Fdrive + Fdrag;
-      const brakeImp = Math.min(Fbrake * dt2, m * Math.abs(u2));
-      Fx -= sign2(u2) * brakeImp / dt2;
+      const brakeImp = Math.min(Fbrake * dt3, m * Math.abs(u2));
+      Fx -= sign2(u2) * brakeImp / dt3;
       const a = d.wheelbase / 2, b = d.wheelbase / 2;
       const absU = Math.max(Math.abs(u2), 0.4);
       const muF = d.gripLat * (this.wheelspin > 0.3 && d.drive === "front" ? 0.75 : 1), muR = d.gripLat * d.gripRearMul * (c.handbrake ? 0.5 : 1) * (this.wheelspin > 0.3 && d.drive === "rear" ? 0.7 : 1);
       const cs = Math.cos(this.steer), sn2 = Math.sin(this.steer);
       const usedF = d.drive === "front" ? Math.abs(Fdrive) : 0, usedR = d.drive === "rear" ? Math.abs(Fdrive) : 0;
-      const brakeShare = brakeImp / dt2 * 0.5;
+      const brakeShare = brakeImp / dt3 * 0.5;
       const capF = muF * Ff, capR = muR * Fr;
       const availF = Math.sqrt(Math.max(0, capF * capF - Math.pow((usedF + brakeShare) * 0.75, 2))), availR = Math.sqrt(Math.max(0, capR * capR - Math.pow((usedR + brakeShare) * 0.75, 2)));
       const slipF = Math.atan2((v + a * this.yawRate) * cs - u2 * sn2, absU), slipR = Math.atan2(v - b * this.yawRate, absU);
@@ -53123,7 +53267,7 @@ void main() {
         dw = 0;
       }
       if (contacts) dw -= this.yawRate * 0.9;
-      let u22 = u2 + du * dt2, v2 = v + dv * dt2, w2 = this.yawRate + dw * dt2;
+      let u22 = u2 + du * dt3, v2 = v + dv * dt3, w2 = this.yawRate + dw * dt3;
       const kin = contacts ? 1 - smoothstep2(0.6, 4.5, Math.hypot(u2, v)) : 0;
       if (kin > 0) {
         const wk = u22 * Math.tan(this.steer) / d.wheelbase;
@@ -53135,28 +53279,28 @@ void main() {
         v2 *= 0.5;
       }
       if (this.airborne) {
-        const f = Math.exp(-0.15 * dt2);
+        const f = Math.exp(-0.15 * dt3);
         w2 *= f;
       }
       this.vel.x = u22 * sy + v2 * cy;
       this.vel.z = u22 * cy - v2 * sy;
       this.yawRate = w2;
-      this.yaw += w2 * dt2;
+      this.yaw += w2 * dt3;
       this.speed = u22;
-      this.pos.x += this.vel.x * dt2;
-      this.pos.z += this.vel.z * dt2;
-      this.vy += (Fz / m - GRAV) * dt2;
-      this.pos.y += this.vy * dt2;
+      this.pos.x += this.vel.x * dt3;
+      this.pos.z += this.vel.z * dt3;
+      this.vy += (Fz / m - GRAV) * dt3;
+      this.pos.y += this.vy * dt3;
       if (contacts) {
         Mp += -Fx * Math.min(d.cgHeight, 0.7) * 2.4;
         Mr += (Fyf + Fyr) * Math.min(d.cgHeight, 0.7) * 1.5;
       }
-      this.pitchRate += Mp / this.Ipitch * dt2;
-      this.rollRate += Mr / this.Iroll * dt2;
-      this.pitchRate *= Math.exp(-2.5 * dt2);
-      this.rollRate *= Math.exp(-2.5 * dt2);
-      this.pitch = clamp2(this.pitch + this.pitchRate * dt2, -0.35, 0.35);
-      this.roll = clamp2(this.roll + this.rollRate * dt2, -0.32, 0.32);
+      this.pitchRate += Mp / this.Ipitch * dt3;
+      this.rollRate += Mr / this.Iroll * dt3;
+      this.pitchRate *= Math.exp(-2.5 * dt3);
+      this.rollRate *= Math.exp(-2.5 * dt3);
+      this.pitch = clamp2(this.pitch + this.pitchRate * dt3, -0.35, 0.35);
+      this.roll = clamp2(this.roll + this.rollRate * dt3, -0.32, 0.32);
       if (Math.abs(this.roll) >= 0.32) this.rollRate *= 0.5;
       if (Math.abs(this.pitch) >= 0.35) this.pitchRate *= 0.5;
       const gh0 = world.groundHeight(this.pos.x, this.pos.z);
@@ -53172,7 +53316,7 @@ void main() {
       }
       for (const w of this.wheels) {
         const driven = d.drive === "front" === w.front;
-        w.spin += (u22 / d.wheelRadius + (driven ? this.wheelspin * 40 : 0)) * dt2;
+        w.spin += (u22 / d.wheelRadius + (driven ? this.wheelspin * 40 : 0)) * dt3;
       }
       this.collideStatics();
     }
@@ -53251,6 +53395,23 @@ void main() {
         for (let i = 0; i < n2; i++) G2.fx.chunk(px2, this.pos.y + 0.5, pz2, randSpread(5) + (this.pos.x - px2) * 1.5, rand(2, 6), randSpread(5) + (this.pos.z - pz2) * 1.5, rand(0.5, 1.1), i % 3 === 0 ? 0.6 : c.r, i % 3 === 0 ? 0.6 : c.g, i % 3 === 0 ? 0.65 : c.b);
       }
       if (speed > 3.5) this.damage((speed - 3) * 2.6 * dmgScale, "crash");
+      if (this.type === "tank" && this.driver === "player") {
+        this.kanonCd -= dt;
+        if (this.G.input.mousePressed(0) && this.kanonCd <= 0) {
+          this.kanonCd = 2.2;
+          const mzl = this.mesh.getObjectByName("TankMuzzle");
+          mzl.getWorldPosition(_v6);
+          const cam = this.G.camera, camF = this.G.gcam.forward ? this.G.gcam.forward(_w4) : _w4.set(0, 0, 1);
+          _w4.y = clamp2(this.G.gcam.pitch, -0.5, 0.35);
+          _w4.normalize();
+          this.G.weapons.spawnProjectile(_v6, _w4, this.G.weapons.slots[2].def, "player");
+          this.G.audio.gunshot("mg", _v6);
+          this.G.audio.explosion(_v6, 0.5);
+          this.G.gcam.addShake(0.5);
+          this.G.gcam.addKick(0, 0, 0, 5);
+          this.G.police.crime("gunfire", this.pos);
+        }
+      }
       if (this.driver === "player") {
         G2.gcam.addShake(clamp2(speed / 12, 0.1, 1.2));
         const kx = this.pos.x - px2, kz = this.pos.z - pz2;
@@ -53362,10 +53523,15 @@ void main() {
       a.minY = this.pos.y;
       a.maxY = this.pos.y + d.height;
     }
-    updateMesh(dt2) {
+    updateMesh(dt3) {
       const d = this.def;
       this.mesh.position.copy(this.pos);
       this.mesh.rotation.set(this.pitch, this.yaw, this.roll, "YXZ");
+      if (this.type === "tank") {
+        this.brakeLights.visible = false;
+        this.lightsMesh.visible = false;
+        return;
+      }
       this.wheels.forEach((w, i) => {
         const wm = this.wheelMeshes[i];
         wm.position.y = clamp2(d.wheelRadius + (w.comp - this.staticComp), d.wheelRadius - d.susp.travel - 0.05, d.wheelRadius + d.susp.travel + 0.2);
@@ -53421,12 +53587,12 @@ void main() {
         this._goodYaw = this.yaw;
       }
     }
-    update(dt2) {
+    update(dt3) {
       this.nanGuard();
       const G2 = this.G;
       const moving = Math.hypot(this.vel.x, this.vel.z) > 0.03 || Math.abs(this.vy) > 0.05 || Math.abs(this.yawRate) > 0.02;
       if (!this.driver && !moving && !this.airborne) {
-        this.sleepT += dt2;
+        this.sleepT += dt3;
         if (this.sleepT > 1) {
           this.awake = false;
           this.vel.set(0, 0, 0);
@@ -53440,17 +53606,17 @@ void main() {
         this.controls.brake = sp > 3 ? 0.12 : 0.35;
         this.controls.handbrake = sp < 0.8;
         this.controls.reverse = false;
-        if (!moving) this.controls.steer = damp2(this.controls.steer, 0, 5, dt2);
+        if (!moving) this.controls.steer = damp2(this.controls.steer, 0, 5, dt3);
       }
       if (this.awake) {
-        const n2 = Math.max(1, Math.min(5, Math.ceil(dt2 / (1 / 120))));
-        const h = dt2 / n2;
+        const n2 = Math.max(1, Math.min(5, Math.ceil(dt3 / (1 / 120))));
+        const h = dt3 / n2;
         for (let i = 0; i < n2; i++) this.step(h);
       }
-      this.updateMesh(dt2);
+      this.updateMesh(dt3);
       this.updateAABB();
       if (!this.wrecked && this.hp < 45) {
-        this.smokeT -= dt2;
+        this.smokeT -= dt3;
         if (this.smokeT <= 0) {
           this.smokeT = this.hp < 20 ? 0.06 : 0.16;
           this.localPoint(0, 0.9, this.def.length / 2 - 0.9, _p5);
@@ -53460,7 +53626,7 @@ void main() {
         }
       }
       if (this.wrecked) {
-        this.smokeT -= dt2;
+        this.smokeT -= dt3;
         if (this.smokeT <= 0) {
           this.smokeT = 0.12;
           this.localPoint(randSpread(0.6), 1, randSpread(1.5), _p5);
@@ -53473,7 +53639,7 @@ void main() {
           if (!w.contact) continue;
           const driven = this.def.drive === "front" === w.front;
           const strength = this.slip * (w.front ? 0.7 : 1) + (driven ? this.wheelspin : 0);
-          w.skidD += Math.hypot(this.vel.x, this.vel.z) * dt2;
+          w.skidD += Math.hypot(this.vel.x, this.vel.z) * dt3;
           if (w.skidD > 0.45 && strength > 0.45) {
             w.skidD = 0;
             G2.fx.skid(w.wx, w.gy, w.wz, this.yaw + (w.front ? this.steer : 0), strength);
@@ -53597,8 +53763,8 @@ void main() {
       this.lastSteer = steer;
     }
     // advance along the path; re-sync when pushed off it; returns false when the driver was recycled
-    progress(dt2, sp) {
-      this.s += Math.max(0, sp) * dt2;
+    progress(dt3, sp) {
+      this.s += Math.max(0, sp) * dt3;
       const v = this.v;
       const here = this.pointAt(this.edge, this.s);
       if (Math.hypot(here.x - v.pos.x, here.z - v.pos.z) > 7) {
@@ -53624,13 +53790,13 @@ void main() {
       }
       return true;
     }
-    update(dt2) {
+    update(dt3) {
       const v = this.v, c = v.controls, G2 = this.G;
       if (!this.edge) return;
-      this.age += dt2;
-      this.honkCd -= dt2;
+      this.age += dt3;
+      this.honkCd -= dt3;
       if (this.state === "flee") {
-        this.fleeT -= dt2;
+        this.fleeT -= dt3;
         if (this.fleeT <= 0) this.state = "drive";
       }
       const sp = v.speed;
@@ -53644,7 +53810,7 @@ void main() {
           if (slz < 14) this.pullOverT = 3.5;
         }
       }
-      this.pullOverT -= dt2;
+      this.pullOverT -= dt3;
       let tpx = tp.x, tpz = tp.z;
       if (this.pullOverT > 0) {
         tpx += -cy * 3;
@@ -53688,7 +53854,7 @@ void main() {
         }
       }
       if (this.reverseT > 0) {
-        this.reverseT -= dt2;
+        this.reverseT -= dt3;
         c.reverse = true;
         c.throttle = 0.5;
         c.brake = 0;
@@ -53698,14 +53864,14 @@ void main() {
       }
       this.applyControls(steer, desired, sp);
       if (blockedByPed && sp < 0.5) {
-        this.honkWait += dt2;
+        this.honkWait += dt3;
         if (this.honkWait > 1.4 && this.honkCd <= 0) {
           G2.audio.horn(v.pos, v.def.audio, rand(0.3, 0.7));
           this.honkCd = rand(2.5, 5);
         }
       } else this.honkWait = 0;
       if (desired > 1.5 && Math.abs(sp) < 0.3) {
-        this.stuckT += dt2;
+        this.stuckT += dt3;
         if (this.stuckT > 3 && this.honkCd <= 0 && !blockedByPed) {
           G2.audio.horn(v.pos, v.def.audio, 0.35);
           this.honkCd = 3;
@@ -53715,7 +53881,7 @@ void main() {
           this.stuckT = 0;
         }
       } else this.stuckT = 0;
-      this.progress(dt2, sp);
+      this.progress(dt3, sp);
     }
   };
   var _tgt = { x: 0, z: 0 };
@@ -53754,11 +53920,11 @@ void main() {
     }
     disturb() {
     }
-    update(dt2) {
+    update(dt3) {
       const v = this.v, G2 = this.G, P = G2.player, pol = this.police;
-      this.age += dt2;
-      if (this.standDown) return this.leave(dt2);
-      if (this.role === "block") return this.hold(dt2);
+      this.age += dt3;
+      if (this.standDown) return this.leave(dt3);
+      if (this.role === "block") return this.hold(dt3);
       const recent = G2.time - pol.seenT < 4 && !P.dead;
       if (recent) {
         const pv = P.vehicle;
@@ -53783,7 +53949,7 @@ void main() {
       }
       const d = Math.hypot(_tgt.x - v.pos.x, _tgt.z - v.pos.z);
       const los = recent && d < 95 && G2.world.losStatic(v.pos.x, v.pos.y + 1.2, v.pos.z, P.pos.x, P.pos.y + 1, P.pos.z);
-      this.pathLock -= dt2;
+      this.pathLock -= dt3;
       if (this.pathLock <= 0 && (los && d < 80 || !recent && d < 35 && this.searchNode < 0 || this.goalReached && d < 70)) this.mode = "direct";
       else if (this.mode === "direct" && (this.pathLock > 0 || !los && d > 45 || d > 110)) {
         this.mode = "path";
@@ -53812,7 +53978,7 @@ void main() {
         }
       }
       if (this.holdT > 0) {
-        this.holdT -= dt2;
+        this.holdT -= dt3;
         const c = v.controls;
         c.throttle = 0;
         c.brake = 1;
@@ -53822,8 +53988,8 @@ void main() {
         if (d > 30) this.holdT = 0;
         return;
       }
-      if (this.mode === "path") this.followPath(dt2);
-      else this.direct(dt2, d);
+      if (this.mode === "path") this.followPath(dt3);
+      else this.direct(dt3, d);
     }
     pickSearchNode() {
       const W = this.G.world, lk = this.police.lastKnown, R = WANTED.searchRadius[Math.max(1, this.police.stars)];
@@ -53855,8 +54021,8 @@ void main() {
       }
       return this.chooseNext(edge);
     }
-    progress(dt2, sp) {
-      this.s += Math.max(0, sp) * dt2;
+    progress(dt3, sp) {
+      this.s += Math.max(0, sp) * dt3;
       if (this.s >= this.edge.len) {
         this.s -= this.edge.len;
         this.edge = this.next || this.chooseNext(this.edge);
@@ -53868,7 +54034,7 @@ void main() {
       }
       return true;
     }
-    followPath(dt2) {
+    followPath(dt3) {
       const v = this.v, G2 = this.G, W = G2.world;
       this.ensureOnGraph();
       const sp = v.speed;
@@ -53880,7 +54046,7 @@ void main() {
         this.next = null;
         this.path = null;
       }
-      this.repathT -= dt2;
+      this.repathT -= dt3;
       if (this.repathT <= 0 || !this.goalEdge || !this.path) {
         let best = null;
         for (const c of W.nearestLaneEdges(_tgt.x, _tgt.z, 3)) {
@@ -53913,7 +54079,7 @@ void main() {
       this.goalReached = dT < 25 || this.edge === this.goalEdge && dT < 40;
       if (!this.next) this.next = this.nextFromPath(this.edge);
       const tp = this.lookPoint(this.edge.kind === "turn" ? 3 + Math.abs(sp) * 0.35 : 4 + Math.abs(sp) * 0.6);
-      this.overtakeT -= dt2;
+      this.overtakeT -= dt3;
       let tpx = tp.x, tpz = tp.z;
       if (this.overtakeT > 0) {
         tpx += Math.cos(v.yaw) * 3.2;
@@ -53933,16 +54099,16 @@ void main() {
         desired = Math.min(desired, 9);
         [steer, desired] = this.avoidStatics(steer, desired, sp);
       }
-      if (this.stuckCheck(dt2, desired, sp)) return;
+      if (this.stuckCheck(dt3, desired, sp)) return;
       if (this.escapeT > 0) {
-        this.escapeT -= dt2;
+        this.escapeT -= dt3;
         steer = this.escapeSteer;
         desired = Math.min(desired, 6);
       }
       this.applyControls(steer, desired, sp, 0.9);
-      this.progress(dt2, sp);
+      this.progress(dt3, sp);
     }
-    direct(dt2, d) {
+    direct(dt3, d) {
       const v = this.v, G2 = this.G, P = G2.player, s = this.police.stars;
       const sp = v.speed;
       this.edge = null;
@@ -53956,14 +54122,14 @@ void main() {
         desired2 = this.carsAhead(desired2, sp, 5 + Math.abs(sp) * 0.8, null);
         [steer2, desired2] = this.avoidStatics(steer2, desired2, sp);
         if (d < 8) {
-          this.searchWait = (this.searchWait || 0) + dt2;
+          this.searchWait = (this.searchWait || 0) + dt3;
           if (this.searchWait > 2.5) {
             this.searchWait = 0;
             this.searchNode = this.pickSearchNode();
             this.mode = "path";
           }
         } else this.searchWait = 0;
-        if (this.stuckCheck(dt2, desired2, sp)) return;
+        if (this.stuckCheck(dt3, desired2, sp)) return;
         this.applyControls(steer2, desired2, sp, 0.9);
         return;
       }
@@ -54000,9 +54166,9 @@ void main() {
       if (onFoot && d < 9) desired = 0;
       desired = this.carsAhead(desired, sp, 5 + Math.abs(sp) * 0.8, pv);
       [steer, desired] = this.avoidStatics(steer, desired, sp);
-      if (this.stuckCheck(dt2, desired, sp)) return;
+      if (this.stuckCheck(dt3, desired, sp)) return;
       if (this.escapeT > 0) {
-        this.escapeT -= dt2;
+        this.escapeT -= dt3;
         steer = this.escapeSteer;
         desired = Math.min(desired, 6);
       }
@@ -54040,15 +54206,15 @@ void main() {
       else if (h[2]) steer -= 0.35;
       return [clamp2(steer, -1, 1), desired];
     }
-    idle(dt2) {
-      if (Math.abs(this.v.speed) < 0.5) this.idleT = (this.idleT || 0) + dt2;
+    idle(dt3) {
+      if (Math.abs(this.v.speed) < 0.5) this.idleT = (this.idleT || 0) + dt3;
       else this.idleT = 0;
       return this.idleT > 2.5;
     }
-    stuckCheck(dt2, desired, sp) {
+    stuckCheck(dt3, desired, sp) {
       const c = this.v.controls;
       if (this.reverseT > 0) {
-        this.reverseT -= dt2;
+        this.reverseT -= dt3;
         c.reverse = true;
         c.throttle = 0.75;
         c.brake = 0;
@@ -54065,10 +54231,10 @@ void main() {
         }
         return true;
       }
-      this.stuckWindow -= dt2;
+      this.stuckWindow -= dt3;
       if (this.stuckWindow <= 0) this.stuckCycles = 0;
-      if ((desired > 2 || this.holdT <= 0 && this.idle(dt2)) && Math.abs(sp) < 0.5) {
-        this.stuckT += dt2;
+      if ((desired > 2 || this.holdT <= 0 && this.idle(dt3)) && Math.abs(sp) < 0.5) {
+        this.stuckT += dt3;
         if (this.stuckT > 1.4) {
           this.reverseT = 1.1;
           this.stuckT = 0;
@@ -54082,7 +54248,7 @@ void main() {
       } else this.stuckT = 0;
       return false;
     }
-    hold(dt2) {
+    hold(dt3) {
       const v = this.v, c = v.controls, P = this.G.player;
       c.throttle = 0;
       c.brake = 1;
@@ -54101,11 +54267,11 @@ void main() {
         this.age = 0;
       }
     }
-    leave(dt2) {
+    leave(dt3) {
       const v = this.v, G2 = this.G, W = G2.world;
       v.sirenOn = false;
       this.yelp = false;
-      this.leaveT += dt2;
+      this.leaveT += dt3;
       this.ensureOnGraph();
       const sp = v.speed;
       if (this.leaveGoal < 0) {
@@ -54123,9 +54289,9 @@ void main() {
       else if (this.edge.len - this.s < 16 && this.next && this.next.kind === "turn") desired = Math.min(desired, 8);
       desired = this.carsAhead(desired, sp, 7 + Math.abs(sp), null);
       [steer, desired] = this.avoidStatics(steer, desired, sp);
-      if (this.stuckCheck(dt2, desired, sp)) return;
+      if (this.stuckCheck(dt3, desired, sp)) return;
       this.applyControls(steer, desired, sp);
-      this.progress(dt2, sp);
+      this.progress(dt3, sp);
     }
   };
   PoliceDriver.nextSlot = 0;
@@ -54149,6 +54315,15 @@ void main() {
       }
       for (let i = 0; i < this.trafficCount; i++) this.spawnTraffic(60, 400);
     }
+    spawnTank(x, z) {
+      const G2 = this.G;
+      const v = new Vehicle(G2, "tank", x, z, 0);
+      v.wake();
+      this.list.push(v);
+      G2.ui.msg("TANK", "E steht offen \xB7 LMB = Kanone", 2.4);
+      return v;
+    }
+    // Runde 21
     randomSeg(minD, maxD) {
       const P = this.G.player ? this.G.player.pos : { x: 0, z: 0 };
       const segs = this.G.world.lanes.edges.filter((e) => e.kind === "seg" && e.len > 30);
@@ -54264,7 +54439,7 @@ void main() {
       }
       return best;
     }
-    update(dt2) {
+    update(dt3) {
       const G2 = this.G, P = G2.player, I2 = G2.input;
       for (const v of this.list) {
         v.nanGuard();
@@ -54302,9 +54477,9 @@ void main() {
             else G2.audio.horn(v.pos, v.def.audio, 0.45);
           }
           v.wake();
-        } else if (v.ai) v.ai.update(dt2);
+        } else if (v.ai) v.ai.update(dt3);
       }
-      for (const v of this.list) v.update(dt2);
+      for (const v of this.list) v.update(dt3);
       this.collidePairs();
       this.collideProps();
       for (const v of this.list) v.nanGuard();
@@ -54836,7 +55011,7 @@ void main() {
     taenzelt(n2) {
       return danceAktiv() && !n2.dead && !n2.airborne && n2.state !== "knocked" && !(n2.hostile && (n2.state === "engage" || n2.state === "cover" || n2.state === "hunt" || n2.state === "search")) && n2.state !== "cower" && n2.state !== "flee";
     }
-    update(dt2) {
+    update(dt3) {
       const G2 = this.G, P = G2.player, camPos = G2.camera.position;
       for (const n2 of this.list) {
         if (!isFinite(n2.pos.x + n2.pos.y + n2.pos.z + n2.vel.x + n2.vel.z)) {
@@ -54856,22 +55031,22 @@ void main() {
         const n2 = this.list[i];
         const dCam = Math.hypot(n2.pos.x - camPos.x, n2.pos.z - camPos.z);
         if (n2.dead) {
-          this.updateDead(n2, dt2);
+          this.updateDead(n2, dt3);
           if (!n2.cop && n2.deadT > 25 && dCam > 60) this.recycle(n2);
-          else if (dCam < 160) this.animate(n2, dt2);
+          else if (dCam < 160) this.animate(n2, dt3);
           continue;
         }
         if (this.taenzelt(n2) && DANCE.on) {
           n2.vel.x = 0;
           n2.vel.z = 0;
           n2.pos.y = G2.world.groundHeight(n2.pos.x, n2.pos.z);
-          if (dCam < 150) this.animate(n2, dt2);
+          if (dCam < 150) this.animate(n2, dt3);
           n2.root.position.copy(n2.pos);
           n2.root.rotation.set(0, n2.yaw, 0);
           continue;
         }
-        this.updateAlive(n2, dt2, dCam);
-        if (dCam < 150) this.animate(n2, dt2);
+        this.updateAlive(n2, dt3, dCam);
+        if (dCam < 150) this.animate(n2, dt3);
         n2.root.position.copy(n2.pos);
         n2.root.rotation.set(0, n2.yaw, 0);
       }
@@ -54899,13 +55074,13 @@ void main() {
       n2.vel.set(0, 0, 0);
       n2.airborne = false;
     }
-    updateDead(n2, dt2) {
-      n2.deadT += dt2;
+    updateDead(n2, dt3) {
+      n2.deadT += dt3;
       if (n2.airborne) {
-        n2.vy -= 18 * dt2;
-        n2.pos.x += n2.vel.x * dt2;
-        n2.pos.z += n2.vel.z * dt2;
-        n2.pos.y += n2.vy * dt2;
+        n2.vy -= 18 * dt3;
+        n2.pos.x += n2.vel.x * dt3;
+        n2.pos.z += n2.vel.z * dt3;
+        n2.pos.y += n2.vy * dt3;
         const g2 = this.G.world.groundHeight(n2.pos.x, n2.pos.z);
         if (n2.pos.y <= g2) {
           n2.pos.y = g2;
@@ -54918,16 +55093,16 @@ void main() {
       n2.root.position.y += 0.15 * k;
       n2.root.rotation.set(Math.PI / 2 * k, n2.yaw, 0.15 * k);
     }
-    updateAlive(n2, dt2, dCam) {
+    updateAlive(n2, dt3, dCam) {
       const G2 = this.G, P = G2.player, W = G2.world;
-      n2.timer -= dt2;
-      n2.hitT = Math.max(0, n2.hitT - dt2);
-      n2.fear = Math.max(0, n2.fear - dt2 * 0.08);
+      n2.timer -= dt3;
+      n2.hitT = Math.max(0, n2.hitT - dt3);
+      n2.fear = Math.max(0, n2.fear - dt3 * 0.08);
       if (n2.airborne) {
-        n2.vy -= 18 * dt2;
-        n2.pos.x += n2.vel.x * dt2;
-        n2.pos.z += n2.vel.z * dt2;
-        n2.pos.y += n2.vy * dt2;
+        n2.vy -= 18 * dt3;
+        n2.pos.x += n2.vel.x * dt3;
+        n2.pos.z += n2.vel.z * dt3;
+        n2.pos.y += n2.vy * dt3;
         const g2 = W.groundHeight(n2.pos.x, n2.pos.z);
         if (n2.pos.y <= g2) {
           n2.pos.y = g2;
@@ -54941,14 +55116,14 @@ void main() {
             }
           }
         }
-        this.collide(n2, dt2);
+        this.collide(n2, dt3);
         return;
       }
       if (n2.state === "knocked") {
-        n2.knockT -= dt2;
-        n2.vel.multiplyScalar(Math.exp(-6 * dt2));
-        n2.pos.x += n2.vel.x * dt2;
-        n2.pos.z += n2.vel.z * dt2;
+        n2.knockT -= dt3;
+        n2.vel.multiplyScalar(Math.exp(-6 * dt3));
+        n2.pos.x += n2.vel.x * dt3;
+        n2.pos.z += n2.vel.z * dt3;
         if (n2.knockT <= 0) {
           n2.state = n2.cop ? "engage" : n2.armed ? "engage" : "flee";
           n2.fleeT = 6;
@@ -54956,10 +55131,10 @@ void main() {
         }
         return;
       }
-      this.vehicleCheck(n2, dt2);
+      this.vehicleCheck(n2, dt3);
       if (n2.dead || n2.airborne) return;
       if (n2.cop) {
-        this.updateCop(n2, dt2);
+        this.updateCop(n2, dt3);
         return;
       }
       const toP = { x: P.pos.x - n2.pos.x, z: P.pos.z - n2.pos.z };
@@ -54968,9 +55143,9 @@ void main() {
         const f = G2.gcam.forward;
         const l = dP || 1;
         const dot = (toP.x * f.x + toP.z * f.z) / l;
-        if (dot > 0.985) n2.aimedT += dt2;
-        else n2.aimedT = Math.max(0, n2.aimedT - dt2);
-      } else n2.aimedT = Math.max(0, n2.aimedT - dt2);
+        if (dot > 0.985) n2.aimedT += dt3;
+        else n2.aimedT = Math.max(0, n2.aimedT - dt3);
+      } else n2.aimedT = Math.max(0, n2.aimedT - dt3);
       if (n2.aimedT > 0.35 && !n2.hostile && n2.state !== "flee" && n2.state !== "engage" && n2.state !== "cower") {
         n2.state = "cower";
         n2.timer = rand(2, 4);
@@ -55040,7 +55215,7 @@ void main() {
           break;
         }
         case "flee": {
-          n2.fleeT -= dt2;
+          n2.fleeT -= dt3;
           speed = NPC.runSpeed * n2.speedMul;
           const ax = n2.pos.x - n2.fleeFrom.x, az = n2.pos.z - n2.fleeFrom.z;
           const al = Math.hypot(ax, az) || 1;
@@ -55099,13 +55274,13 @@ void main() {
             break;
           }
           if (dP > 70) {
-            n2.loseT += dt2;
+            n2.loseT += dt3;
             if (n2.loseT > 5) {
               n2.state = n2.hostile ? "guard" : "walk";
               n2.pickNext();
             }
           } else n2.loseT = 0;
-          n2.strafeT -= dt2;
+          n2.strafeT -= dt3;
           if (n2.strafeT <= 0) {
             n2.strafeT = rand(1.2, 2.6);
             n2.strafe = Math.random() < 0.5 ? -1 : 1;
@@ -55127,17 +55302,17 @@ void main() {
             tx = n2.pos.x + rx * n2.strafe * 4;
             tz = n2.pos.z + rz * n2.strafe * 4;
           }
-          this.shoot(n2, dt2, dP, [0.9, 1.9], 3, 0.17);
+          this.shoot(n2, dt3, dP, [0.9, 1.9], 3, 0.17);
           break;
         }
       }
       if (n2.hitT > 0) speed *= 0.3;
-      this.move(n2, tx, tz, speed, dt2, face);
+      this.move(n2, tx, tz, speed, dt3, face);
     }
     // burst fire with a line-of-sight check from the gun position (the player's own car does not block it → the car gets shot up)
-    shoot(n2, dt2, dP, gap, burstN, burstDt, eyeY = 1.4) {
+    shoot(n2, dt3, dP, gap, burstN, burstDt, eyeY = 1.4) {
       const G2 = this.G, P = G2.player;
-      n2.burstT -= dt2;
+      n2.burstT -= dt3;
       if (n2.burstT > 0 || dP > 48) return;
       if (n2.burst <= 0) n2.burst = burstN;
       const inMech = !!(P.vehicle && P.vehicle.isMech);
@@ -55161,7 +55336,7 @@ void main() {
       return false;
     }
     // ---- police officers --------------------------------------------------------------------
-    updateCop(n2, dt2) {
+    updateCop(n2, dt3) {
       const G2 = this.G, P = G2.player, pol = G2.police, W = G2.world;
       const s = pol.stars;
       const toP = { x: P.pos.x - n2.pos.x, z: P.pos.z - n2.pos.z };
@@ -55176,7 +55351,7 @@ void main() {
       n2.atCover = false;
       switch (n2.state) {
         case "leave": {
-          n2.leaveT += dt2;
+          n2.leaveT += dt3;
           speed = NPC.walkSpeed * 1.4;
           if (n2.node < 0 || Math.hypot(n2.target.x - n2.pos.x, n2.target.z - n2.pos.z) < 1.5) {
             if (n2.node < 0) n2.node = n2.nearestNode();
@@ -55203,7 +55378,7 @@ void main() {
             n2.timer = rand(1.5, 3);
             break;
           }
-          n2.progT = (n2.progT || 0) + dt2;
+          n2.progT = (n2.progT || 0) + dt3;
           if (n2.progT > 1) {
             const moved = n2.lastPos ? Math.hypot(n2.pos.x - n2.lastPos.x, n2.pos.z - n2.lastPos.z) : 9;
             n2.lastPos = { x: n2.pos.x, z: n2.pos.z };
@@ -55213,7 +55388,7 @@ void main() {
               n2.node = -1;
             }
           }
-          n2.useGraph = Math.max(0, (n2.useGraph || 0) - dt2);
+          n2.useGraph = Math.max(0, (n2.useGraph || 0) - dt3);
           const clear = n2.useGraph <= 0 && dl < 30 && W.losStatic(n2.pos.x, n2.pos.y + 1, n2.pos.z, n2.goal.x, n2.pos.y + 1, n2.goal.z);
           if (clear) {
             tx = n2.goal.x;
@@ -55248,7 +55423,7 @@ void main() {
         }
         case "cover": {
           face = { x: P.pos.x, z: P.pos.z };
-          n2.coverT -= dt2;
+          n2.coverT -= dt3;
           if (!n2.coverPt || n2.coverT <= 0 || dP < 6 && s < 3) {
             n2.state = "engage";
             n2.coverPt = null;
@@ -55261,7 +55436,7 @@ void main() {
             tz = n2.coverPt.z;
           } else {
             n2.atCover = true;
-            if (sees || G2.time - n2.lastSeen < 3) this.shoot(n2, dt2, dP, WANTED.burstGap[Math.max(1, s)], n2.weaponId === "mg" ? 5 : 2, n2.weaponId === "mg" ? 0.09 : 0.2, 1.55);
+            if (sees || G2.time - n2.lastSeen < 3) this.shoot(n2, dt3, dP, WANTED.burstGap[Math.max(1, s)], n2.weaponId === "mg" ? 5 : 2, n2.weaponId === "mg" ? 0.09 : 0.2, 1.55);
           }
           break;
         }
@@ -55276,7 +55451,7 @@ void main() {
             n2.goalT = -99;
             break;
           }
-          n2.strafeT -= dt2;
+          n2.strafeT -= dt3;
           if (n2.strafeT <= 0) {
             n2.strafeT = rand(1.2, 2.6);
             n2.strafe = Math.random() < 0.5 ? -1 : 1;
@@ -55303,7 +55478,7 @@ void main() {
             tz = n2.pos.z + rz * n2.strafe * 4;
           }
           const mg = n2.weaponId === "mg";
-          const fired = this.shoot(n2, dt2, dP, WANTED.burstGap[Math.max(1, s)], mg ? 6 : 3, mg ? 0.09 : 0.17);
+          const fired = this.shoot(n2, dt3, dP, WANTED.burstGap[Math.max(1, s)], mg ? 6 : 3, mg ? 0.09 : 0.17);
           if (fired && n2.burst <= 0 && Math.random() < (n2.hp < 50 ? 0.7 : 0.4) && s >= 2) {
             const c = this.findCover(n2);
             if (c) {
@@ -55316,7 +55491,7 @@ void main() {
         }
       }
       if (n2.hitT > 0) speed *= 0.3;
-      this.move(n2, tx, tz, speed, dt2, face);
+      this.move(n2, tx, tz, speed, dt3, face);
     }
     // a point behind a car (own cruiser preferred) or a heavy prop, on the far side from the player, within 14 m
     findCover(n2) {
@@ -55342,7 +55517,7 @@ void main() {
       }
       return best;
     }
-    vehicleCheck(n2, dt2) {
+    vehicleCheck(n2, dt3) {
       const G2 = this.G;
       for (const v of G2.vehicles.list) {
         const dx = n2.pos.x - v.pos.x, dz = n2.pos.z - v.pos.z;
@@ -55416,10 +55591,10 @@ void main() {
         }
       }
       if (n2.dodgeT > 0) {
-        n2.dodgeT -= dt2;
+        n2.dodgeT -= dt3;
       }
     }
-    move(n2, tx, tz, speed, dt2, face) {
+    move(n2, tx, tz, speed, dt3, face) {
       const G2 = this.G, P = G2.player;
       let dx = tx - n2.pos.x, dz = tz - n2.pos.z;
       const d = Math.hypot(dx, dz);
@@ -55458,20 +55633,20 @@ void main() {
           P.pos.z -= oz / l * pen * 0.4;
         }
       }
-      const k = 1 - Math.exp(-8 * dt2);
+      const k = 1 - Math.exp(-8 * dt3);
       n2.vel.x += (dx * speed + sx - n2.vel.x) * k;
       n2.vel.z += (dz * speed + sz - n2.vel.z) * k;
-      n2.pos.x += n2.vel.x * dt2;
-      n2.pos.z += n2.vel.z * dt2;
+      n2.pos.x += n2.vel.x * dt3;
+      n2.pos.z += n2.vel.z * dt3;
       n2.pos.y = G2.world.groundHeight(n2.pos.x, n2.pos.z);
-      this.collide(n2, dt2);
+      this.collide(n2, dt3);
       const sp = Math.hypot(n2.vel.x, n2.vel.z);
-      if (face) n2.yaw = dampAngle(n2.yaw, Math.atan2(face.x - n2.pos.x, face.z - n2.pos.z), 8, dt2);
-      else if (sp > 0.3) n2.yaw = dampAngle(n2.yaw, Math.atan2(n2.vel.x, n2.vel.z), 9, dt2);
-      n2.phase += sp / (0.7 + sp * 0.1) * dt2 * Math.PI;
-      if (n2.state === "idle" || n2.state === "guard" || n2.state === "cower" || n2.state === "search" || n2.atCover) n2.phase = damp2(n2.phase, Math.round(n2.phase / Math.PI) * Math.PI, 8, dt2);
+      if (face) n2.yaw = dampAngle(n2.yaw, Math.atan2(face.x - n2.pos.x, face.z - n2.pos.z), 8, dt3);
+      else if (sp > 0.3) n2.yaw = dampAngle(n2.yaw, Math.atan2(n2.vel.x, n2.vel.z), 9, dt3);
+      n2.phase += sp / (0.7 + sp * 0.1) * dt3 * Math.PI;
+      if (n2.state === "idle" || n2.state === "guard" || n2.state === "cower" || n2.state === "search" || n2.atCover) n2.phase = damp2(n2.phase, Math.round(n2.phase / Math.PI) * Math.PI, 8, dt3);
     }
-    collide(n2, dt2) {
+    collide(n2, dt3) {
       const G2 = this.G, r = NPC.radius, p = n2.pos;
       const list = G2.world.statics.query(p.x - r, p.z - r, p.x + r, p.z + r, _near4);
       for (const b of list) {
@@ -55504,7 +55679,7 @@ void main() {
       p.z = clamp2(p.z, -F, F);
     }
     // ---- animation (same rig contract as the player) ------------------------------------------
-    animate(n2, dt2) {
+    animate(n2, dt3) {
       const tanztAus = this.taenzelt(n2) && !DANCE.on;
       if (this.taenzelt(n2) && DANCE.on) {
         n2.rig.mesh.position.y = poseDanceRig(n2.bones, DANCE.t, n2.tanzOff);
@@ -55594,7 +55769,7 @@ void main() {
         n2.root.position.copy(n2.pos);
         if (n2.weapon) n2.weapon.visible = n2.state === "engage" || n2.state === "cover" || n2.hostile;
       }
-      const rate = 1 - Math.exp(-n2.animRate * dt2);
+      const rate = 1 - Math.exp(-n2.animRate * dt3);
       for (const name of BONES3) {
         const b = n2.bones[name], tg = T[name];
         b.rotation.x += (tg.x - b.rotation.x) * rate;
@@ -55703,7 +55878,7 @@ void main() {
       const m = this.meshes[this.current.def.id].getObjectByName("muzzle");
       return m.getWorldPosition(out);
     }
-    update(dt2, realDt) {
+    update(dt3, realDt) {
       const G2 = this.G, I2 = G2.input, P = G2.player;
       const onFoot = P.state === "foot" && !P.dead && G2.state === "playing";
       const mech = P.vehicle && P.vehicle.isMech && P.vehicle.piloted && !P.vehicle.wrecked && P.state === "vehicle" && !P.dead && G2.state === "playing" ? P.vehicle : null;
@@ -55762,7 +55937,7 @@ void main() {
       }
       const w = this.current;
       if (w.reloading) {
-        w.reloadT += dt2;
+        w.reloadT += dt3;
         if (!w.clicked && w.reloadT > w.def.reloadTime * 0.6) {
           w.clicked = true;
           G2.audio.ui("reload2");
@@ -55777,15 +55952,15 @@ void main() {
         const want = w.def.auto ? I2.mouseDown(0) : I2.mousePressed(0);
         if (want) this.tryFire(w);
       }
-      for (const s of this.slots) s.heat = Math.max(0, s.heat - dt2 * 1.8);
-      this.kick = damp2(this.kick, 0, 11, dt2);
+      for (const s of this.slots) s.heat = Math.max(0, s.heat - dt3 * 1.8);
+      this.kick = damp2(this.kick, 0, 11, dt3);
       const rk = this.meshes.rocket.getObjectByName("loadedRocket");
       if (rk) rk.visible = this.slots[2].ammo > 0 && !this.slots[2].reloading;
       if (this.slots[2].ammo === 0 && !this.slots[2].reloading && this.cur === 2 && onFoot) this.startReload(this.slots[2]);
-      this.updateProjectiles(dt2);
+      this.updateProjectiles(dt3);
       for (let i = this.pending.length - 1; i >= 0; i--) {
         const e = this.pending[i];
-        e.t -= dt2;
+        e.t -= dt3;
         if (e.t <= 0) {
           this.pending.splice(i, 1);
           this.explode(e.p, e.radius, e.impulse, e.damage, e.source);
@@ -55861,22 +56036,22 @@ void main() {
       if (pr.rocket) pr.loop = this.G.audio.rocketLoop(pos);
       this.projectiles.push(pr);
     }
-    updateProjectiles(dt2) {
+    updateProjectiles(dt3) {
       const G2 = this.G, fx2 = G2.fx;
       for (let i = this.projectiles.length - 1; i >= 0; i--) {
         const p = this.projectiles[i];
-        p.age += dt2;
+        p.age += dt3;
         const pd = p.def.projectile;
         if (p.rocket) {
           const sp = Math.hypot(p.vx, p.vy, p.vz);
-          const ns = Math.min(pd.maxSpeed, sp + pd.accel * dt2);
+          const ns = Math.min(pd.maxSpeed, sp + pd.accel * dt3);
           p.vx *= ns / sp;
           p.vy *= ns / sp;
           p.vz *= ns / sp;
-          if (p.age > 0.5) p.vy += pd.gravity * dt2;
+          if (p.age > 0.5) p.vy += pd.gravity * dt3;
         }
         const ox = p.x, oy = p.y, oz = p.z;
-        const nx = ox + p.vx * dt2, ny = oy + p.vy * dt2, nz = oz + p.vz * dt2;
+        const nx = ox + p.vx * dt3, ny = oy + p.vy * dt3, nz = oz + p.vz * dt3;
         const len = Math.hypot(nx - ox, ny - oy, nz - oz);
         let hit = null;
         if (len > 1e-5) {
@@ -55901,7 +56076,7 @@ void main() {
           fx2.tracerSet(p.tracer, p.x - (nx - ox) / l * tl, p.y - (ny - oy) / l * tl, p.z - (nz - oz) / l * tl, p.x, p.y, p.z);
         }
         if (p.rocket) {
-          p.smokeT -= dt2;
+          p.smokeT -= dt3;
           if (p.smokeT <= 0) {
             p.smokeT = 0.012;
             fx2.smoke.spawn({ x: p.x + randSpread(0.05), y: p.y, z: p.z + randSpread(0.05), vx: randSpread(0.4), vy: 0.4, vz: randSpread(0.4), s0: 0.25, s1: 1.6, a0: 0.55, a1: 0, life: rand(0.9, 1.5), r: [0.8, 0.78, 0.75], r1: [0.5, 0.5, 0.5], drag: 1.5, rotv: randSpread(2) });
@@ -56329,9 +56504,9 @@ void main() {
       G2.audio.ui("door");
     }
     // ---------------- per frame ------------------------------------------------------------------
-    update(dt2, realDt) {
+    update(dt3, realDt) {
       const G2 = this.G;
-      this.time += dt2;
+      this.time += dt3;
       this.hud.flash = Math.max(0, this.hud.flash - realDt * 2);
       this.fade = Math.max(0, this.fade - realDt);
       if (this.chatterT > 0) {
@@ -56340,14 +56515,14 @@ void main() {
       }
       if (this.queue.length) this.queue.shift()();
       if (this.stars > 0 || this.cars.length || this.officers.length) {
-        this.updateSight(dt2);
-        this.updateDispatch(dt2);
+        this.updateSight(dt3);
+        this.updateDispatch(dt3);
         this.cleanup();
       }
       this.updateLights(realDt);
-      this.updateSirens(dt2);
+      this.updateSirens(dt3);
     }
-    updateSight(dt2) {
+    updateSight(dt3) {
       const G2 = this.G, P = G2.player, W = this.W;
       let seen = false;
       const px2 = P.pos.x, pz2 = P.pos.z, py2 = P.pos.y + 1.2;
@@ -56374,7 +56549,7 @@ void main() {
       if (G2.mechSys && G2.mechSys.piloted && !P.dead && this.stars > 0) seen = true;
       this.seen = seen;
       if (!this.contact && this.stars > 0) {
-        this.noContactT += dt2;
+        this.noContactT += dt3;
         if (seen || this.noContactT > 40) this.contact = true;
         else for (const v of this.cars) {
           if (v.wrecked || !v.ai || v.ai.standDown) continue;
@@ -56393,7 +56568,7 @@ void main() {
         this.lastKnown.copy(P.pos);
         this.hidden = 0;
       } else if (this.stars > 0) {
-        this.hidden += dt2;
+        this.hidden += dt3;
         const R = W.searchRadius[this.stars];
         let unitNear = false;
         for (const v of this.cars) {
@@ -56411,14 +56586,14 @@ void main() {
           }
         }
         const inside = unitNear && Math.hypot(px2 - this.lastKnown.x, pz2 - this.lastKnown.z) < R;
-        if (this.hidden > 1.5 && this.contact) this.evade += dt2 * (inside ? 0.28 : 1) / W.evadeTime[this.stars];
+        if (this.hidden > 1.5 && this.contact) this.evade += dt3 * (inside ? 0.28 : 1) / W.evadeTime[this.stars];
         if (this.evade >= 1) this.setStars(this.stars - 1);
       }
     }
-    updateDispatch(dt2) {
+    updateDispatch(dt3) {
       const G2 = this.G, W = this.W, s = this.stars, P = G2.player;
       if (s === 0) return;
-      this.dispatchT -= dt2;
+      this.dispatchT -= dt3;
       let active = 0;
       for (const v of this.cars) if (!v.wrecked && v.ai && !v.ai.standDown) active++;
       const want = W.cars[s] + (!this.contact && this.noContactT > 20 ? 1 : 0);
@@ -56428,7 +56603,7 @@ void main() {
       }
       const every = W.roadblockEvery[s];
       if (every && P.state === "vehicle" && Math.abs(P.vehicle.speed) > 9) {
-        this.roadblockT -= dt2;
+        this.roadblockT -= dt3;
         if (this.roadblockT <= 0) this.roadblockT = this.spawnRoadblock() ? every : 3;
       }
     }
@@ -56596,9 +56771,9 @@ void main() {
       }
     }
     // strobe: red double-flash, blue double-flash, 2.4 Hz; the 4 pooled lights follow the nearest active cruisers
-    updateLights(dt2) {
+    updateLights(dt3) {
       const G2 = this.G, cam = G2.camera, P = G2.player;
-      this.strobe += dt2;
+      this.strobe += dt3;
       const list = G2.vehicles.list;
       const active = [];
       for (const v of list) {
@@ -56624,11 +56799,11 @@ void main() {
           col2 = a.red ? RED : BLUE;
         }
       }
-      G2.postfx.tint = damp2(G2.postfx.tint, tint, tint > G2.postfx.tint ? 30 : 14, dt2);
+      G2.postfx.tint = damp2(G2.postfx.tint, tint, tint > G2.postfx.tint ? 30 : 14, dt3);
       if (col2) G2.postfx.tintCol.set(col2.r, col2.g, col2.b);
       this.nearestSiren = active.length ? active[0].v : null;
     }
-    updateSirens(dt2) {
+    updateSirens(dt3) {
       const G2 = this.G, A2 = G2.audio;
       if (!A2.ready) return;
       for (const v of G2.vehicles.list) {
@@ -56642,7 +56817,7 @@ void main() {
         }
         if (v.siren) {
           const rel = v.driver === "player" ? 1 : clamp2(1 + (v.vel.x * (A2.lx - v.pos.x) + v.vel.z * (A2.lz - v.pos.z)) / Math.max(1, d) / 340, 0.86, 1.16);
-          v.siren.update(dt2, v.pos, v.ai && v.ai.yelp ? "yelp" : "wail", rel, v.driver === "player" ? 0.75 : 1);
+          v.siren.update(dt3, v.pos, v.ai && v.ai.yelp ? "yelp" : "wail", rel, v.driver === "player" ? 0.75 : 1);
         }
       }
     }
@@ -56943,9 +57118,9 @@ void main() {
       G2.weapons.npcFire(_a3, _b3, this);
       return true;
     }
-    update(dt2) {
+    update(dt3) {
       const G2 = this.G, P = G2.player;
-      this.dmgFlash = Math.max(0, this.dmgFlash - dt2 * 4);
+      this.dmgFlash = Math.max(0, this.dmgFlash - dt3 * 4);
       if (!isFinite(this.pos.x + this.pos.y + this.pos.z + this.vy + this.yaw + this.speed)) {
         if (this._goodP) {
           this.pos.copy(this._goodP);
@@ -56964,9 +57139,9 @@ void main() {
       const gy = G2.world.groundHeight(this.pos.x, this.pos.z);
       if (this.state === "falling") {
         const h = this.pos.y - gy;
-        if (h < KRIEG.feind.drop.brakeY) this.vy = damp2(this.vy, KRIEG.feind.drop.touchdown, 3.2, dt2);
-        else this.vy -= 9 * dt2;
-        this.pos.y += this.vy * dt2;
+        if (h < KRIEG.feind.drop.brakeY) this.vy = damp2(this.vy, KRIEG.feind.drop.touchdown, 3.2, dt3);
+        else this.vy -= 9 * dt3;
+        this.pos.y += this.vy * dt3;
         if (this.pos.y <= gy) {
           this.pos.y = gy;
           this.state = this.nest ? "guard" : "hunt";
@@ -56978,36 +57153,36 @@ void main() {
         const d = Math.hypot(P.pos.x - this.pos.x, P.pos.z - this.pos.z);
         if (!P.dead && (d < 70 || G2.time - this.lastHurt < 12)) this.state = "hunt";
       } else if (this.state === "leave") {
-        this.leaveT = (this.leaveT || 0) + dt2;
+        this.leaveT = (this.leaveT || 0) + dt3;
         const dx = this.pos.x - P.pos.x, dz = this.pos.z - P.pos.z;
         const d = Math.hypot(dx, dz) || 1;
-        this.yaw = dampAngle(this.yaw, Math.atan2(dx, dz), 2, dt2);
-        this.speed = clamp2(this.speed + KRIEG.feind.accel * dt2, 0, this.speedMax);
-        this.pos.x += Math.sin(this.yaw) * this.speed * dt2;
-        this.pos.z += Math.cos(this.yaw) * this.speed * dt2;
-        this.phase += dt2 * 2.4 * this.speed / this.speedMax;
+        this.yaw = dampAngle(this.yaw, Math.atan2(dx, dz), 2, dt3);
+        this.speed = clamp2(this.speed + KRIEG.feind.accel * dt3, 0, this.speedMax);
+        this.pos.x += Math.sin(this.yaw) * this.speed * dt3;
+        this.pos.z += Math.cos(this.yaw) * this.speed * dt3;
+        this.phase += dt3 * 2.4 * this.speed / this.speedMax;
         if (this.leaveT > 7) return "remove";
       } else if (this.state === "hunt") {
         const ziel = P.vehicle && P.vehicle.isMech && P.vehicle.piloted ? P.vehicle.pos : P.pos;
         const dx = ziel.x - this.pos.x, dz = ziel.z - this.pos.z;
         const d = Math.hypot(dx, dz) || 1;
         const soll = Math.atan2(dx, dz);
-        this.yaw = dampAngle(this.yaw, soll, KRIEG.feind.turnRate * 2, dt2);
+        this.yaw = dampAngle(this.yaw, soll, KRIEG.feind.turnRate * 2, dt3);
         this.torsoYaw = clamp2(angleDelta(this.yaw, soll), -0.7, 0.7);
         const sollRange = this.tier === "artillery" ? KRIEG.raubRollen.artillery.range : this.tier === "sprinter" ? KRIEG.raubRollen.sprinter.range : KRIEG.feind.range;
         const ruck = this.tier === "artillery" && d < KRIEG.raubRollen.artillery.fluchtdistanz;
         const willLaufen = ruck ? true : d > sollRange && !P.dead;
         const F = KRIEG.feind;
-        this.speed = clamp2(this.speed + (willLaufen ? F.accel : -F.accel * 1.6) * dt2, 0, this.speedMax);
+        this.speed = clamp2(this.speed + (willLaufen ? F.accel : -F.accel * 1.6) * dt3, 0, this.speedMax);
         if (this.speed > 0.05) {
           const richt = ruck ? -1 : 1;
-          this.pos.x += dx / d * this.speed * dt2 * richt;
-          this.pos.z += dz / d * this.speed * dt2 * richt;
+          this.pos.x += dx / d * this.speed * dt3 * richt;
+          this.pos.z += dz / d * this.speed * dt3 * richt;
         }
-        this.phase += dt2 * (2.4 * this.speed / this.speedMax + (this.speed > 0.05 ? 0.4 : 0));
+        this.phase += dt3 * (2.4 * this.speed / this.speedMax + (this.speed > 0.05 ? 0.4 : 0));
         const B2 = F.burst;
-        this.burst.cd -= dt2;
-        this.burst.t -= dt2;
+        this.burst.cd -= dt3;
+        this.burst.t -= dt3;
         const faces = Math.abs(angleDelta(this.yaw, Math.atan2(dx, dz))) < 0.5;
         if (this.burst.n > 0 && this.burst.t <= 0 && d < F.fireRange) {
           if (this.feuer()) {
@@ -57019,13 +57194,13 @@ void main() {
           this.burst.t = 0;
           this.burst.cd = rand(B2.cd[0], B2.cd[1]);
         }
-        if (!willLaufen) this.speed = damp2(this.speed, 0, 6, dt2);
+        if (!willLaufen) this.speed = damp2(this.speed, 0, 6, dt3);
       } else if (this.state === "dead") {
-        this.deadT += dt2;
+        this.deadT += dt3;
         if (this.deadT > 4) return "remove";
       }
       this.blinkLicht(G2.time);
-      this._lodT = (this._lodT || 0) - dt2;
+      this._lodT = (this._lodT || 0) - dt3;
       if (this._lodT <= 0) {
         this._lodT = 1;
         const nah = Math.hypot(this.pos.x - G2.camera.position.x, this.pos.z - G2.camera.position.z) < 70;
@@ -57061,6 +57236,94 @@ void main() {
       if (P.Head) P.Head.rotation.y = P.Torso.rotation.y * 0.4;
     }
   };
+  var Drohne = class {
+    constructor(G2, x, z) {
+      this.G = G2;
+      this.drone = true;
+      this.hp = 60;
+      this.dead = false;
+      const g2 = new Group();
+      const mat = new MeshStandardMaterial({ color: 2764600, roughness: 0.5, metalness: 0.6 });
+      const glow = new MeshStandardMaterial({ color: 659472, emissive: 16734794, emissiveIntensity: 2.2 });
+      g2.add(new Mesh(new BoxGeometry(0.7, 0.22, 0.7), mat));
+      const auge = new Mesh(new BoxGeometry(0.3, 0.08, 0.1), glow);
+      auge.position.set(0, -0.04, 0.36);
+      g2.add(auge);
+      this.rotoren = [];
+      for (const [rx, rz] of [[0.42, 0.42], [-0.42, 0.42], [0.42, -0.42], [-0.42, -0.42]]) {
+        const r = new Mesh(new BoxGeometry(0.5, 0.04, 0.1), mat);
+        r.position.set(rx, 0.14, rz);
+        g2.add(r);
+        this.rotoren.push(r);
+      }
+      g2.position.set(x, 12, z);
+      G2.scene.add(g2);
+      this.mesh = g2;
+      this.pos = g2.position;
+      this.yaw = 0;
+      this.t = Math.random() * 10;
+      this.cd = rand(1.5, 3);
+      this.ring = 42 + Math.random() * 14;
+    }
+    damage(d, kind, src) {
+      if (this.dead || d <= 0) return;
+      this.hp -= d;
+      const G2 = this.G;
+      const vomSpieler = src === "player" || src === (G2.mechSys && G2.mechSys.mech);
+      if (this.hp <= 0) {
+        this.dead = true;
+        _a3.set(this.pos.x, this.pos.y + 0.3, this.pos.z);
+        G2.fx.explosion({ x: _a3.x, y: _a3.y, z: _a3.z }, 2.2);
+        G2.audio.explosion(_a3, 0.7);
+        G2.fx.chunk(_a3.x, _a3.y, _a3.z, randSpread(6), 5, randSpread(6), 0.5, 0.3, 0.3, 0.3);
+        if (vomSpieler && G2.krieg) {
+          G2.krieg.pay(KRIEG.reward.drone);
+          G2.krieg.droneKills = (G2.krieg.droneKills || 0) + 1;
+        }
+      }
+    }
+    update(dt3) {
+      if (this.dead) {
+        this.mesh.position.y -= 14 * dt3;
+        this.mesh.rotation.z += 4 * dt3;
+        if (this.mesh.position.y < 0.2) return "remove";
+        return;
+      }
+      const G2 = this.G, P = G2.player;
+      this.t += dt3;
+      const ziel = P.vehicle && P.vehicle.isMech && P.vehicle.piloted ? P.vehicle.pos : P.pos;
+      this.yaw += dt3 * 0.5;
+      const sollX = ziel.x + Math.sin(this.yaw) * this.ring, sollZ = ziel.z + Math.cos(this.yaw) * this.ring;
+      this.pos.x += (sollX - this.pos.x) * Math.min(1, dt3 * 1.6);
+      this.pos.z += (sollZ - this.pos.z) * Math.min(1, dt3 * 1.6);
+      const sollY = Math.max(G2.world.surfaceHeight(ziel.x, ziel.z), 0) + 11 + Math.sin(this.t * 1.7) * 2.2;
+      this.pos.y += (sollY - this.pos.y) * Math.min(1, dt3 * 1.2);
+      for (const r of this.rotoren) r.rotation.y += dt3 * 40;
+      this.mesh.rotation.y = -this.yaw;
+      this.cd -= dt3;
+      if (this.cd <= 0 && !P.dead) {
+        this.cd = rand(2.2, 4);
+        _a3.copy(this.pos);
+        _b3.set(ziel.x, ziel.y + 1.2, ziel.z).sub(_a3);
+        const d = _b3.length() || 1;
+        _b3.divideScalar(d);
+        if (G2.world.losStatic(_a3.x, _a3.y, _a3.z, ziel.x, ziel.y + 1.2, ziel.z) && d < 90) {
+          const h = G2.fx.tracerAcquire(16743002, 0.07);
+          if (h) {
+            G2.fx.tracerSet(h, _a3.x, _a3.y, _a3.z, ziel.x, ziel.y + 1.2, ziel.z);
+            setTimeout(() => G2.fx.tracerRelease(h), 70);
+          }
+          G2.audio.gunshot("npcgun", _a3);
+          if (P.vehicle && P.vehicle.isMech && P.vehicle.piloted) P.vehicle.damage(4, "laser", this);
+          else P.damage(5, { x: _a3.x, y: _a3.y, z: _a3.z }, "laser");
+          G2.ui.hitmarker(false);
+        }
+      }
+    }
+    remove() {
+      this.G.scene.remove(this.mesh);
+    }
+  };
   var KriegSystem = class {
     constructor(G2) {
       this.G = G2;
@@ -57078,6 +57341,7 @@ void main() {
       this.bounty = null;
       this.bountyT = 6;
       this.arena = null;
+      this.drones = [];
       this.raubKills = 0;
       this.titanDead = 0;
     }
@@ -57117,9 +57381,9 @@ void main() {
     saveSoon() {
       this._saveT = 2;
     }
-    saveTick(dt2) {
+    saveTick(dt3) {
       if (this._saveT > 0) {
-        this._saveT -= dt2;
+        this._saveT -= dt3;
         if (this._saveT <= 0) {
           this.save();
           if (this.G.stats) {
@@ -57277,7 +57541,7 @@ void main() {
       this.nestsDone = true;
     }
     // Runde 16: Polizei-Mech-Kader — ab 4★ kommen den Cops eigene Walker zu Hilfe (klein, ab 5★ auch schwer).
-    polizeiKader(dt2) {
+    polizeiKader(dt3) {
       const G2 = this.G, stars = G2.police.stars;
       const cops = () => this.list.filter((f) => f.cop && !f.dead && f.state !== "leave");
       if (stars === 0) {
@@ -57287,7 +57551,7 @@ void main() {
       const soll = stars >= 5 ? KRIEG.polizei.maxLights + KRIEG.polizei.maxHeavy : stars >= KRIEG.polizei.abStars ? 1 : 0;
       const lights = cops().filter((f) => f.tier === "light").length, heavies = cops().filter((f) => f.tier === "heavy").length;
       if (cops().length < soll) {
-        this.copSpawnT = (this.copSpawnT || 3) - dt2;
+        this.copSpawnT = (this.copSpawnT || 3) - dt3;
         if (this.copSpawnT <= 0) {
           const p = this.wellenSpawn();
           if (p) {
@@ -57304,7 +57568,7 @@ void main() {
         }
       }
     }
-    update(dt2) {
+    update(dt3) {
       const G2 = this.G;
       if (!this.nestsDone && G2.state === "playing" && G2.realTime > 3) {
         this.nester();
@@ -57316,19 +57580,21 @@ void main() {
         this.upgradesLoaden = true;
         for (const u2 of KRIEG.upgrades) if (this.owned.has(u2.id)) this.anwenden(u2);
       }
-      this.bountyUpdate(dt2);
-      this.arenaUpdate(dt2);
-      this.stationen(dt2);
-      this.polizeiKader(dt2);
+      this.bountyUpdate(dt3);
+      this.arenaUpdate(dt3);
+      this.stationen(dt3);
+      this.dronesUpdate(dt3);
+      if (G2.mechSys && G2.mechSys.mech && G2.mechSys.mech.piloted && !this.drones.length && Math.random() < dt3 / 45) this.drohnenSchwarm();
+      this.polizeiKader(dt3);
       const m = G2.mechSys.mech;
       if (m && !m.wrecked) {
         m.maxHealth = MECH.maxHealth + (this.owned.has("panzer") ? 600 : 0);
-        if (this.owned.has("nanorep") && G2.time - (m.lastHurt ?? -99) > 5 && m.hp < m.maxHealth) m.hp = Math.min(m.maxHealth, m.hp + 25 * dt2);
+        if (this.owned.has("nanorep") && G2.time - (m.lastHurt ?? -99) > 5 && m.hp < m.maxHealth) m.hp = Math.min(m.maxHealth, m.hp + 25 * dt3);
         if (this._attachedMech !== m) this.anbauen();
       }
       if (m && m.piloted && !m.wrecked) {
         const alive = this.list.filter((f) => !f.dead && !f.cop).length;
-        this.waveT -= dt2;
+        this.waveT -= dt3;
         if (this.waveT <= 0 && alive < KRIEG.feind.wave.maxAlive) {
           const n2 = Math.min(KRIEG.feind.wave.count(this.wave), KRIEG.feind.wave.maxAlive - alive);
           for (let i = 0; i < n2; i++) {
@@ -57338,25 +57604,26 @@ void main() {
             const tier = this.wave >= 2 && w < 0.2 ? "artillery" : this.wave >= 1 && w < 0.4 ? "sprinter" : "std";
             this.spawnFeind(p.x, p.z, tier === "std" ? {} : { tier });
           }
+          if (this.wave % 3 === 0) this.drohnenSchwarm();
           this.wave++;
           this.waveT = KRIEG.feind.wave.every;
           G2.ui.msg("RAUB-MECHS", "Sie sind auf das Signal hereingest\xFCrzt \u2014 Abschuss zahlt " + geld(KRIEG.reward.feind), 3);
         }
       } else this.waveT = Math.max(this.waveT, 12);
       for (let i = this.list.length - 1; i >= 0; i--) {
-        if (this.list[i].update(dt2) === "remove") {
+        if (this.list[i].update(dt3) === "remove") {
           this.list[i].mesh.removeFromParent();
           this.list.splice(i, 1);
         }
       }
     }
     // ---------------- Runde 20: Bounty-Kette (Kampf-Auftraege) ----------------
-    bountyUpdate(dt2) {
+    bountyUpdate(dt3) {
       const G2 = this.G;
-      if (this.saveTick) this.saveTick(dt2);
+      if (this.saveTick) this.saveTick(dt3);
       if (this.arena) return;
       if (!this.bounty) {
-        this.bountyT -= dt2;
+        this.bountyT -= dt3;
         if (this.bountyT <= 0) this.bountyStart();
         return;
       }
@@ -57368,7 +57635,7 @@ void main() {
         this.bountyT = 14;
         this.save();
       } else if (B2.zeit !== void 0) {
-        B2.rest -= dt2;
+        B2.rest -= dt3;
         if (B2.rest <= 0) {
           G2.ui.msg("BOUNTY VERPASST", B2.text, 2);
           this.bounty = null;
@@ -57397,19 +57664,40 @@ void main() {
       this.bounty = B2;
       G2.ui.msg("BOUNTY", B2.text + " \xB7 +" + geld(B2.lohn), 3);
     }
+    // ---------------- Runde 21: Drohnen-Schwarm ----------------
+    drohnenSchwarm(cx, cz) {
+      const G2 = this.G;
+      const c = cx !== void 0 ? cx : G2.player.pos.x, c2 = cz !== void 0 ? cz : G2.player.pos.z;
+      for (let i = 0; i < 3; i++) this.drones.push(new Drohne(G2, c + randSpread(18), c2 + randSpread(18)));
+      G2.ui.msg("DROHNEN", "Kleine Laeufer im Anflug \u2014 Railgun-Futter", 2.2);
+    }
+    dronesUpdate(dt3) {
+      const G2 = this.G;
+      for (let i = this.drones.length - 1; i >= 0; i--) {
+        const d = this.drones[i];
+        if (d.update(dt3) === "remove" || d.dead) {
+          if (d.remove) d.remove();
+          this.drones.splice(i, 1);
+        }
+      }
+      if (this.drones.length > 9) {
+        const alt = this.drones.shift();
+        alt.remove();
+      }
+    }
     // ---------------- Runde 20: Tankstellen + Dach-Pads ----------------
-    stationen(dt2) {
+    stationen(dt3) {
       const G2 = this.G, m = G2.mechSys.mech;
       if (!m || !m.piloted || m.wrecked) return;
       const unterwegs = this.zoneArt(m.pos.x, m.pos.z, m.pos.y);
       if (unterwegs && m.fuel < 1) {
-        m.fuel = Math.min(1, m.fuel + dt2 / KRIEG.fuelTime * 4);
+        m.fuel = Math.min(1, m.fuel + dt3 / KRIEG.fuelTime * 4);
         if (!this._tankMsg) {
           G2.ui.msg("TANKSTELLE", "D\xFCsen f\xFCllen \xB7 Panzerung schweisst", 1.6);
           this._tankMsg = true;
         }
       } else this._tankMsg = false;
-      if (unterwegs && m.hp < m.maxHealth) m.hp = Math.min(m.maxHealth, m.hp + 45 * dt2);
+      if (unterwegs && m.hp < m.maxHealth) m.hp = Math.min(m.maxHealth, m.hp + 45 * dt3);
     }
     zoneArt(x, z, y2) {
       const gas = this.G.world.blocks.find((b) => b.template === "gas");
@@ -57435,13 +57723,13 @@ void main() {
       this.arena = { cx, cz, welle: 0, t: 2.5 };
       G2.ui.msg("ARENA", "Verteidige die Plaza \u2014 5 Wellen", 3.2);
     }
-    arenaUpdate(dt2) {
+    arenaUpdate(dt3) {
       const A2 = this.arena;
       if (!A2) return;
       const G2 = this.G;
       const feinds = this.list.filter((f) => !f.cop && !f.dead && f.arena);
       if (!feinds.length) {
-        A2.t -= dt2;
+        A2.t -= dt3;
         if (A2.t <= 0) {
           A2.welle++;
           if (A2.welle > 5) {
@@ -57475,7 +57763,7 @@ void main() {
   var UI = class {
     constructor(G2) {
       this.G = G2;
-      this.el = { hp: $("hpbar"), wname: $("wname"), wammo: $("wammo"), reload: $("reload"), speedo: $("speedo"), kmh: $("kmh"), gear: $("gear"), rpm: $("rpm").firstElementChild, vname: $("vname"), prompt: $("prompt"), msg: $("msg"), vign: $("vignette"), fade: $("fade"), wheel: $("wheel"), wheelName: $("wheel-name"), cross: $("cross"), hitmark: $("hitmark"), controls: $("controls"), kills: $("kills"), wrecks: $("wrecks"), fps: $("fps"), flash: $("flash"), wanted: $("wanted"), stars: Array.from($("stars").children), starsBox: $("stars"), wlabel: $("wlabel"), evade: $("evade").firstElementChild, dmgdir: $("dmgdir"), radio: $("radio"), radioSt: $("radio-st"), radioTt: $("radio-tt"), mmode: $("mmode"), marmour: $("marmour"), mwname: $("mwname"), mwstat: $("mwstat"), mheat: $("mheat"), mfuel: $("mfuel"), mkeys: $("mkeys"), mradio: $("mradio"), mradioSt: $("mradio-st"), mradioTt: $("mradio-tt"), money: $("money"), moneypop: $("moneypop"), shop: $("shop"), shopRows: $("shop-rows"), titan: $("titanbar"), titanLabel: $("titan-label"), arena: $("arena"), bounty: $("bounty") };
+      this.el = { hp: $("hpbar"), wname: $("wname"), wammo: $("wammo"), reload: $("reload"), speedo: $("speedo"), kmh: $("kmh"), gear: $("gear"), rpm: $("rpm").firstElementChild, vname: $("vname"), prompt: $("prompt"), msg: $("msg"), vign: $("vignette"), fade: $("fade"), wheel: $("wheel"), wheelName: $("wheel-name"), cross: $("cross"), hitmark: $("hitmark"), controls: $("controls"), kills: $("kills"), wrecks: $("wrecks"), fps: $("fps"), flash: $("flash"), wanted: $("wanted"), stars: Array.from($("stars").children), starsBox: $("stars"), wlabel: $("wlabel"), evade: $("evade").firstElementChild, dmgdir: $("dmgdir"), radio: $("radio"), radioSt: $("radio-st"), radioTt: $("radio-tt"), mmode: $("mmode"), marmour: $("marmour"), mwname: $("mwname"), mwstat: $("mwstat"), mheat: $("mheat"), mfuel: $("mfuel"), mkeys: $("mkeys"), mradio: $("mradio"), mradioSt: $("mradio-st"), mradioTt: $("mradio-tt"), money: $("money"), moneypop: $("moneypop"), shop: $("shop"), shopRows: $("shop-rows"), titan: $("titanbar"), titanLabel: $("titan-label"), arena: $("arena"), bounty: $("bounty"), settings: $("settings") };
       this.mm = $("mm");
       this.mctx = this.mm.getContext("2d");
       this.hurtT = 0;
@@ -57608,12 +57896,12 @@ void main() {
         this.dmgPool.push(alt.el);
       }
     }
-    updateDmgNumbers(dt2) {
+    updateDmgNumbers(dt3) {
       const G2 = this.G;
       if (!this.dmgVec) this.dmgVec = new window.THREE.Vector3();
       for (let i = this.dmgList.length - 1; i >= 0; i--) {
         const d = this.dmgList[i];
-        d.t -= dt2;
+        d.t -= dt3;
         if (d.t <= 0) {
           d.el.style.display = "none";
           this.dmgPool.push(d.el);
@@ -57655,7 +57943,45 @@ void main() {
       this.el.shopRows.innerHTML = rows;
       this.el.shop.querySelector("#shop-konto").textContent = geld(K2.money);
     }
-    update(dt2) {
+    settingsToggle() {
+      const el = this.el.settings;
+      this.settingsOpen = !this.settingsOpen;
+      el.style.display = this.settingsOpen ? "block" : "none";
+      if (this.settingsOpen) {
+        const G2 = this.G;
+        el.querySelector("#set-schatten").textContent = G2.sun.castShadow ? "AN" : "AUS";
+        el.querySelector("#set-bloom").textContent = G2.postfx.bloom1 > 0.05 ? "AN" : "AUS";
+        el.querySelector("#set-dpr").textContent = String(G2.dpr);
+        el.querySelector("#set-regen").textContent = window.__regen ? "AN" : "AUS";
+      }
+    }
+    settingsAktion(i) {
+      const G2 = this.G;
+      if (i === 1) {
+        G2.sun.castShadow = !G2.sun.castShadow;
+        this.el.settings.querySelector("#set-schatten").textContent = G2.sun.castShadow ? "AN" : "AUS";
+      } else if (i === 2) {
+        const an2 = !(G2.postfx.bloom1 > 0.05);
+        G2.postfx.bloom1 = an2 ? 0.2 : 0;
+        G2.postfx.bloom2 = an2 ? 0.34 : 0;
+        this.el.settings.querySelector("#set-bloom").textContent = an2 ? "AN" : "AUS";
+      } else if (i === 3) {
+        const stufen = [0.8, 1.1, 1.5];
+        this._dprI = ((this._dprI || 1) + 1) % 3;
+        G2.dpr = stufen[this._dprI];
+        G2.renderer.setPixelRatio(G2.dpr);
+        G2.postfx.setSize(G2.renderer.domElement.width, G2.renderer.domElement.height);
+        this.el.settings.querySelector("#set-dpr").textContent = String(G2.dpr);
+      } else if (i === 4) {
+        window.__regen = !window.__regen;
+        this.el.settings.querySelector("#set-regen").textContent = window.__regen ? "AN" : "AUS";
+      }
+      try {
+        localStorage.setItem("blocks.settings", JSON.stringify({ shadow: G2.sun.castShadow, bloom: G2.postfx.bloom1 > 0.05, dpr: G2.dpr }));
+      } catch (e) {
+      }
+    }
+    update(dt3) {
       const G2 = this.G, P = G2.player;
       const titan = G2.krieg && G2.krieg.list.find((f) => f.tier === "titan" && !f.dead);
       if (titan) {
@@ -57679,14 +58005,14 @@ void main() {
       this.el.reload.textContent = w.reloading ? "RELOADING" + ".".repeat(1 + Math.floor(w.reloadT / w.def.reloadTime * 3)) : "";
       this.el.cross.classList.toggle("hit", this.hitT > 0);
       if (this.hitT > 0) {
-        this.hitT -= dt2;
+        this.hitT -= dt3;
         if (this.hitT <= 0) this.el.hitmark.classList.remove("show");
       }
       const inMech = !!(P.vehicle && P.vehicle.isMech) && (P.state === "vehicle" || P.state === "entering" || P.state === "exiting");
       const driving = (P.state === "vehicle" || P.state === "entering") && !inMech;
       document.body.classList.toggle("driving", driving);
       document.body.classList.toggle("mech", inMech);
-      if (inMech) this.updateMech(P.vehicle, dt2);
+      if (inMech) this.updateMech(P.vehicle, dt3);
       if (driving && P.vehicle) {
         const v = P.vehicle;
         this.el.kmh.textContent = Math.round(Math.abs(v.speed) * 3.6);
@@ -57701,26 +58027,26 @@ void main() {
           this.el.radio.classList.toggle("off", !radio || !radio.current);
         }
       }
-      this.hurtT = Math.max(0, this.hurtT - dt2 * 1.4);
+      this.hurtT = Math.max(0, this.hurtT - dt3 * 1.4);
       this.el.vign.style.opacity = clamp2(this.hurtT + (1 - hp) * 0.5 * (hp < 0.35 ? 1 : 0), 0, 1).toFixed(2);
-      G2.postfx.hurt = damp2(G2.postfx.hurt, 0, 3, dt2);
-      G2.postfx.flash = damp2(G2.postfx.flash, 0, 12, dt2);
+      G2.postfx.hurt = damp2(G2.postfx.hurt, 0, 3, dt3);
+      G2.postfx.flash = damp2(G2.postfx.flash, 0, 12, dt3);
       if (this.dmgT > 0) {
-        this.dmgT -= dt2;
+        this.dmgT -= dt3;
         const a = angleDelta(Math.atan2(G2.gcam.flat.x, G2.gcam.flat.z), Math.atan2(this.dmgPos.x - P.pos.x, this.dmgPos.z - P.pos.z));
         this.el.dmgdir.style.transform = `rotate(${-a}rad)`;
         this.el.dmgdir.style.opacity = clamp2(this.dmgT, 0, 1).toFixed(2);
       } else if (this.el.dmgdir.style.opacity !== "0") this.el.dmgdir.style.opacity = "0";
       if (this.msgT > 0) {
-        this.msgT -= dt2;
+        this.msgT -= dt3;
         if (this.msgT <= 0) this.el.msg.classList.remove("show");
       }
-      if (this.dmgList.length) this.updateDmgNumbers(dt2);
+      if (this.dmgList.length) this.updateDmgNumbers(dt3);
       this.el.kills.textContent = G2.stats.kills;
       this.el.wrecks.textContent = G2.stats.wrecks;
       if (G2.krieg) this.el.money.textContent = geld(G2.krieg.money);
       if (this.moneyPopT > 0) {
-        this.moneyPopT -= dt2;
+        this.moneyPopT -= dt3;
         if (this.moneyPopT <= 0) this.el.moneypop.classList.remove("show");
       }
       const pol = G2.police;
@@ -57738,7 +58064,7 @@ void main() {
         this.el.wlabel.textContent = st === "wanted" ? "WANTED" : st === "evading" ? "EVADING \xB7 stay hidden" : "";
       }
       if (evading) this.el.evade.style.width = (pol.evade * 100).toFixed(1) + "%";
-      this.fpsAcc += dt2;
+      this.fpsAcc += dt3;
       if (this.fpsAcc >= 0.5) {
         this.fpsShown = G2.fps;
         this.fpsAcc = 0;
@@ -57747,7 +58073,7 @@ void main() {
       this.drawMinimap();
     }
     // round 10: mech HUD (armour, weapon state, heat, thrust fuel, mode)
-    updateMech(m, dt2) {
+    updateMech(m, dt3) {
       const E2 = this.el;
       const arm = clamp2(m.hp / (m.maxHealth || 1400), 0, 1);
       E2.marmour.firstElementChild.style.width = (arm * 100).toFixed(1) + "%";
@@ -58455,9 +58781,9 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this.blobs.setMatrixAt(this.blobI++, _m8);
     }
     // ---------------- per frame ------------------------------------------------------------------
-    update(dt2) {
+    update(dt3) {
       const G2 = this.G, W = G2.world, cam = G2.camera, P = G2.player;
-      this.time += dt2;
+      this.time += dt3;
       this.emisMat.uniforms.uTime.value = this.time;
       this.beginFrame();
       this.glowI = this.glowStatic;
@@ -58702,9 +59028,9 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       for (const k in this.clips) this.clips[k].video.play().catch(() => {
       });
     }
-    update(dt2) {
+    update(dt3) {
       if (!this.started) return;
-      this.retryT -= dt2;
+      this.retryT -= dt3;
       if (this.retryT > 0) return;
       this.retryT = 2;
       for (const k in this.clips) {
@@ -59007,7 +59333,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this.driver = null;
     }
     // ---- per frame -----------------------------------------------------------------------------------------------------
-    update(dt2) {
+    update(dt3) {
       const G2 = this.G, W = G2.world;
       if (!isFinite(this.pos.x + this.pos.y + this.pos.z + this.vel.x + this.vel.y + this.vel.z + this.yaw + this.speed)) {
         if (!this._nanT || G2.time - this._nanT > 10) {
@@ -59031,14 +59357,14 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this.lights.length = 0;
       const gy = W.surfaceHeight(this.pos.x, this.pos.z, this.pos.y);
       const h = this.pos.y - gy;
-      this.dmgFlash = Math.max(0, this.dmgFlash - dt2 * 4);
-      this.stomp.cd = Math.max(0, this.stomp.cd - dt2);
-      if (this.landT >= 0) this.landT += dt2;
-      if (!this.wrecked && this.hp < MECH.maxHealth && G2.time - (this.lastHurt ?? -99) > 6) this.hp = Math.min(MECH.maxHealth, this.hp + 12 * dt2);
+      this.dmgFlash = Math.max(0, this.dmgFlash - dt3 * 4);
+      this.stomp.cd = Math.max(0, this.stomp.cd - dt3);
+      if (this.landT >= 0) this.landT += dt3;
+      if (!this.wrecked && this.hp < MECH.maxHealth && G2.time - (this.lastHurt ?? -99) > 6) this.hp = Math.min(MECH.maxHealth, this.hp + 12 * dt3);
       let thrustWant = 0;
       if (this.state === "falling") {
-        this.vel.y = Math.max(-MECH.dropSpeed, this.vel.y - MECH.gravity * dt2);
-        this.pos.y += this.vel.y * dt2;
+        this.vel.y = Math.max(-MECH.dropSpeed, this.vel.y - MECH.gravity * dt3);
+        this.pos.y += this.vel.y * dt3;
         this.wind = clamp2(-this.vel.y / 50, 0, 1);
         if (h < MECH.brakeHeight) {
           this.state = "braking";
@@ -59049,20 +59375,20 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         thrustWant = 1;
         const v = -this.vel.y, vt = MECH.touchdown;
         const need = Math.max(0, (v * v - vt * vt) / (2 * Math.max(0.3, h)));
-        this.vel.y += need * dt2;
+        this.vel.y += need * dt3;
         if (this.vel.y > -vt) this.vel.y = -vt;
-        this.pos.y += this.vel.y * dt2;
+        this.pos.y += this.vel.y * dt3;
         if (this.pos.y <= gy) this.land(gy, -this.vel.y, true);
       } else if (this.state === "landed") {
-        this.settle(dt2, gy);
+        this.settle(dt3, gy);
       } else if (this.state === "piloted") {
-        thrustWant = this.pilot(dt2, gy, h);
+        thrustWant = this.pilot(dt3, gy, h);
       } else if (this.state === "wrecked") {
-        this.wreckT += dt2;
+        this.wreckT += dt3;
         const target = 1;
-        this.crumpleV += (60 * (target - this.crumple) - 9 * this.crumpleV) * dt2;
-        this.crumple = clamp2(this.crumple + this.crumpleV * dt2, 0, 1.1);
-        this.smokeT -= dt2;
+        this.crumpleV += (60 * (target - this.crumple) - 9 * this.crumpleV) * dt3;
+        this.crumple = clamp2(this.crumple + this.crumpleV * dt3, 0, 1.1);
+        this.smokeT -= dt3;
         if (this.smokeT <= 0) {
           this.smokeT = 0.14;
           this.localPoint(randSpread(0.8), 3.2 - this.crumple * 1.5, randSpread(0.6), _v8);
@@ -59070,14 +59396,14 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           if (Math.random() < 0.6) G2.fx.fire(_v8, 0.9);
         }
         if (this.pos.y > gy) {
-          this.vel.y -= MECH.gravity * dt2;
-          this.pos.y = Math.max(gy, this.pos.y + this.vel.y * dt2);
+          this.vel.y -= MECH.gravity * dt3;
+          this.pos.y = Math.max(gy, this.pos.y + this.vel.y * dt3);
         }
       }
-      this.thrust = damp2(this.thrust, thrustWant, thrustWant > this.thrust ? 12 : 6, dt2);
+      this.thrust = damp2(this.thrust, thrustWant, thrustWant > this.thrust ? 12 : 6, dt3);
       if (this.thrust > 0.02) {
         if (!this.loop) this.startLoop();
-        this.thrusterFx(dt2, gy);
+        this.thrusterFx(dt3, gy);
       } else if (this.loop && this.state !== "braking") this.stopLoop();
       if (this.loop) this.loop.set(this.thrust, this.pos);
       if (this.powering !== 0) {
@@ -59092,7 +59418,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           this.seq[k] = target;
           if (dir > 0 ? target < 1 : target > 0) done = false;
         });
-        this.seqT += dt2;
+        this.seqT += dt3;
         if (done) {
           this.powering = 0;
           this.seqT = 0;
@@ -59113,21 +59439,21 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       if (this.power > 0.05 && this.state !== "wrecked") {
         this.lights.push({ x: this.pos.x, y: this.pos.y + 4.3, z: this.pos.z, R: 14, r: 0.25, g: 0.8, b: 1, I: 60 * this.power });
       }
-      this.updateMissiles(dt2);
-      this.updateGun(dt2);
-      this.applyPose(dt2);
+      this.updateMissiles(dt3);
+      this.updateGun(dt3);
+      this.applyPose(dt3);
       this.updateMesh();
       this.updateAABB();
     }
-    settle(dt2, gy) {
-      this.speed = damp2(this.speed, 0, 6, dt2);
+    settle(dt3, gy) {
+      this.speed = damp2(this.speed, 0, 6, dt3);
       this.vel.set(0, 0, 0);
       this.pos.y = gy;
       this.onGround = true;
-      this.gait = damp2(this.gait, 0, 6, dt2);
-      this.fuel = Math.min(1, this.fuel + dt2 / MECH.flight.refuelTime);
-      this.heat = Math.max(0, this.heat - MECH.gun.coolRate * dt2);
-      this.overheat = Math.max(0, this.overheat - dt2);
+      this.gait = damp2(this.gait, 0, 6, dt3);
+      this.fuel = Math.min(1, this.fuel + dt3 / MECH.flight.refuelTime);
+      this.heat = Math.max(0, this.heat - MECH.gun.coolRate * dt3);
+      this.overheat = Math.max(0, this.overheat - dt3);
     }
     // ---- landing --------------------------------------------------------------------------------------------------------
     land(gy, vImpact, callIn) {
@@ -59208,7 +59534,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       if (this.G.world) this.G.world.damageBuildingsAt(p.x, p.y, p.z, R, dmg * 1.6);
     }
     // ---- piloting --------------------------------------------------------------------------------------------------------
-    pilot(dt2, gy, h) {
+    pilot(dt3, gy, h) {
       const G2 = this.G, I2 = G2.input, cam = G2.gcam, F = MECH.flight;
       let thrustWant = 0;
       const fwd = (I2.down("KeyW") ? 1 : 0) - (I2.down("KeyS") ? 1 : 0), side = (I2.down("KeyD") ? 1 : 0) - (I2.down("KeyA") ? 1 : 0);
@@ -59229,8 +59555,8 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           this.climb = null;
           this.vel.set(0, 0, 0);
         }
-        if (!I2.down("KeyW") || I2.pressed("Space") || this.fuel <= 1e-3 || this.pos.y + 4.6 * dt2 >= box2.maxY - 0.05) {
-          if (this.pos.y + 4.6 * dt2 >= box2.maxY - 0.05) {
+        if (!I2.down("KeyW") || I2.pressed("Space") || this.fuel <= 1e-3 || this.pos.y + 4.6 * dt3 >= box2.maxY - 0.05) {
+          if (this.pos.y + 4.6 * dt3 >= box2.maxY - 0.05) {
             this.pos.y = box2.maxY;
             const cxb = (box2.minX + box2.maxX) / 2, czb = (box2.minZ + box2.maxZ) / 2;
             this.pos.x += (cxb - this.pos.x) * 0.35;
@@ -59244,9 +59570,9 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           this.climb = null;
           this.vel.set(0, 0, 0);
         } else {
-          this.pos.y += 4.6 * dt2;
-          this.fuel = Math.max(0, this.fuel - dt2 / 8);
-          this.phase += dt2 * 2.2;
+          this.pos.y += 4.6 * dt3;
+          this.fuel = Math.max(0, this.fuel - dt3 / 8);
+          this.phase += dt3 * 2.2;
           this.speed = 0;
           this.vel.set(0, 0, 0);
           this.onGround = false;
@@ -59283,7 +59609,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         this.stomp.t = 0;
       }
       if (this.stomp.t >= 0) {
-        this.stomp.t += dt2;
+        this.stomp.t += dt3;
         const S3 = MECH.stomp;
         if (this.stomp.t >= S3.windup + S3.slam && !this.stompDone) {
           this.stompDone = true;
@@ -59303,28 +59629,28 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         thrustWant = 1;
         this.flying = true;
         this.onGround = false;
-        this.vel.y = Math.min(F.maxUp, this.vel.y + (F.lift + (h < 1 ? 6 : 0)) * dt2);
-        this.fuel = Math.max(0, this.fuel - dt2 / F.fuelTime);
+        this.vel.y = Math.min(F.maxUp, this.vel.y + (F.lift + (h < 1 ? 6 : 0)) * dt3);
+        this.fuel = Math.max(0, this.fuel - dt3 / F.fuelTime);
       } else if (!this.onGround) {
         if (autoBrake) {
           const need = Math.max(0, (this.vel.y * this.vel.y - MECH.touchdown * MECH.touchdown) / (2 * Math.max(0.5, h)));
-          this.vel.y += Math.min(need, F.thrust) * dt2;
+          this.vel.y += Math.min(need, F.thrust) * dt3;
           thrustWant = clamp2(need / F.thrust + 0.3, 0.3, 1);
-          this.fuel = Math.max(0, this.fuel - dt2 * 0.5 / F.fuelTime);
+          this.fuel = Math.max(0, this.fuel - dt3 * 0.5 / F.fuelTime);
         }
-        this.vel.y = Math.max(F.maxDown, this.vel.y - MECH.gravity * dt2);
+        this.vel.y = Math.max(F.maxDown, this.vel.y - MECH.gravity * dt3);
       }
       const sp = this.speed;
       if (this.onGround) {
         const target = moving && !stomping ? MECH.walkSpeed : 0;
         const a = target > sp ? MECH.accel : MECH.decel;
-        this.speed = sp + clamp2(target - sp, -a * dt2, a * dt2);
+        this.speed = sp + clamp2(target - sp, -a * dt3, a * dt3);
         if (aimMode) {
           const d = angleDelta(this.yaw, this.aimYaw);
-          const mx = MECH.turnRate * 1.15 * dt2;
+          const mx = MECH.turnRate * 1.15 * dt3;
           const step = clamp2(d, -mx, mx);
           this.yaw += step;
-          this.yawRate = step / Math.max(dt2, 1e-4);
+          this.yawRate = step / Math.max(dt3, 1e-4);
           this.speed = Math.min(this.speed, MECH.walkSpeed * AIM_STRAFE);
           if (moving && !stomping) {
             this.vel.x = wx * this.speed;
@@ -59338,17 +59664,17 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           if (moving && !stomping) {
             const want = Math.atan2(wx, wz);
             const d = angleDelta(this.yaw, want);
-            const mx = MECH.turnRate * dt2 * (0.6 + 0.9 * (1 - this.speed / MECH.walkSpeed));
-            this.yawRate = clamp2(d, -mx, mx) / Math.max(dt2, 1e-4);
+            const mx = MECH.turnRate * dt3 * (0.6 + 0.9 * (1 - this.speed / MECH.walkSpeed));
+            this.yawRate = clamp2(d, -mx, mx) / Math.max(dt3, 1e-4);
             this.yaw += clamp2(d, -mx, mx);
             if (Math.abs(d) > 1.8) this.speed = Math.min(this.speed, 1.5);
           } else {
             const d = angleDelta(this.yaw, this.aimYaw);
             if (Math.abs(d) > 1.05) {
-              const mx = MECH.turnRate * 0.7 * dt2;
+              const mx = MECH.turnRate * 0.7 * dt3;
               this.yaw += clamp2(d, -mx, mx);
-              this.yawRate = clamp2(d, -mx, mx) / Math.max(dt2, 1e-4);
-            } else this.yawRate = damp2(this.yawRate, 0, 8, dt2);
+              this.yawRate = clamp2(d, -mx, mx) / Math.max(dt3, 1e-4);
+            } else this.yawRate = damp2(this.yawRate, 0, 8, dt3);
           }
           this.vel.x = Math.sin(this.yaw) * this.speed;
           this.vel.z = Math.cos(this.yaw) * this.speed;
@@ -59360,15 +59686,15 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           this.vel.x = 0;
           this.vel.z = 0;
         }
-        this.fuel = Math.min(1, this.fuel + dt2 / F.refuelTime);
+        this.fuel = Math.min(1, this.fuel + dt3 / F.refuelTime);
       } else {
         const boost = I2.down("ShiftLeft") && this.fuel > 1e-3;
         const cap = F.forward * (boost ? F.boostMul : 1);
         const acc = F.forward * 1.6 * (boost ? F.boostAccel : 1);
         const ax = wx * acc, az = wz * acc;
-        this.vel.x += ax * dt2;
-        this.vel.z += az * dt2;
-        const dr = Math.exp(-F.drag * dt2);
+        this.vel.x += ax * dt3;
+        this.vel.z += az * dt3;
+        const dr = Math.exp(-F.drag * dt3);
         this.vel.x *= dr;
         this.vel.z *= dr;
         const hs = Math.hypot(this.vel.x, this.vel.z);
@@ -59377,14 +59703,14 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           this.vel.z *= cap / hs;
         }
         this.speed = hs;
-        if (boost) this.fuel = Math.max(0, this.fuel - dt2 / F.fuelTime * (F.boostBurn - 1));
+        if (boost) this.fuel = Math.max(0, this.fuel - dt3 / F.fuelTime * (F.boostBurn - 1));
         if (boost && hs > 12) {
-          G2.gcam.addKick(0, 0, 0, 14 * dt2);
+          G2.gcam.addKick(0, 0, 0, 14 * dt3);
         }
         if (aimMode || moving) {
           const want = aimMode ? this.aimYaw : Math.atan2(wx, wz);
           const d = angleDelta(this.yaw, want);
-          const mx = MECH.turnRate * F.turnAir * dt2;
+          const mx = MECH.turnRate * F.turnAir * dt3;
           this.yaw += clamp2(d, -mx, mx);
         }
         if (I2.pressed("KeyF") && !stomping && this.stomp.cd <= 0) {
@@ -59403,7 +59729,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           this._tap = { k: tap, t: G2.time };
         }
         if (this.speed > 14) {
-          this._nearT = (this._nearT || 0) - dt2;
+          this._nearT = (this._nearT || 0) - dt3;
           if (this._nearT <= 0) {
             const nx = this.pos.x + this.vel.x / this.speed * 13, nz = this.pos.z + this.vel.z / this.speed * 13;
             const list = G2.world.statics.query(nx - 7, nz - 7, nx + 7, nz + 7, G2.world._nm || (G2.world._nm = []));
@@ -59422,12 +59748,12 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
             }
           }
         }
-        this.airT += dt2;
+        this.airT += dt3;
       }
-      this.pos.x += this.vel.x * dt2;
-      this.pos.z += this.vel.z * dt2;
-      this.pos.y += this.vel.y * dt2;
-      this.collide(dt2);
+      this.pos.x += this.vel.x * dt3;
+      this.pos.z += this.vel.z * dt3;
+      this.pos.y += this.vel.y * dt3;
+      this.collide(dt3);
       const g2 = G2.world.surfaceHeight(this.pos.x, this.pos.z, this.pos.y);
       if (this.pos.y <= g2 + 1e-3) {
         if (!this.onGround) {
@@ -59443,24 +59769,24 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         this.pos.y = g2;
       }
       const gk = clamp2(this.speed / 1.2, 0, 1) * (this.onGround ? 1 : 0);
-      this.gait = damp2(this.gait, gk, 5, dt2);
+      this.gait = damp2(this.gait, gk, 5, dt3);
       if (this.onGround && this.speed > 0.05) {
         const prev = this.phase;
-        this.phase += this.speed / MECH.stride * 2 * Math.PI * dt2;
+        this.phase += this.speed / MECH.stride * 2 * Math.PI * dt3;
         const pp = Math.floor(prev / Math.PI), pn2 = Math.floor(this.phase / Math.PI);
         if (pn2 !== pp) this.footPlant(pn2 % 2 === 0 ? "L" : "R", g2);
-      } else if (this.onGround) this.phase = damp2(this.phase, Math.round(this.phase / Math.PI) * Math.PI, 5, dt2);
-      this.heat = clamp2(this.heat + (this.gun.on && this.gun.spin >= MECH.gun.spinMin ? MECH.gun.heatRate : -MECH.gun.coolRate) * dt2, 0, 1);
+      } else if (this.onGround) this.phase = damp2(this.phase, Math.round(this.phase / Math.PI) * Math.PI, 5, dt3);
+      this.heat = clamp2(this.heat + (this.gun.on && this.gun.spin >= MECH.gun.spinMin ? MECH.gun.heatRate : -MECH.gun.coolRate) * dt3, 0, 1);
       if (this.heat >= 1 && this.gun.on) {
         this.gunStop();
         this.overheat = MECH.gun.overheatLock;
         G2.audio.ui("empty");
         G2.ui.msg("BARRELS OVERHEAT", "cooling", 1.4);
       }
-      this.overheat = Math.max(0, this.overheat - dt2);
-      this.reloadT = Math.max(0, this.reloadT - dt2);
+      this.overheat = Math.max(0, this.overheat - dt3);
+      this.reloadT = Math.max(0, this.reloadT - dt3);
       this.aim();
-      this.firing = Math.max(0, this.firing - dt2);
+      this.firing = Math.max(0, this.firing - dt3);
       const aiming = I2.mouseDown(2) && !wheelOpen;
       const fire = I2.mouseDown(0) && !stomping && !wheelOpen;
       if (this.weapon === 0) {
@@ -59470,7 +59796,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           this.salvoT = 0;
         }
         if (this.salvo > 0) {
-          this.salvoT -= dt2;
+          this.salvoT -= dt3;
           if (this.salvoT <= 0) {
             this.fireMissile();
             this.salvo--;
@@ -59481,9 +59807,9 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       } else if (this.weapon === 1) {
         this.gunTrigger(fire && this.overheat <= 0 && this.heat < 1);
       } else {
-        this.updateRail(fire && this.rail.heat < 1, dt2);
+        this.updateRail(fire && this.rail.heat < 1, dt3);
       }
-      this.armRaise = damp2(this.armRaise, aiming || this.gun.on || this.firing > 0 || this.weapon === 1 ? 1 : 0, 8, dt2);
+      this.armRaise = damp2(this.armRaise, aiming || this.gun.on || this.firing > 0 || this.weapon === 1 ? 1 : 0, 8, dt3);
       this.wind = clamp2(Math.hypot(this.vel.x, this.vel.y, this.vel.z) / 22, 0, 1);
       return thrustWant;
     }
@@ -59560,7 +59886,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       G2.police.crime("explosion", p);
     }
     // pushing out of buildings, shoving props, cars and people; the mech is a 2.1 m circle at the feet
-    collide(dt2) {
+    collide(dt3) {
       const G2 = this.G, r = MECH.radius, p = this.pos;
       const list = G2.world.statics.query(p.x - r, p.z - r, p.x + r, p.z + r, _near6);
       for (const b of list) {
@@ -59623,9 +59949,9 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       p.z = clamp2(p.z, -F, F);
     }
     // ---- thrusters ----------------------------------------------------------------------------------------------------------
-    thrusterFx(dt2, gy) {
+    thrusterFx(dt3, gy) {
       const G2 = this.G, k = this.thrust;
-      this.thrustT += dt2;
+      this.thrustT += dt3;
       for (const n2 of [this.P.Nozzle_Foot_L, this.P.Nozzle_Foot_R, this.P.Nozzle_Back_L, this.P.Nozzle_Back_R]) {
         n2.getWorldPosition(_v8);
         _d4.set(0, -1, 0).applyQuaternion(n2.getWorldQuaternion(_q7));
@@ -59666,11 +59992,11 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       G2.police.crime("gunfire", this.pos);
       G2.npcs.alertGunfire(this.pos, true, 2);
     }
-    updateMissiles(dt2) {
+    updateMissiles(dt3) {
       const G2 = this.G, Mi2 = MECH.missiles, fx2 = G2.fx;
       for (let i = this.missiles.length - 1; i >= 0; i--) {
         const m = this.missiles[i];
-        m.age += dt2;
+        m.age += dt3;
         let tx = m.target.x, ty = m.target.y, tz = m.target.z;
         if (m.track) {
           const T = m.track;
@@ -59682,18 +60008,18 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           if (T.dead || T.wrecked) m.track = null;
         }
         const sp = Math.hypot(m.vx, m.vy, m.vz) || 1;
-        const ns = Math.min(Mi2.maxSpeed, sp + Mi2.accel * dt2);
+        const ns = Math.min(Mi2.maxSpeed, sp + Mi2.accel * dt3);
         _d4.set(m.vx / sp, m.vy / sp, m.vz / sp);
         _w6.set(tx - m.x, ty - m.y, tz - m.z);
         const dl = _w6.length() || 1;
         _w6.multiplyScalar(1 / dl);
-        const turn = Math.min(1, Mi2.turn * dt2 * (m.age < 0.25 ? 0.4 : 1));
+        const turn = Math.min(1, Mi2.turn * dt3 * (m.age < 0.25 ? 0.4 : 1));
         _d4.lerp(_w6, turn).normalize();
         m.vx = _d4.x * ns;
         m.vy = _d4.y * ns;
         m.vz = _d4.z * ns;
         const ox = m.x, oy = m.y, oz = m.z;
-        const nx = ox + m.vx * dt2, ny = oy + m.vy * dt2, nz = oz + m.vz * dt2;
+        const nx = ox + m.vx * dt3, ny = oy + m.vy * dt3, nz = oz + m.vz * dt3;
         const len = Math.hypot(nx - ox, ny - oy, nz - oz);
         let hit = null;
         if (len > 1e-5) hit = G2.weapons.raycastWorld(ox, oy, oz, (nx - ox) / len, (ny - oy) / len, (nz - oz) / len, len, { ignoreMech: true, player: false, ignoreVehicle: null, ignoreNpc: null, minT: 0 });
@@ -59712,7 +60038,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           const tl = Math.min(1.4, m.dist);
           fx2.tracerSet(m.tracer, m.x - _d4.x * tl, m.y - _d4.y * tl, m.z - _d4.z * tl, m.x, m.y, m.z);
         }
-        m.smokeT -= dt2;
+        m.smokeT -= dt3;
         if (m.smokeT <= 0) {
           m.smokeT = 0.012;
           fx2.smoke.spawn({ x: m.x + randSpread(0.08), y: m.y, z: m.z + randSpread(0.08), vx: randSpread(0.5), vy: 0.5, vz: randSpread(0.5), s0: 0.3, s1: 2, a0: 0.6, a1: 0, life: rand(1.2, 2), r: [0.82, 0.8, 0.78], r1: [0.5, 0.5, 0.5], drag: 1.4, rotv: randSpread(2) });
@@ -59743,13 +60069,13 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     gunTrigger(want) {
       this.gun.on = !!want;
     }
-    updateGun(dt2) {
+    updateGun(dt3) {
       const G2 = this.G, g2 = this.gun, Gd = MECH.gun;
-      g2.spin = clamp2(g2.spin + (g2.on ? dt2 / Gd.spinUp : -dt2 / (Gd.spinUp * 0.8)), 0, 1);
-      if (this.barrels) this.barrels.rotation.z += g2.spin * 34 * dt2;
+      g2.spin = clamp2(g2.spin + (g2.on ? dt3 / Gd.spinUp : -dt3 / (Gd.spinUp * 0.8)), 0, 1);
+      if (this.barrels) this.barrels.rotation.z += g2.spin * 34 * dt3;
       for (let i = g2.tr.length - 1; i >= 0; i--) {
         const t2 = g2.tr[i];
-        t2.life -= dt2;
+        t2.life -= dt3;
         if (t2.life <= 0) {
           G2.fx.tracerRelease(t2.h);
           g2.tr.splice(i, 1);
@@ -59760,7 +60086,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         return;
       }
       const gap = 60 / (Gd.rpm * g2.spin);
-      g2.cd -= dt2;
+      g2.cd -= dt3;
       let schutz = 8;
       while (g2.cd <= 0 && schutz-- > 0) {
         g2.cd += gap;
@@ -59830,9 +60156,9 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       }
     }
     // ---- Runde 20: Railgun — halten zum Aufladen, Schuss mit Durchschlag (trifft alles auf der Linie) ----
-    updateRail(fire, dt2) {
+    updateRail(fire, dt3) {
       const G2 = this.G, r = this.rail;
-      r.heat = Math.max(0, r.heat - dt2 * 0.45);
+      r.heat = Math.max(0, r.heat - dt3 * 0.45);
       if (!fire) {
         if (r.charge > 0 && r.wasFire !== false) {
         }
@@ -59841,13 +60167,13 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           r.charge = 0;
           r.heat = Math.min(1, r.heat + 0.55);
         } else if (r.charge > 0 && r.wasFire) {
-          r.charge = Math.max(0, r.charge - dt2 * 2);
+          r.charge = Math.max(0, r.charge - dt3 * 2);
         }
         r.wasFire = fire;
         return;
       }
       r.wasFire = true;
-      r.charge = Math.min(1, r.charge + dt2 / 1.1);
+      r.charge = Math.min(1, r.charge + dt3 / 1.1);
       if (r.charge < 1) {
         if (Math.random() < 0.25) G2.audio.ui("tick");
         this.lights.push({ x: this.pos.x, y: this.pos.y + 5, z: this.pos.z, R: 8, r: 0.5, g: 0.85, b: 1, I: 40 * r.charge });
@@ -59982,8 +60308,8 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       }
     }
     // ---- pose ----------------------------------------------------------------------------------------------------------------
-    applyPose(dt2, snap = false) {
-      const P = this.P, t2 = this.G.time, k = snap ? 1 : 1 - Math.exp(-14 * dt2), ks = snap ? 1 : 1 - Math.exp(-9 * dt2);
+    applyPose(dt3, snap = false) {
+      const P = this.P, t2 = this.G.time, k = snap ? 1 : 1 - Math.exp(-14 * dt3), ks = snap ? 1 : 1 - Math.exp(-9 * dt3);
       if (danceAktiv() && this.onGround && !this.wrecked && !this.flying) {
         poseDanceMech(P, REST2, DANCE.t);
         P.Pelvis.position.x += (MECH_BECKEN.dx - P.Pelvis.position.x) * k;
@@ -60008,7 +60334,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         return;
       }
       if (this.hatchT > 0) {
-        this.hatchT += dt2;
+        this.hatchT += dt3;
         const u2 = clamp2((this.hatchT - 1e-3) / 0.6, 0, 1);
         const e = u2 < 0.5 ? 2 * u2 * u2 : 1 - Math.pow(-2 * u2 + 2, 2) / 2;
         this.hatch = this.hatchDir > 0 ? e : 1 - e;
@@ -60016,7 +60342,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       }
       P.Hatch.rotation.x = -1.6 * this.hatch;
       const ph = this.phase, g2 = this.gait, fly = this.flying || !this.onGround && this.state === "piloted" ? 1 : 0;
-      const flyK = damp2(this.flyK || 0, fly, 6, dt2);
+      const flyK = damp2(this.flyK || 0, fly, 6, dt3);
       this.flyK = flyK;
       let land = 0;
       if (this.landT >= 0 && this.landT < 1.1) {
@@ -60051,13 +60377,13 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       const bob = -0.16 * g2 * (0.5 - 0.5 * Math.cos(2 * ph - 0.7)) - 0.75 * land - 1.85 * crump - 0.25 * stS + 0.1 * flyK;
       P.Pelvis.position.y += (PELVIS_Y2 + bob - P.Pelvis.position.y) * k;
       P.Pelvis.position.x += (0.14 * g2 * Math.sin(ph - 0.5) + 0.3 * stL - P.Pelvis.position.x) * k;
-      const accLean = clamp2((this.speed - (this.prevSpeed || 0)) / Math.max(dt2, 1e-3) * 0.04, -0.12, 0.12);
+      const accLean = clamp2((this.speed - (this.prevSpeed || 0)) / Math.max(dt3, 1e-3) * 0.04, -0.12, 0.12);
       this.prevSpeed = this.speed;
-      this.bodyLean = damp2(this.bodyLean, accLean, 5, dt2);
+      this.bodyLean = damp2(this.bodyLean, accLean, 5, dt3);
       const fwdSpeed = this.vel.x * Math.sin(this.yaw) + this.vel.z * Math.cos(this.yaw);
       tg(P.Pelvis, 0.06 * g2 + this.bodyLean + 0.3 * land + 0.55 * crump + 0.25 * flyK * clamp2(fwdSpeed / 12, -1, 1) - 0.1 * stL, 0, 0.05 * g2 * sw - 0.06 * stL, ks);
       const aimD = this.piloted ? clamp2(angleDelta(this.yaw, this.aimYaw), -1.2, 1.2) : 0;
-      this.torsoYaw = damp2(this.torsoYaw, aimD, 7, dt2);
+      this.torsoYaw = damp2(this.torsoYaw, aimD, 7, dt3);
       tg(P.Torso, -0.04 * g2 + 0.12 * land + 0.1 * flyK, this.torsoYaw - 0.1 * g2 * sw, 0, ks);
       tg(P.Head, clamp2(-this.aimPitch * 0.5, -0.4, 0.5) * this.power + 0.15 * crump, clamp2(angleDelta(this.yaw + this.torsoYaw, this.aimYaw), -0.6, 0.6) * this.power + (this.piloted ? 0 : 0.15 * Math.sin(t2 * 0.4)), 0, ks);
       const ar = this.armRaise;
@@ -60069,7 +60395,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       tg(P.Shoulder_L, 0.03 * g2 * sw, 0, 0.04 * g2 * sw, ks);
       tg(P.Shoulder_R, -0.03 * g2 * sw, 0, 0.04 * g2 * sw, ks);
       if (this.wings.length) {
-        this.wingPhase += dt2 * (2.2 + 4.2 * flyK);
+        this.wingPhase += dt3 * (2.2 + 4.2 * flyK);
         for (const w of this.wings) {
           const flap = Math.sin(this.wingPhase - w.i * 0.45);
           tg(
@@ -60190,14 +60516,14 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       }
       return null;
     }
-    update(dt2) {
+    update(dt3) {
       const G2 = this.G, I2 = G2.input, P = G2.player;
       if (I2.pressed("KeyG") && !P.dead && P.state === "foot") this.call();
-      if (this.callT >= 0) this.callT += dt2;
+      if (this.callT >= 0) this.callT += dt3;
       this.lights = this.mech ? this.mech.lights : [];
       if (!this.mech) return;
       const m = this.mech;
-      m.update(dt2);
+      m.update(dt3);
     }
     // the E prompt / enter check for main.js
     enterable(pos) {
@@ -60459,6 +60785,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       last = now;
       G.realTime += realDt;
       frames++;
+      input.pollGamepad();
       G.fpsAcc = (G.fpsAcc || 0) + rawDt;
       G.fpsN = (G.fpsN || 0) + 1;
       if (G.fpsAcc >= 0.5) {
@@ -60469,12 +60796,17 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       }
       if (G.state === "playing") {
         try {
-          const dt2 = realDt * G.timeScale;
-          G.dt = dt2;
-          G.time += dt2;
+          const dt3 = realDt * G.timeScale;
+          G.dt = dt3;
+          G.time += dt3;
           if (!weapons.wheelOpen && (input.dx || input.dy)) gcam.look(input.dx, input.dy);
           if (input.pressed("KeyK") && !weapons.wheelOpen) krieg.toggleShop();
           if (input.pressed("KeyN")) krieg.arenaToggle();
+          if (input.pressed("KeyO")) ui.settingsToggle();
+          if (ui.settingsOpen) {
+            for (let i = 1; i <= 4; i++) if (input.pressed("Digit" + i)) ui.settingsAktion(i);
+            if (input.pressed("KeyO") === false && input.pressed("Escape")) ui.settingsToggle();
+          }
           if (krieg.shopOpen) krieg.shopInput();
           else if (input.pressed("KeyE") && !player.dead) {
             if (player.state === "vehicle") player.exitVehicle();
@@ -60495,7 +60827,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
             if (player.state === "foot") weapons.setVisible(!on2);
             ui.msg("DANCE", on2 ? "on" : "off", 1);
           }
-          danceTick(dt2);
+          danceTick(dt3);
           if (input.pressed("KeyV")) ui.msg("CAMERA", gcam.mode === "drive" ? "chase (only mode in phase 1)" : "third person", 1.2);
           if (!krieg.shopOpen) {
             const safe = (name, fn) => {
@@ -60508,15 +60840,15 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
                 }
               }
             };
-            safe("weapons", () => weapons.update(dt2, realDt));
-            safe("player", () => player.update(dt2));
-            safe("vehicles", () => vehicles.update(dt2));
-            safe("npcs", () => npcs.update(dt2));
-            safe("police", () => police.update(dt2, realDt));
-            safe("mech", () => mechSys.update(dt2));
-            safe("krieg", () => krieg.update(dt2));
-            safe("props", () => props.update(dt2, audio, fx2, propTmp));
-            fx2.update(dt2);
+            safe("weapons", () => weapons.update(dt3, realDt));
+            safe("player", () => player.update(dt3));
+            safe("vehicles", () => vehicles.update(dt3));
+            safe("npcs", () => npcs.update(dt3));
+            safe("police", () => police.update(dt3, realDt));
+            safe("mech", () => mechSys.update(dt3));
+            safe("krieg", () => krieg.update(dt3));
+            safe("props", () => props.update(dt3, audio, fx2, propTmp));
+            fx2.update(dt3);
           }
           if (audio.radio) audio.radio.update(player);
           screens.update(realDt);
@@ -60702,6 +61034,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         return krieg.money;
       },
       arena: () => krieg.arenaToggle(),
+      tank: (x, z) => vehicles.spawnTank(x || 20, z || -44),
       save: () => krieg.save(),
       wipe: () => krieg.wipeSave(),
       regen: (on2) => {
