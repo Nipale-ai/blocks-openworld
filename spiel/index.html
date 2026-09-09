@@ -144,7 +144,11 @@
   #moneypop.show{animation:moneypop 1.4s ease-out}
   @keyframes moneypop{0%{opacity:0;transform:translateY(8px)}12%{opacity:1;transform:translateY(0)}70%{opacity:1}100%{opacity:0;transform:translateY(-14px)}}
   #shop{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);width:540px;max-width:92vw;padding:20px 22px;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s}
-  #shop.open{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  #shop.open{opacity:1;transform:translate(-50%,-50%) scale(1);pointer-events:auto}
+  #shop-rows{max-height:46vh;overflow-y:auto;scrollbar-width:thin}
+  #shop .srow{cursor:pointer}
+  #settings{pointer-events:auto}
+  #settings .srow{cursor:pointer}
   #shop h3{font:800 22px/1 var(--sans);letter-spacing:.04em}
   #shop h3 span{color:var(--accent)}
   #shop .sub{font:500 11px var(--mono);letter-spacing:.14em;color:var(--ink-dim);margin-top:4px;text-transform:uppercase}
@@ -152,6 +156,9 @@
   #shop-rows{margin-top:14px;display:flex;flex-direction:column;gap:8px}
   .srow{display:flex;align-items:center;gap:12px;padding:9px 12px;border:1px solid rgba(255,255,255,.1);border-radius:8px;background:rgba(255,255,255,.04)}
   .srow .skey{font:700 13px var(--mono);color:var(--accent2);border:1px solid rgba(255,255,255,.25);border-radius:5px;padding:2px 8px;min-width:26px;text-align:center}
+  .mx{background:none;border:none;color:var(--ink-dim);font:700 14px var(--sans);cursor:pointer;float:right;padding:0 2px}
+  .mx:hover{color:var(--ink)}
+  .srang{color:var(--danger)}
   .srow .sname{flex:1;font:700 14px var(--sans)}
   .srow .sname small{display:block;font:500 11px var(--mono);color:var(--ink-dim);margin-top:2px;letter-spacing:.04em}
   .srow .spreis{font:700 13px var(--mono);letter-spacing:.06em;white-space:nowrap}
@@ -207,7 +214,7 @@
   <div id="arena" style="display:none;position:absolute;left:50%;top:88px;transform:translateX(-50%);font:700 12px var(--mono);letter-spacing:.14em;color:var(--accent2)"></div>
   <div id="bounty" style="display:none;position:absolute;left:50%;bottom:44px;transform:translateX(-50%);font:600 11px var(--mono);letter-spacing:.1em;color:var(--accent)"></div>
   <div id="settings" style="display:none;position:absolute;left:50%;top:50%;transform:translateX(-50%);min-width:340px" class="panel">
-    <h3 style="font:800 20px var(--sans);margin-bottom:12px">EINSTELLUNGEN<span style="color:var(--accent)">.</span></h3>
+    <h3 style="font:800 20px var(--sans);margin-bottom:12px">EINSTELLUNGEN<span style="color:var(--accent)">.</span><button class="mx" data-close style="float:right;background:none;border:none;color:var(--ink);font:700 16px var(--sans);cursor:pointer">✕</button></h3>
     <div class="srow"><span class="skey">1</span><span class="sname">Schatten<small>Kamera-Naehe nur</small></span><span class="spreis" id="set-schatten">AN</span></div>
     <div class="srow"><span class="skey">2</span><span class="sname">Bloom<small>Licht-Glow</small></span><span class="spreis" id="set-bloom">AN</span></div>
     <div class="srow"><span class="skey">3</span><span class="sname">Aufloesung<small>0.8 / 1.1 / 1.5</small></span><span class="spreis" id="set-dpr">1.25</span></div>
@@ -215,11 +222,11 @@
     <div style="margin-top:12px;font:500 11px var(--mono);color:var(--ink-dim)">O schliesst · Einstellungen werden gespeichert</div>
   </div>
   <div id="shop" class="panel">
-    <h3>WAFFENKAMMER<span>.</span></h3>
+    <h3>WAFFENKAMMER<span>.</span><button class="mx" data-close>✕</button></h3>
     <div class="sub">Konto <b id="shop-konto">0 €</b> · Ziffer kauft · <b>K</b> schließt</div>
     <div id="shop-rows"></div>
     <div id="shop-hinweis" style="margin-top:12px;font:500 11px var(--mono);color:var(--ink-dim);letter-spacing:.08em"></div>
-    <div class="hinweis">Upgrades wirken sofort — Raub-Mechs zahlen 1.200 € pro Abschuss.</div>
+    <div class="hinweis">Klick = kaufen · scrollen zum Blättern · ESC/K schließt · Upgrades wirken sofort — Raub-Mechs zahlen 1.200 €.</div>
   </div>
   <div id="wheel">
     <svg viewBox="-210 -210 420 420"></svg>
@@ -57753,12 +57760,14 @@ void main() {
         this.shopOpen = false;
         this.G.timeScale = this._prevTs;
         this.G.ui.shop(false);
+        this.G.input.requestLock();
       } else {
         this.shopOpen = true;
         this._prevTs = this.G.timeScale;
         this.G.timeScale = 0;
         this.G.ui.renderShop();
         this.G.ui.shop(true);
+        if (document.exitPointerLock) document.exitPointerLock();
       }
     }
     shopInput() {
@@ -58504,26 +58513,61 @@ void main() {
       const K2 = this.G.krieg;
       if (!K2) return;
       const rows = KRIEG_UPGRADES_VIEW.map((u2, i) => {
+        const nr = i < 9 ? String(i + 1) : "\xB7";
         const hat = K2.owned.has(u2.id);
         const reicht = K2.money >= u2.preis;
         const rangNeed = (u2.rang || 0) > K2.rang ? `<small class="srang">RANG ${u2.rang} n\xF6tig \u2014 XP durch Kills</small>` : "";
-        return `<div class="srow ${hat ? "hat" : reicht ? "kaufbar" : "teuer"}"><span class="skey">${i + 1}</span><span class="sname">${u2.name}<small>${u2.text}${rangNeed}</small></span><span class="spreis">${hat ? "EINGEBAUT" : geld(u2.preis)}</span></div>`;
+        return `<div class="srow ${hat ? "hat" : reicht ? "kaufbar" : "teuer"}" data-i="${i}"><span class="skey">${nr}</span><span class="sname">${u2.name}<small>${u2.text}${rangNeed}</small></span><span class="spreis">${hat ? "EINGEBAUT" : geld(u2.preis)}</span></div>`;
       }).join("");
       this.el.shopRows.innerHTML = rows;
+      this.shopKlickBind();
       this.el.shop.querySelector("#shop-konto").textContent = geld(K2.money) + (K2.rang ? " \xB7 RANG " + K2.rang + " \xB7 " + K2.xp + " XP" : "");
+      if (!this.el.shopRows.dataset.klick) {
+        this.el.shopRows.dataset.klick = "1";
+        this.el.shopRows.addEventListener("click", (e) => {
+          const r = e.target.closest(".srow");
+          if (!r) return;
+          this.G.krieg.buy(+r.dataset.i);
+          this.renderShop();
+        });
+      }
       this.el.shop.querySelector("#shop-hinweis").innerHTML = "Zifferntaste 1\u20139, 0 = kaufen \xB7 <b>greifhaken/dash/russ zuerst</b> \u2014 g\xFCnstige Upgrades brauchen keinen Rang";
     }
     settingsToggle() {
-      const el = this.el.settings;
-      this.settingsOpen = !this.settingsOpen;
-      el.style.display = this.settingsOpen ? "block" : "none";
       if (this.settingsOpen) {
-        const G2 = this.G;
-        el.querySelector("#set-schatten").textContent = G2.sun.castShadow ? "AN" : "AUS";
-        el.querySelector("#set-bloom").textContent = G2.postfx.bloom1 > 0.05 ? "AN" : "AUS";
-        el.querySelector("#set-dpr").textContent = String(G2.dpr);
-        el.querySelector("#set-regen").textContent = window.__regen ? "AN" : "AUS";
+        this.settingsOpen = false;
+        this.el.settings.style.display = "none";
+        this.G.input.requestLock();
+        return;
       }
+      this.settingsOpen = true;
+      this.el.settings.style.display = "block";
+      if (document.exitPointerLock) document.exitPointerLock();
+      const G2 = this.G;
+      this.el.settings.querySelector("#set-schatten").textContent = G2.sun.castShadow ? "AN" : "AUS";
+      this.el.settings.querySelector("#set-bloom").textContent = G2.postfx.bloom1 > 0.05 ? "AN" : "AUS";
+      this.el.settings.querySelector("#set-dpr").textContent = String(G2.dpr);
+      this.el.settings.querySelector("#set-regen").textContent = window.__regen ? "AN" : "AUS";
+      if (!this.el.settings.dataset.klick) {
+        this.el.settings.dataset.klick = "1";
+        this.el.settings.querySelectorAll(".srow").forEach((r, i) => r.addEventListener("click", () => this.settingsAktion(i)));
+        this.el.settings.querySelector("[data-close]").addEventListener("click", () => this.settingsToggle());
+      }
+    }
+    shopKlickBind() {
+      if (!this.el.shop.dataset.klick) {
+        this.el.shop.dataset.klick = "1";
+        this.el.shopRows.addEventListener("click", (e) => {
+          const r = e.target.closest(".srow");
+          if (!r) return;
+          this.G.krieg.buy(+r.dataset.i);
+          this.renderShop();
+        });
+        this.el.shop.querySelector("[data-close]").addEventListener("click", () => this.G.krieg.toggleShop());
+      }
+    }
+    settingsKlick(i) {
+      this.settingsAktion(i);
     }
     settingsAktion(i) {
       const G2 = this.G;
@@ -61402,6 +61446,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     start.addEventListener("click", begin);
     input.onLockChange = (locked) => {
       if (!locked && G.state === "playing" && G.realTime > 2) {
+        if (krieg.shopOpen || ui && ui.settingsOpen) return;
         start.classList.remove("hidden");
         document.getElementById("go-text").textContent = "Click to resume";
       }
@@ -61467,6 +61512,18 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           if (input.pressed("KeyK") && !weapons.wheelOpen) krieg.toggleShop();
           if (input.pressed("KeyN")) krieg.arenaToggle();
           if (input.pressed("KeyO")) ui.settingsToggle();
+          if (input.pressed("Escape")) {
+            let zu = false;
+            if (krieg.shopOpen) {
+              krieg.toggleShop();
+              zu = true;
+            }
+            if (ui.settingsOpen) {
+              ui.settingsToggle();
+              zu = true;
+            }
+            if (zu) input.requestLock();
+          }
           if (input.pressed("KeyJ")) {
             if (krieg.owned.has("rauch")) {
               krieg.rauchT = 6;
