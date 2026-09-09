@@ -59973,6 +59973,10 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     // ---- per frame -----------------------------------------------------------------------------------------------------
     update(dt3) {
       const G2 = this.G, W = G2.world;
+      if (!this.climb && this.pos.y < W.groundHeight(this.pos.x, this.pos.z) - 3) {
+        this.pos.y = W.groundHeight(this.pos.x, this.pos.z);
+        this.vel.y = 0;
+      }
       if (!isFinite(this.pos.x + this.pos.y + this.pos.z + this.vel.x + this.vel.y + this.vel.z + this.yaw + this.speed)) {
         if (!this._nanT || G2.time - this._nanT > 10) {
           console.warn("mech: NaN-Zustand zurueckgesetzt");
@@ -60191,6 +60195,12 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this.aimPitch = cam.pitch;
       if (this.climb) {
         const box2 = this.climb.box;
+        this.climb.t = (this.climb.t || 0) + dt3;
+        const weitWeg = Math.hypot(this.pos.x - (box2.minX + box2.maxX) / 2, this.pos.z - (box2.minZ + box2.maxZ) / 2) > (box2.maxX - box2.minX + box2.maxZ - box2.minZ) / 2 + 12;
+        if (box2.dead || this.climb.t > 14 || weitWeg) {
+          this.climb = null;
+          this.vel.set(0, 0, 0);
+        }
         if (box2.dead) {
           this.climb = null;
           this.vel.set(0, 0, 0);
@@ -60439,6 +60449,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       }
       this.aim();
       this.firing = Math.max(0, this.firing - dt3);
+      if (this.reloadT > 0) this.reloadT = Math.max(0, this.reloadT - dt3);
       const fire = I2.mouseDown(0) && !stomping && !wheelOpen;
       if (this.weapon === 0) {
         this.gunStop();
