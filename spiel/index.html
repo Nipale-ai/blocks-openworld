@@ -53244,7 +53244,7 @@ void main() {
           w3.contact = true;
           contacts++;
           const cc = Math.min(comp, d.susp.travel + 0.25);
-          const rate = (cc - prev) / dt3;
+          const rate = clamp2((cc - prev) / dt3, -120, 120);
           w3.comp = cc;
           let F2 = d.susp.stiffness * cc + d.susp.damping * rate;
           if (cc > d.susp.travel) F2 += (cc - d.susp.travel) * d.susp.stiffness * 10;
@@ -53303,7 +53303,7 @@ void main() {
       const Fdrag = -(0.5 * 1.2 * d.dragCoef * 2.4 * u2 * Math.abs(u2)) - 0.014 * m * GRAV * Math.tanh(u2) - sign2(u2) * over * over * 60;
       let Fx = Fdrive + Fdrag;
       const brakeImp = Math.min(Fbrake * dt3, m * Math.abs(u2));
-      Fx -= sign2(u2) * brakeImp / dt3;
+      Fx -= sign2(u2) * Math.min(brakeImp / dt3, m * 80);
       const a = d.wheelbase / 2, b = d.wheelbase / 2;
       const absU = Math.max(Math.abs(u2), 0.4);
       const muF = d.gripLat * (this.wheelspin > 0.3 && d.drive === "front" ? 0.75 : 1), muR = d.gripLat * d.gripRearMul * (c.handbrake ? 0.5 : 1) * (this.wheelspin > 0.3 && d.drive === "rear" ? 0.7 : 1);
