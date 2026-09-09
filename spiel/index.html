@@ -56219,7 +56219,7 @@ void main() {
         const thc = hx * dx + hy * dy + hz * dz;
         if (thc < 0 || thc > bt + 3) continue;
         const hd2 = hx * hx + hy * hy + hz * hz - thc * thc;
-        const hR = 2.6;
+        const hR = 4.5;
         if (hd2 < hR * hR) {
           const ht2 = Math.max(0.1, thc - Math.sqrt(hR * hR - hd2));
           if (ht2 < bt) {
@@ -57556,6 +57556,14 @@ void main() {
     update(dt3) {
       const G2 = this.G, P = G2.player;
       this.rotor.rotation.y += dt3 * 22;
+      if (P.dead || G2.police.stars < 5) {
+        this.leave = (this.leave || 0) + dt3;
+        this.pos.y += 16 * dt3;
+        this.pos.z += 18 * dt3;
+        this.mesh.rotation.y += dt3;
+        if (this.leave > 5) return "remove";
+        return;
+      }
       if (this.dead) {
         this.pos.y -= 20 * dt3;
         this.mesh.rotation.z += 1.2 * dt3;
@@ -58317,7 +58325,7 @@ void main() {
       const stars = G2.police.stars;
       for (let i = this.helis.length - 1; i >= 0; i--) {
         const h = this.helis[i];
-        if (h.update(dt3) === "remove" || h.dead && h.pos.y <= 1) {
+        if (h.update(dt3) === "remove" || h.dead && h.pos.y <= 1 || h.leave && h.leave > 5) {
           h.remove();
           this.helis.splice(i, 1);
         }
