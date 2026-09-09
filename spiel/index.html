@@ -53652,6 +53652,8 @@ void main() {
         this.controls.throttle = 0;
         this.controls.brake = 1;
         this.sirenOn = false;
+        this.vel.x = 0;
+        this.vel.z = 0;
         this.updateMesh(dt3);
         this.nanGuard();
         return;
@@ -56502,7 +56504,7 @@ void main() {
       if (cd && this.time - (this.crimeCd[kind] ?? -99) < cd) return;
       this.crimeCd[kind] = this.time;
       if (W.witnessed[kind] && !this.witness(pos || P.pos)) return;
-      this.points = Math.min(this.points + pts, W.thresholds[5] + 4);
+      this.points = Math.min(this.points + pts, W.thresholds[W.thresholds.length - 1] + 4);
       let s = 0;
       for (let i = 5; i >= 1; i--) if (this.points >= W.thresholds[i]) {
         s = i;
@@ -56533,7 +56535,7 @@ void main() {
     setStars(s) {
       const G2 = this.G, W = this.W;
       const prev = this.stars;
-      this.stars = clamp2(s | 0, 0, 5);
+      this.stars = clamp2(s | 0, 0, 6);
       this.points = this.stars < prev ? W.thresholds[this.stars] : Math.max(this.points, W.thresholds[this.stars]);
       this.evade = 0;
       this.hidden = 0;
@@ -56676,7 +56678,7 @@ void main() {
             break;
           }
         }
-        if (!seen) for (const n2 of this.officers) {
+        if (!seen && !(G2.krieg && G2.krieg.rauchT > 0)) for (const n2 of this.officers) {
           if (n2.dead || n2.state === "leave") continue;
           const dx = n2.pos.x - px2, dz = n2.pos.z - pz2;
           if (dx * dx + dz * dz > 60 * 60) continue;
@@ -56688,6 +56690,7 @@ void main() {
       }
       if (G2.krieg && G2.krieg.rauchT > 0) {
       } else if (G2.mechSys && G2.mechSys.piloted && !P.dead && this.stars > 0) seen = true;
+      if (G2.krieg && G2.krieg.rauchT > 0) seen = false;
       this.seen = seen;
       if (!this.contact && this.stars > 0) {
         this.noContactT += dt3;
@@ -57219,7 +57222,7 @@ void main() {
     damage(amount, kind, source) {
       if (this.dead || this.state === "falling" || amount <= 0) return;
       if (this.tier === "schild") {
-        const quelle = source === "player" ? G2.player.pos : source && source.pos || G2.player.pos;
+        const quelle = source === "player" ? this.G.player.pos : source && source.pos || this.G.player.pos;
         const aw = Math.abs(angleDelta(this.yaw, Math.atan2(quelle.x - this.pos.x, quelle.z - this.pos.z)));
         if (aw < 0.9) {
           amount *= 0.2;
@@ -60776,6 +60779,8 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     updateGun(dt3) {
       const G2 = this.G, g2 = this.gun, Gd = MECH.gun;
       g2.spin = clamp2(g2.spin + (g2.on ? dt3 / Gd.spinUp : -dt3 / (Gd.spinUp * 0.8)), 0, 1);
+      if (g2.on) this.heat = Math.min(1, this.heat + Gd.heatRate * dt3);
+      else this.heat = Math.max(0, this.heat - Gd.coolRate * dt3);
       if (this.barrels) this.barrels.rotation.z += g2.spin * 34 * dt3;
       for (let i = g2.tr.length - 1; i >= 0; i--) {
         const t2 = g2.tr[i];
@@ -61731,6 +61736,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     window.__regen = false;
     let wetterT = 150;
     requestAnimationFrame(frame);
+    window.__KUP = KRIEG_UPGRADES_VIEW;
     window.__dbg = {
       start: () => begin(),
       state: () => ({ state: G.state, time: +G.time.toFixed(2), pos: [player.pos.x, player.pos.y, player.pos.z].map((v) => +v.toFixed(2)), yaw: +player.yaw.toFixed(2), hp: Math.round(player.health), pstate: player.state, vehicle: player.vehicle ? player.vehicle.isMech ? { type: "mech", speed: +player.vehicle.speed.toFixed(2), hp: Math.round(player.vehicle.hp) } : { type: player.vehicle.type, speed: +player.vehicle.speed.toFixed(2), rpm: Math.round(player.vehicle.rpm), gear: player.vehicle.gear, hp: Math.round(player.vehicle.hp), slip: +player.vehicle.slip.toFixed(2) } : null, weapon: weapons.current.def.id, ammo: weapons.current.ammo, reloading: weapons.current.reloading, wheel: weapons.wheelOpen, timeScale: G.timeScale, cam: [camera.position.x, camera.position.y, camera.position.z].map((v) => +v.toFixed(2)), camDist: +gcam.curDist.toFixed(2), fps: ui.fpsShown, draws: renderer.info.render.calls, tris: renderer.info.render.triangles, kills: G.stats.kills, wrecks: G.stats.wrecks, mech: mechSys.mech ? mechSys.mech.state : null, shots: weapons.shotsFired, hits: weapons.hits, npcShots: weapons.npcShots || 0, frameMs: G.frameMs, projectiles: weapons.projectiles.length, npcs: npcs.list.length, npcStates: npcs.list.reduce((a, n2) => {
