@@ -86,7 +86,8 @@
   #wanted.evading #evade{opacity:1}
   #evade>b{display:block;height:100%;width:0;background:var(--accent2);box-shadow:0 0 8px var(--accent2)}
   /* directional damage indicator: a short arc that points at the shooter */
-  #dmgdir{position:absolute;left:50%;top:50%;width:190px;height:190px;margin:-95px 0 0 -95px;border-radius:50%;border:4px solid transparent;border-top-color:rgba(255,70,50,.95);opacity:0;pointer-events:none;box-shadow:0 0 0 rgba(0,0,0,0)}
+  #dmgdir{position:absolute;left:50%;top:50%;width:210px;height:210px;margin:-105px 0 0 -105px;border-radius:50%;border:7px solid transparent;border-top-color:rgba(255,60,40,1);border-left-color:rgba(255,60,40,.55);border-right-color:rgba(255,60,40,.55);opacity:0;pointer-events:none;filter:drop-shadow(0 0 9px rgba(255,60,40,.8))}
+  #dmgdir::before{content:'';position:absolute;left:50%;top:-16px;margin-left:-11px;border-left:11px solid transparent;border-right:11px solid transparent;border-bottom:15px solid rgba(255,60,40,1)}
   #msg{position:absolute;left:50%;top:22%;transform:translateX(-50%);font:700 clamp(22px,4vw,44px)/1.1 var(--sans);letter-spacing:-.02em;text-align:center;text-shadow:0 2px 20px rgba(0,0,0,.6);opacity:0;transition:opacity .3s;pointer-events:none}
   #msg.show{opacity:1}
   #msg small{display:block;font:500 14px var(--mono);letter-spacing:.14em;color:var(--accent);margin-top:10px;text-transform:uppercase}
@@ -50572,8 +50573,21 @@ void main() {
       } else if (kind === "ignition") {
         this.thump(o, t2, 120, 60, 0.35, 0.4, "sawtooth");
         this.crack(o, t2, 300, 1, 0.3, 0.3);
+      } else if (kind === "kauf") {
+        for (const [i, f] of [[0, 880], [0.07, 1175], [0.14, 1760]]) this.thump(o, t2 + i, f, f * 0.99, 0.09, 0.3, "square");
+        this.crack(o, t2 + 0.16, 3400, 2.5, 0.05, 0.2);
+      } else if (kind === "rangup") {
+        for (const [i, f] of [[0, 392], [0.13, 523], [0.26, 659], [0.39, 784]]) {
+          this.thump(o, t2 + i, f, f, 0.22, 0.3, "triangle");
+          this.thump(o, t2 + i, f * 2, f * 2, 0.14, 0.1, "sine");
+        }
+        this.thump(o, t2 + 0.52, 1047, 1047, 0.5, 0.3, "triangle");
+      } else if (kind === "arena") {
+        this.thump(o, t2, 98, 92, 0.7, 0.6, "sawtooth");
+        this.thump(o, t2 + 0.35, 147, 140, 0.5, 0.5, "sawtooth");
+        this.crack(o, t2, 900, 1.4, 0.3, 0.3);
       }
-      v.kill(t2 + 0.6);
+      v.kill(t2 + 1.4);
     }
     // wanted-level stings (non-spatial): 'up' = two-note stab, 'down' = falling tone, 'clear' = soft chime
     sting(kind) {
@@ -50591,6 +50605,15 @@ void main() {
         for (const [i, f] of [[0, 523], [0.12, 659], [0.24, 784]]) this.thump(o, t2 + i, f, f * 0.995, 0.5, 0.22, "sine");
       }
       v.kill(t2 + 1.2);
+    }
+    // Runde 33 (#6): kurzes raeumliches Warn-Piepen (Kamikaze-Drohne vor dem Sturzflug)
+    peep(p, f = 2100) {
+      if (!this.ready) return;
+      if (this.dist(p) > 160) return;
+      const t2 = this.ctx.currentTime, v = this.voice(p, 4, "sfx", 120, 0.8), o = v.out;
+      this.thump(o, t2, f, f * 0.97, 0.06, 0.4, "square");
+      this.thump(o, t2 + 0.08, f * 1.19, f * 1.15, 0.05, 0.3, "square");
+      v.kill(t2 + 0.4);
     }
     // police radio: squelch, a short burst of band-limited noise "voice", squelch
     chatter(dur = 1.4) {
@@ -50653,22 +50676,25 @@ void main() {
       this.windF.frequency.setTargetAtTime(250 + speed01 * 1400, t2, 0.15);
     }
     // ---- round 10: the mech ------------------------------------------------------------------------------------
-    // a footfall of a 38-tonne walker: sub thump, a metallic clank and a short ground rumble
-    mechStep(p, k = 1) {
+    // a footfall of a 38-tonne walker: sub thump, a metallic clank and a short ground rumble.
+    // Runde 33 (#39): Klassen-Klang — LÄUFER leicht und kurz, PANZER tief mit Nachschlag, STURM wie bisher.
+    mechStep(p, k = 1, kl = "sturm") {
       if (!this.ready) return;
       const d = this.dist(p);
       if (d > 260 || this.voiceCount > 52) return;
       const t2 = this.ctx.currentTime, v = this.voice(p, 14, "sfx", 400, 1), o = v.out;
-      this.thump(o, t2, 62 * (0.9 + 0.2 * k), 22, 0.55, 1.3 * k);
-      this.thump(o, t2 + 0.01, 140, 50, 0.18, 0.5 * k, "triangle");
-      this.crack(o, t2, 420, 2.5, 0.09, 0.35 * k);
+      const f0 = kl === "laeufer" ? 92 : kl === "panzer" ? 44 : 62, g0 = kl === "laeufer" ? 0.55 : kl === "panzer" ? 1.35 : 1;
+      this.thump(o, t2, f0 * (0.9 + 0.2 * k), f0 * 0.36, kl === "laeufer" ? 0.32 : 0.55, 1.3 * k * g0);
+      this.thump(o, t2 + 0.01, f0 * 2.26, f0 * 0.8, 0.18, 0.5 * k * g0, "triangle");
+      this.crack(o, t2, kl === "panzer" ? 340 : 420, 2.5, 0.09, 0.35 * k * g0);
       this.click(o, t2, 0.6);
+      if (kl === "panzer") this.thump(o, t2 + 0.09, 38, 24, 0.3, 0.7 * k);
       {
-        const s = this.noise(this.brown, t2, 0.5);
+        const s = this.noise(this.brown, t2, kl === "laeufer" ? 0.3 : 0.5);
         const f = this.ctx.createBiquadFilter();
         f.type = "lowpass";
-        f.frequency.value = 160;
-        const g2 = this.envGain(t2, 0.6 * k, 0.01, 0.45);
+        f.frequency.value = kl === "laeufer" ? 220 : 160;
+        const g2 = this.envGain(t2, 0.6 * k * g0, 0.01, 0.45);
         s.connect(f);
         f.connect(g2);
         g2.connect(o);
@@ -50958,6 +50984,80 @@ void main() {
           v.kill(tt + 0.6);
         }
       };
+    }
+    // Runde 33 (#41): generativer Loop je FM-Sender — OfflineAudioContext rendert ~16 s Stereo aus einem
+    // Seed (Sendername): Kick/Bass/Arp/Pad/Hat. Ergebnis ist ein normaler AudioBuffer fuer die Radio-Kette.
+    async genLoop(seedName) {
+      const SR = 44100, DAU = 16;
+      const oc = new OfflineAudioContext(2, SR * DAU, SR);
+      let seed = 0;
+      for (const c of String(seedName)) seed = seed * 31 + c.charCodeAt(0) >>> 0;
+      const rng = () => (seed = seed * 1664525 + 1013904223 >>> 0) / 4294967296;
+      const bpm = 92 + Math.floor(rng() * 30), spb = 60 / bpm, takt = spb * 4, bars = Math.floor(DAU / takt);
+      const wurzel = 55 * Math.pow(2, Math.floor(rng() * 5) / 12), pent = [0, 3, 5, 7, 10];
+      const out = oc.createGain();
+      out.gain.value = 0.7;
+      out.connect(oc.destination);
+      const tone = (f, t0, d, type, g2, lp) => {
+        const o = oc.createOscillator();
+        o.type = type;
+        o.frequency.value = f;
+        const e = oc.createGain();
+        e.gain.setValueAtTime(1e-4, t0);
+        e.gain.exponentialRampToValueAtTime(g2, t0 + 0.012);
+        e.gain.exponentialRampToValueAtTime(1e-3, t0 + d);
+        let n2 = e;
+        if (lp) {
+          const fl = oc.createBiquadFilter();
+          fl.type = "lowpass";
+          fl.frequency.value = lp;
+          e.connect(fl);
+          n2 = fl;
+        }
+        o.connect(e);
+        n2.connect(out);
+        o.start(t0);
+        o.stop(t0 + d + 0.05);
+      };
+      const hat = (t0, g2) => {
+        const b = oc.createBuffer(1, SR * 0.05, SR), dd = b.getChannelData(0);
+        for (let i = 0; i < dd.length; i++) dd[i] = (Math.random() * 2 - 1) * (1 - i / dd.length);
+        const s = oc.createBufferSource();
+        s.buffer = b;
+        const fl = oc.createBiquadFilter();
+        fl.type = "highpass";
+        fl.frequency.value = 6500;
+        const e = oc.createGain();
+        e.gain.value = g2;
+        s.connect(fl);
+        fl.connect(e);
+        e.connect(out);
+        s.start(t0);
+      };
+      for (let b = 0; b < bars; b++) {
+        const t0 = b * takt, grund = wurzel * [1, 1, 1.189, 1.335][b % 4];
+        for (const iv of [1, 1.189, 1.498]) tone(grund * 4 * iv, t0, takt * 0.98, "triangle", 0.045, 1100);
+        for (let s = 0; s < 16; s++) {
+          const ts = t0 + s * takt / 16;
+          if (s % 4 === 0) {
+            const o = oc.createOscillator();
+            o.frequency.setValueAtTime(120, ts);
+            o.frequency.exponentialRampToValueAtTime(42, ts + 0.09);
+            const e = oc.createGain();
+            e.gain.setValueAtTime(0.85, ts);
+            e.gain.exponentialRampToValueAtTime(1e-3, ts + 0.22);
+            o.connect(e);
+            e.connect(out);
+            o.start(ts);
+            o.stop(ts + 0.25);
+          }
+          if (s % 2 === 0) tone(grund, ts, takt / 16 * 0.9, "sawtooth", 0.15, 480);
+          if (s % 8 === 4) tone(grund * 2, ts, takt / 8, "sawtooth", 0.1, 640);
+          if (rng() < 0.55) tone(grund * 8 * Math.pow(2, pent[Math.floor(rng() * 5)] / 12), ts, 0.085, "square", 0.045, 3400);
+          if (s % 4 === 2) hat(ts, 0.1);
+        }
+      }
+      return oc.startRendering();
     }
   };
   var SirenVoice = class {
@@ -51257,10 +51357,14 @@ void main() {
     }
     // the station list: assets/radio/stations.js (a plain script — works over http and from file://) unless RADIO_STATIONS was filled by hand
     ensureList() {
-      if (this.hasStations) return Promise.resolve();
-      if (!this.listP) this.listP = (typeof window !== "undefined" && window.__RADIO_STATIONS ? Promise.resolve() : loadScript(ASSET_BASE + "radio/stations.js")).then(() => {
-        for (const s of window.__RADIO_STATIONS || []) if (s && s.name && s.tracks && s.tracks.length) RADIO_STATIONS.push(s);
-      }).catch((e) => {
+      const sync = () => {
+        for (const s of window.__RADIO_STATIONS || []) if (s && s.name && s.tracks && s.tracks.length && !RADIO_STATIONS.some((x) => x.name === s.name)) RADIO_STATIONS.push(s);
+      };
+      if (typeof window !== "undefined" && window.__RADIO_STATIONS) {
+        sync();
+        return Promise.resolve();
+      }
+      if (!this.listP) this.listP = loadScript(ASSET_BASE + "radio/stations.js").then(sync).catch((e) => {
         this.error = String(e && e.message || e);
       });
       return this.listP;
@@ -51320,21 +51424,33 @@ void main() {
       this.state = "tuning";
       this.error = null;
       try {
-        const key = tr.data || tr.file;
+        const key = tr.gen ? "gen:" + st.name : tr.data || tr.file;
         let buf = this.buffers.get(key);
         if (!buf) {
-          const ab = await this.bytes(tr);
-          if (gen !== this.gen) return this.label();
-          buf = await this.sys.ctx.decodeAudioData(ab);
+          if (tr.gen) buf = await this.sys.genLoop(st.name + " \xB7 " + this.title);
+          else {
+            const ab = await this.bytes(tr);
+            if (gen !== this.gen) return this.label();
+            buf = await this.sys.ctx.decodeAudioData(ab);
+          }
           this.buffers.set(key, buf);
         }
         if (gen !== this.gen) return this.label();
         this.play(buf, key);
         this.state = "playing";
       } catch (e) {
-        this.state = "nosignal";
-        this.error = String(e && e.message || e);
-        return `${st.name} \u2014 NO SIGNAL`;
+        try {
+          const key = "gen:" + st.name;
+          const buf = await this.sys.genLoop(st.name);
+          this.buffers.set(key, buf);
+          this.play(buf, key);
+          this.state = "playing";
+          return `${st.name} \u2014 ${this.title}`;
+        } catch (e2) {
+          this.state = "nosignal";
+          this.error = String(e && e.message || e);
+          return `${st.name} \u2014 NO SIGNAL`;
+        }
       }
       return `${st.name} \u2014 ${this.title}`;
     }
@@ -54126,7 +54242,7 @@ void main() {
         tpz += sy * 3;
       }
       const steer = this.steerTo(tpx, tpz);
-      let desired = this.state === "flee" ? 21 : this.limit;
+      let desired = this.state === "flee" ? G2.police.stars >= 5 ? 27 : 21 : this.limit;
       if (this.edge.kind === "turn") desired = Math.min(desired, this.state === "flee" ? 11 : 6);
       else if (this.edge.len - this.s < 16 && this.next && this.next.kind === "turn") desired = Math.min(desired, this.state === "flee" ? 12 : 7);
       if (this.pullOverT > 0) desired = Math.min(desired, this.pullOverT > 2.2 ? 3 : 0);
@@ -54788,6 +54904,21 @@ void main() {
           }
           v.wake();
         } else if (v.ai) v.ai.update(dt3);
+      }
+      if (G2.police.stars >= 5) {
+        this._panikT = (this._panikT || 0) - dt3;
+        if (this._panikT <= 0) {
+          this._panikT = 0.7;
+          const qp = P.vehicle && P.vehicle.isMech && P.vehicle.piloted ? P.vehicle.pos : P.pos;
+          for (const v of this.list) {
+            if (!v.ai || v.def.police || v.wrecked || v.ai.state === "bailed" || v.minenleger) continue;
+            if (Math.hypot(v.pos.x - qp.x, v.pos.z - qp.z) < 38) {
+              v.ai.state = "flee";
+              v.ai.fleeT = Math.max(v.ai.fleeT, 8);
+              v.wake();
+            }
+          }
+        }
       }
       for (const v of this.list) v.update(dt3);
       this.collidePairs();
@@ -57653,6 +57784,13 @@ void main() {
         this.torsoYaw = clamp2(angleDelta(this.yaw, soll), -0.7, 0.7);
         const sollRange = this.tier === "artillery" ? KRIEG.raubRollen.artillery.range : this.tier === "sprinter" ? KRIEG.raubRollen.sprinter.range : KRIEG.feind.range;
         const ruck = this.tier === "artillery" && d < KRIEG.raubRollen.artillery.fluchtdistanz;
+        if (this.tier === "artillery" && !this.dummy && !P.dead) {
+          this.moerserT = (this.moerserT ?? 4) - dt3;
+          if (this.moerserT <= 0 && d > 30 && d < 110) {
+            this.moerserT = rand(5.5, 7.5);
+            G2.krieg.moerserWurf(this, ziel);
+          }
+        }
         const willLaufen = ruck ? true : d > sollRange && !P.dead;
         const F = KRIEG.feind;
         const froK = this._frostBis && G2.time < this._frostBis ? 0.5 : 1;
@@ -57722,14 +57860,18 @@ void main() {
     }
   };
   var Drohne = class {
-    constructor(G2, x, z) {
+    constructor(G2, x, z, o = {}) {
       this.G = G2;
       this.drone = true;
       this.hp = 60;
       this.dead = false;
+      this.kamikaze = !!o.kamikaze;
+      this.sturzAb = rand(4.5, 7);
+      this.peepT = 1.2;
+      this.state = "ring";
       const g2 = new Group();
       const mat = new MeshStandardMaterial({ color: 2764600, roughness: 0.5, metalness: 0.6 });
-      const glow = new MeshStandardMaterial({ color: 659472, emissive: 16734794, emissiveIntensity: 2.2 });
+      const glow = new MeshStandardMaterial({ color: 659472, emissive: this.kamikaze ? 16752682 : 16734794, emissiveIntensity: 2.2 });
       g2.add(new Mesh(new BoxGeometry(0.7, 0.22, 0.7), mat));
       const auge = new Mesh(new BoxGeometry(0.3, 0.08, 0.1), glow);
       auge.position.set(0, -0.04, 0.36);
@@ -57762,7 +57904,7 @@ void main() {
         G2.audio.explosion(_a3, 0.7);
         G2.fx.chunk(_a3.x, _a3.y, _a3.z, randSpread(6), 5, randSpread(6), 0.5, 0.3, 0.3, 0.3);
         if (vomSpieler && G2.krieg) {
-          G2.krieg.pay(KRIEG.reward.drone, true);
+          G2.krieg.pay(Math.round(KRIEG.reward.drone * (this.kamikaze ? 1.5 : 1)), true);
           G2.krieg.addXP(6);
           G2.krieg.droneKills = (G2.krieg.droneKills || 0) + 1;
         }
@@ -57778,6 +57920,33 @@ void main() {
       const G2 = this.G, P = G2.player;
       this.t += dt3;
       const ziel = P.vehicle && P.vehicle.isMech && P.vehicle.piloted ? P.vehicle.pos : P.pos;
+      if (this.kamikaze && !P.dead) {
+        this.peepT -= dt3;
+        if (this.peepT <= 0) {
+          this.peepT = this.state === "sturz" ? 0.13 : Math.max(0.3, 1.4 - this.t * 0.14);
+          G2.audio.peep(this.pos, this.state === "sturz" ? 2500 : 1900);
+        }
+        if (this.state !== "sturz" && this.t > this.sturzAb) this.state = "sturz";
+        if (this.state === "sturz") {
+          _b3.set(ziel.x - this.pos.x, ziel.y + 1.4 - this.pos.y, ziel.z - this.pos.z);
+          const dd = _b3.length() || 1;
+          _b3.divideScalar(dd);
+          this.pos.x += _b3.x * 30 * dt3;
+          this.pos.y += _b3.y * 30 * dt3;
+          this.pos.z += _b3.z * 30 * dt3;
+          for (const r of this.rotoren) r.rotation.y += dt3 * 70;
+          this.mesh.rotation.y = Math.atan2(_b3.x, _b3.z);
+          const gy = G2.world.groundHeight(this.pos.x, this.pos.z);
+          if (dd < 3.2 || this.pos.y <= gy + 0.4) {
+            this.hp = 0;
+            this.dead = true;
+            G2.fx.explosion({ x: this.pos.x, y: this.pos.y, z: this.pos.z }, 4);
+            G2.audio.explosion(this.pos, 1.2);
+            G2.weapons.scheduleExplosion({ x: this.pos.x, y: this.pos.y, z: this.pos.z }, 5.5, 16, 95, this, 0.01);
+          }
+          return;
+        }
+      }
       this.yaw += dt3 * 0.5;
       const sollX = ziel.x + Math.sin(this.yaw) * this.ring, sollZ = ziel.z + Math.cos(this.yaw) * this.ring;
       this.pos.x += (sollX - this.pos.x) * Math.min(1, dt3 * 1.6);
@@ -57973,6 +58142,9 @@ void main() {
       this.milT = 40;
       this.helis = [];
       this.heliT = 50;
+      this.moerserGranaten = [];
+      this.mleger = null;
+      this.mlegerT = 45;
       this.radioFm = 0;
       this.xp = 0;
       this.rang = 0;
@@ -57993,11 +58165,12 @@ void main() {
       this._saveT = 0;
       this.raubKills = 0;
       this.titanDead = 0;
+      this.trioLaden();
     }
     // ---------------- Persistenz (Runde 20) ----------------
     save() {
       try {
-        localStorage.setItem("blocks.save", JSON.stringify({ m: this.money, u: [...this.owned], k: this.G.stats.kills || 0, w: this.G.stats.wrecks || 0, best: this.arenaBest || 0, xpsave: this.xp, titan: this.titanDead, klasse: this.klasse, chaos: this.chaosBest || 0, e: this.earnedTotal || 0 }));
+        localStorage.setItem("blocks.save", JSON.stringify({ m: this.money, u: [...this.owned], k: this.G.stats.kills || 0, w: this.G.stats.wrecks || 0, best: this.arenaBest || 0, xpsave: this.xp, titan: this.titanDead, klasse: this.klasse, chaos: this.chaosBest || 0, e: this.earnedTotal || 0, wk: this.waffenKills || {} }));
       } catch (e) {
       }
     }
@@ -58014,6 +58187,7 @@ void main() {
         this.titanDead = d.titan || 0;
         this.chaosBest = d.chaos || 0;
         this.earnedTotal = d.e || 0;
+        this.waffenKills = d.wk || {};
         if (d.klasse && KLASSEN[d.klasse]) this.klasse = d.klasse;
       } catch (e) {
       }
@@ -58056,9 +58230,96 @@ void main() {
       for (let i = 0; i < T.length; i++) if (this.xp >= T[i]) r = i;
       if (r > this.rang) {
         this.rang = r;
-        this.G.ui.msg("RANG " + r, "neue Upgrades freigeschaltet", 2.6);
-        this.G.audio.ui("open");
+        const geschenk = 250 * r;
+        this.pay(geschenk);
+        this.G.ui.msg("RANG " + r, "+" + geld(geschenk) + " Geschenk \xB7 neue Upgrades freigeschaltet", 3);
+        this.G.audio.ui("rangup");
+        this.save();
       }
+    }
+    // Runde 33 (#27): Waffen-Meilensteine — 10/50/100 Kills je Waffe (Mech-Slots + Fuss-Waffen), Banner + Bonus
+    waffeJetzt() {
+      const G2 = this.G, m = G2.mechSys.mech;
+      if (G2.player.state === "vehicle" && m && m.piloted) return ["raketen", "mg", "plasma", "flak", "moerser", "faust", "tesla"][m.weapon] || "mech";
+      if (G2.player.state === "vehicle") return "ramme";
+      return G2.weapons.current.def.id;
+    }
+    waffeKill() {
+      const id = this.waffeJetzt();
+      const wk = this.waffenKills = this.waffenKills || {};
+      wk[id] = (wk[id] || 0) + 1;
+      for (const [stufe, bonus] of [[10, 300], [50, 900], [100, 2e3]]) if (wk[id] === stufe) {
+        this.pay(bonus);
+        this.G.ui.msg("MEILENSTEIN " + stufe, stufe + " Kills mit " + id.toUpperCase() + " \xB7 +" + geld(bonus), 3);
+        this.G.audio.ui("rangup");
+        this.save();
+      }
+    }
+    // Runde 33 (#25): Tages-Trio — drei kleine Ziele pro Kalendertag, Stand in localStorage, Bonus-Geld
+    trioLaden() {
+      const G2 = this.G, heute = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+      let d = null;
+      try {
+        d = JSON.parse(localStorage.getItem("blocks.trio") || "null");
+      } catch (e) {
+      }
+      if (d && d.tag === heute && d.ziele && d.ziele.length === 3) {
+        this.trio = d;
+        return;
+      }
+      let seed = [...heute].reduce((s, c) => s * 31 + c.charCodeAt(0) >>> 0, 7);
+      const rng = () => (seed = seed * 1664525 + 1013904223 >>> 0) / 4294967296;
+      const defs = [
+        ["kills", "Absch\xFCsse", () => G2.stats.kills || 0, 15],
+        ["wrecks", "Wracks", () => G2.stats.wrecks || 0, 8],
+        ["drohnen", "Drohnen", () => this.droneKills || 0, 5],
+        ["feinde", "Raub-Mechs", () => this.raubKills || 0, 4],
+        ["verdienst", "Euro verdient", () => this.earnedTotal || 0, 3e3]
+      ];
+      const ziele = [];
+      while (ziele.length < 3) {
+        const t2 = defs[Math.floor(rng() * defs.length)];
+        if (!ziele.some((z) => z.id === t2[0])) ziele.push({ id: t2[0], name: t2[1], ziel: t2[3], start: t2[2](), n: 0, fertig: false });
+      }
+      this.trio = { tag: heute, ziele };
+      this.trioSpeichern();
+      this._trioGezeigt = false;
+    }
+    trioSpeichern() {
+      try {
+        localStorage.setItem("blocks.trio", JSON.stringify(this.trio));
+      } catch (e) {
+      }
+    }
+    trioUpdate(dt3) {
+      const T = this.trio;
+      if (!T) return;
+      this._trioT = (this._trioT || 0) - dt3;
+      if (this._trioT > 0) return;
+      this._trioT = 1;
+      const G2 = this.G;
+      if (!this._trioGezeigt && G2.ui) {
+        this._trioGezeigt = true;
+        G2.ui.msg("TAGES-TRIO", T.ziele.map((z) => z.ziel + "\xD7 " + z.name + " (" + z.n + "/" + z.ziel + ")").join(" \xB7 "), 4);
+      }
+      const quelle = { kills: () => G2.stats.kills || 0, wrecks: () => G2.stats.wrecks || 0, drohnen: () => this.droneKills || 0, feinde: () => this.raubKills || 0, verdienst: () => this.earnedTotal || 0 };
+      let alle = true;
+      for (const z of T.ziele) {
+        if (z.fertig) continue;
+        z.n = Math.max(0, Math.min(z.ziel, (quelle[z.id] ? quelle[z.id]() : 0) - z.start));
+        if (z.n >= z.ziel) {
+          z.fertig = true;
+          this.pay(500);
+          G2.ui.msg("TAGESZIEL \u2713", z.ziel + "\xD7 " + z.name + " \xB7 +500 \u20AC", 2.6);
+        }
+      }
+      for (const z of T.ziele) if (!z.fertig) alle = false;
+      if (alle && !T.bonusGezahlt) {
+        T.bonusGezahlt = true;
+        this.pay(1500);
+        G2.ui.msg("TAGES-TRIO KOMPLETT", "+1500 \u20AC Bonus \u2014 morgen gibt es neue", 3.5);
+      }
+      this.trioSpeichern();
     }
     killFeed(kind) {
       this.comboT = 5;
@@ -58147,6 +58408,7 @@ void main() {
         }
       }
       this.killFeed(istTitan ? 200 : 12);
+      this.waffeKill();
       const lohn = istTitan ? f.elite ? KRIEG.reward.titanElite : KRIEG.reward.titan : istCop ? KRIEG.reward.copMech : KRIEG.reward.feind;
       this.pay(lohn, true);
       this.G.ui.msg("+" + geld(lohn), istTitan ? f.elite ? "ELITE-TITAN ZERLEGT" : "TITAN ZERLEGT" : istCop ? "Polizei-Mech verschrottet" : "Raub-Mech verschrottet", istTitan ? 3.2 : 1.6);
@@ -58172,6 +58434,7 @@ void main() {
       }
     }
     onNpcKill(n2) {
+      this.waffeKill();
       if (n2.cop) {
         this.pay(KRIEG.reward.cop);
         this.copKillZaehler = (this.copKillZaehler || 0) + 1;
@@ -58233,7 +58496,7 @@ void main() {
       this.save();
       this.G.ui.renderShop();
       this.G.ui.msg(u2.name + " EINGEBAUT", "-" + geld(u2.preis), 1.8);
-      this.G.audio.ui("kill");
+      this.G.audio.ui("kauf");
       return true;
     }
     anwenden(u2) {
@@ -58489,6 +58752,11 @@ void main() {
       this.stadtUpdate(dt3);
       this.stationen(dt3);
       this.dronesUpdate(dt3);
+      this.moerserUpdate(dt3);
+      this.minenlegerUpdate(dt3);
+      this.trioUpdate(dt3);
+      this.blackoutUpdate(dt3);
+      this.zufallsUpdate(dt3);
       this.comboT -= dt3;
       if (this.comboT <= 0) this.combo = 0;
       this.rauchT = Math.max(0, this.rauchT - dt3);
@@ -58592,6 +58860,20 @@ void main() {
     }
     bountyStart() {
       const G2 = this.G;
+      if ((this.bountyKette || 0) >= 2 && Math.random() < 0.55) {
+        const stufe = Math.min(this.bountyKette - 1, 4);
+        const tier = ["std", "sprinter", "artillery", "schild"][stufe - 1] || "std";
+        const a = rand(0, 6.28);
+        const f = this.spawnFeind(clamp2(G2.player.pos.x + Math.sin(a) * 34, -235, 235), clamp2(G2.player.pos.z + Math.cos(a) * 34, -235, 235), { tier });
+        f.name = "KOPFGELD-ZIEL";
+        f.kopfgeld = true;
+        f.hp = f.maxHealth = Math.round(f.maxHealth * (1 + stufe * 0.45));
+        f.speedMax *= 1.1;
+        const lohn = 1500 + stufe * 600;
+        this.bounty = { text: "KOPFGELD-ZIEL (Stufe " + stufe + ") ausschalten", lohn, ziel: f, ist: (G22, B3) => B3.ziel.dead, rest: 300 };
+        G2.ui.msg("KOPFGELD-KETTE \xD7" + this.bountyKette, "Eskaliertes Ziel im Anflug \u2014 +" + geld(lohn), 3.6);
+        return;
+      }
       if (Math.random() < 0.25) {
         const namen = ["KARBO der Sammler", "BLECH-BIANCA", "ROSTIGER RAY", "SCHROTT-K\xD6NIG", "MOTZ", "DIE KLINGE"];
         const name = namen[Math.floor(Math.random() * namen.length)];
@@ -58636,7 +58918,7 @@ void main() {
     drohnenSchwarm(cx, cz) {
       const G2 = this.G;
       const c = cx !== void 0 ? cx : G2.player.pos.x, c2 = cz !== void 0 ? cz : G2.player.pos.z;
-      for (let i = 0; i < 3; i++) this.drones.push(new Drohne(G2, c + randSpread(18), c2 + randSpread(18)));
+      for (let i = 0; i < 3; i++) this.drones.push(new Drohne(G2, c + randSpread(18), c2 + randSpread(18), { kamikaze: i === 0 && G2.police.stars >= 4 }));
       G2.ui.msg("DROHNEN", "Kleine Laeufer im Anflug \u2014 Railgun-Futter", 2.2);
     }
     dronesUpdate(dt3) {
@@ -58718,6 +59000,171 @@ void main() {
         n2.root.position.copy(n2.pos);
         alive.push(n2);
         G2.ui.msg("DACH-SCH\xDCTZE", "Scharfsch\xFCtze auf einem Dach \u2014 Deckung!", 2.2);
+      }
+    }
+    // Runde 33 (#30): Blackout-Viertel — nachts faellt ein Block in Spielernaehe dunkel aus:
+    // die statischen Lampen-Eintraege im Light-Grid + Glows werden auf 0 gesetzt, Banden + Beute ziehen ein.
+    blackoutUpdate(dt3) {
+      const G2 = this.G;
+      if (this.blackout) {
+        const B2 = this.blackout;
+        B2.t -= dt3;
+        const weg = !window.__nacht || B2.t <= 0 || Math.hypot(B2.cx - G2.player.pos.x, B2.cz - G2.player.pos.z) > 320;
+        if (weg) {
+          const L2 = G2.lighting, d2 = L2.data;
+          for (const e of B2.aus) {
+            const o1 = (d2.length / 4 / 4 + e.i) * 4;
+            d2[o1] = e.r;
+            d2[o1 + 1] = e.g;
+            d2[o1 + 2] = e.b;
+          }
+          L2.dataTex.needsUpdate = true;
+          if (L2.glows) {
+            for (const e of B2.aus) {
+              L2.glows.setColorAt(e.i, new Color(e.gr, e.gg, e.gb));
+            }
+            L2.glows.instanceColor.needsUpdate = true;
+          }
+          for (const f of B2.feinds) if (!f.dead) f.state = "leave";
+          this.blackout = null;
+          this.blackoutT = rand(90, 150);
+        }
+        return;
+      }
+      if (!window.__nacht) return;
+      this.blackoutT = (this.blackoutT ?? 25) - dt3;
+      if (this.blackoutT > 0 || G2.state !== "playing" || this.arena || this.stadt) return;
+      const P = G2.player.pos, bloecke = (G2.world.blocks || []).filter((b2) => b2.lot && Math.hypot((b2.lot.minX + b2.lot.maxX) / 2 - P.x, (b2.lot.minZ + b2.lot.maxZ) / 2 - P.z) < 200);
+      if (!bloecke.length) {
+        this.blackoutT = 40;
+        return;
+      }
+      const b = bloecke[Math.floor(Math.random() * bloecke.length)], lot = b.lot, L = G2.lighting, d = L.data, MAXL2 = d.length / 16;
+      const aus = [];
+      (L.lampHeads || []).forEach((h, i) => {
+        if (h[0] >= lot.minX - 6 && h[0] <= lot.maxX + 6 && h[2] >= lot.minZ - 6 && h[2] <= lot.maxZ + 6) {
+          const o1 = (MAXL2 + i) * 4;
+          aus.push({ i, r: d[o1], g: d[o1 + 1], b: d[o1 + 2], gr: 1 * 0.55, gg: 0.66 * 0.55, gb: 0.3 * 0.55 });
+          d[o1] = 0;
+          d[o1 + 1] = 0;
+          d[o1 + 2] = 0;
+        }
+      });
+      L.dataTex.needsUpdate = true;
+      if (L.glows) {
+        for (const e of aus) L.glows.setColorAt(e.i, new Color(0, 0, 0));
+        L.glows.instanceColor.needsUpdate = true;
+      }
+      const cx = (lot.minX + lot.maxX) / 2, cz = (lot.minZ + lot.maxZ) / 2, feinds = [];
+      for (let i = 0; i < 2 + (G2.police.stars >= 5 ? 1 : 0); i++) {
+        const f = this.spawnFeind(cx + randSpread(20), cz + randSpread(20), { nest: true });
+        if (f) {
+          f.nest = true;
+          feinds.push(f);
+        }
+      }
+      for (let i = 0; i < 3; i++) {
+        const bx = cx + randSpread(24), bz = cz + randSpread(24);
+        const kiste = new Mesh(new BoxGeometry(1.2, 0.9, 0.9), new MeshStandardMaterial({ color: 3811856, emissive: 16760896, emissiveIntensity: 0.9 }));
+        kiste.position.set(bx, G2.world.groundHeight(bx, bz) + 0.5, bz);
+        G2.scene.add(kiste);
+        this.schaetze.push({ x: bx, z: bz, mesh: kiste });
+      }
+      this.blackout = { cx, cz, t: 80, aus, feinds };
+      G2.ui.msg("BLACKOUT-VIERTEL", "Stromausfall \u2014 Banden pl\xFCndern, Beute liegt in den Kisten", 4);
+      G2.audio.chatter(1.8);
+    }
+    // Runde 33 (#28): Zufalls-Events mit Funk-Durchsage und Timer — Geisellage, Amok-Fahrer, Heli-Notlandung
+    zufallsUpdate(dt3) {
+      const G2 = this.G, E2 = this.event;
+      if (!E2) {
+        this.eventT = (this.eventT ?? 110) - dt3;
+        if (this.eventT > 0 || G2.state !== "playing" || this.arena || this.stadt) return;
+        this.eventT = rand(130, 200);
+        const art = ["geisel", "amok", "notlandung"][Math.floor(Math.random() * 3)];
+        const a = rand(0, 6.28), dd = rand(50, 85);
+        const x = clamp2(G2.player.pos.x + Math.sin(a) * dd, -290, 290), z = clamp2(G2.player.pos.z + Math.cos(a) * dd, -290, 290);
+        if (art === "geisel") {
+          const taeter = [];
+          for (let i = 0; i < 3; i++) {
+            const n2 = G2.npcs.spawn(x + randSpread(6), z + randSpread(6), { armed: true, hostile: true, weapon: "pistol" });
+            n2.state = "guard";
+            taeter.push(n2);
+          }
+          const opfer = G2.npcs.spawn(x, z + 2, {});
+          opfer.state = "knocked";
+          opfer.knockT = 125;
+          this.event = { art, t: 120, taeter, opfer };
+          G2.audio.chatter(1.6);
+          G2.ui.msg("FUNK \u2014 GEISELLAGE", "Bewaffnete halten jemanden fest \u2014 T\xE4ter ausschalten: 1200 \u20AC", 4);
+        } else if (art === "amok") {
+          const v = G2.vehicles.list.find((v2) => v2.ai && !v2.def.police && !v2.wrecked && v2.driver !== "player" && !v2.minenleger && Math.hypot(v2.pos.x - x, v2.pos.z - z) < 80);
+          if (!v) {
+            this.eventT = 30;
+            return;
+          }
+          v.amok = true;
+          v._amokAi = v.ai;
+          v.ai = null;
+          this.event = { art, t: 60, v };
+          G2.audio.chatter(1.6);
+          G2.ui.msg("FUNK \u2014 AMOK-FAHRER", "ein Wagen rast auf dich zu \u2014 stopp ihn: 700 \u20AC", 3.5);
+        } else {
+          const h = new Hubschrauber(G2, x, z, {});
+          h.pos.y = 20;
+          this.helis.push(h);
+          const crew = [];
+          for (let i = 0; i < 2; i++) crew.push(G2.npcs.spawn(x + randSpread(5), z + randSpread(5), { armed: true, hostile: true }));
+          this.event = { art, t: 120, heli: h, crew };
+          G2.audio.chatter(1.6);
+          G2.ui.msg("FUNK \u2014 NOTLANDUNG", "Heli musste runter \u2014 Mannschaft sichert das Wrack: 900 \u20AC", 4);
+        }
+        return;
+      }
+      E2.t -= dt3;
+      if (E2.art === "geisel") {
+        if (E2.taeter.every((n2) => n2.dead)) {
+          this.pay(1200);
+          G2.ui.msg("GEISEL BEFREIT", "+1200 \u20AC", 3);
+          this.event = null;
+        } else if (E2.t <= 0 || E2.opfer.dead) {
+          G2.ui.msg("GEISELLAGE VORBEI", E2.opfer.dead ? "das Opfer hat es nicht geschafft" : "die T\xE4ter sind entkommen", 2.4);
+          this.event = null;
+        }
+      } else if (E2.art === "amok") {
+        const v = E2.v;
+        if (v.wrecked) {
+          this.pay(700);
+          G2.ui.msg("AMOK-FAHRER GESTOPPT", "+700 \u20AC", 2.6);
+          v.amok = false;
+          this.event = null;
+        } else if (E2.t <= 0) {
+          v.amok = false;
+          v.controls.throttle = 0;
+          v.controls.brake = 1;
+          v.ai = v._amokAi || v.ai;
+          G2.ui.msg("AMOK-FAHRER ENTKOMMEN", "", 2);
+          this.event = null;
+        } else {
+          const dx = G2.player.pos.x - v.pos.x, dz = G2.player.pos.z - v.pos.z;
+          v.controls.steer = clamp2(angleDelta(v.yaw, Math.atan2(dx, dz)) * 2.5, -1, 1);
+          v.controls.throttle = 1;
+          v.controls.brake = 0;
+          v.controls.reverse = false;
+          v.wake();
+          v.driver = "ai";
+        }
+      } else {
+        if (E2.crew.every((n2) => n2.dead)) {
+          this.pay(900);
+          G2.ui.msg("CREW AUSGESCHALTET", "+900 \u20AC", 2.6);
+          if (E2.heli && !E2.heli.dead) E2.heli.leave = 0.1;
+          this.event = null;
+        } else if (E2.t <= 0) {
+          if (E2.heli && !E2.heli.dead) E2.heli.leave = 0.1;
+          G2.ui.msg("NOTLANDUNG VORBEI", "die Mannschaft wurde abgeholt", 2);
+          this.event = null;
+        }
       }
     }
     // Runde 31: Benchmark starten (Einstellungen Zeile 7) — 20 s Sterne 5 + Regen, dann Ø/min/max fps
@@ -58814,6 +59261,7 @@ void main() {
       const zwang = ["laeufer", "sturm", "panzer"][Math.floor(Math.random() * 3)];
       this.arena = { cx, cz, welle: 0, t: 2.5, zwang, meilenstein: false };
       G2.ui.msg("ARENA \xB7 RUNDE DER " + KLASSEN[zwang].name + "-KLASSE", "Wellen-Lohn \xD71.5, wenn du " + KLASSEN[zwang].name + " pilotierst", 4);
+      G2.audio.ui("arena");
     }
     arenaUpdate(dt3) {
       const A2 = this.arena;
@@ -58862,18 +59310,58 @@ void main() {
       for (let i = 0; i < T.length; i++) if (this.xp >= T[i]) r = i;
       this.rang = r;
     }
+    // Runde 33 (#2): Artillerie-Feind wirft eine Granate im Bogen; roter Warnring am Ziel 1,6 s vorher.
+    moerserWurf(f, ziel) {
+      const G2 = this.G, tx = ziel.x + randSpread(7), tz = ziel.z + randSpread(7), ty = G2.world.groundHeight(tx, tz);
+      const flug = 1.7, sx = f.pos.x, sy = f.pos.y + 5.5, sz = f.pos.z;
+      const marker = new Mesh(new RingGeometry(1.2, 3.8, 24), new MeshBasicMaterial({ color: 16722458, transparent: true, opacity: 0.55, side: DoubleSide, depthWrite: false }));
+      marker.rotation.x = -Math.PI / 2;
+      marker.position.set(tx, ty + 0.15, tz);
+      G2.scene.add(marker);
+      this.moerserGranaten.push({ x: sx, y: sy, z: sz, vx: (tx - sx) / flug, vy: (ty - sy) / flug + 0.5 * 22 * flug, vz: (tz - sz) / flug, tx, tz, ty, age: 0, marker, quelle: f });
+      G2.audio.missileLaunch(f.pos);
+      if (!this._moerserGemeldet) {
+        this._moerserGemeldet = true;
+        G2.ui.msg("MOERSER", "roter Ring = Einschlag \u2014 raus da", 2.4);
+      }
+    }
+    moerserUpdate(dt3) {
+      const G2 = this.G;
+      for (let i = this.moerserGranaten.length - 1; i >= 0; i--) {
+        const s = this.moerserGranaten[i];
+        s.age += dt3;
+        s.vy -= 22 * dt3;
+        s.x += s.vx * dt3;
+        s.y += s.vy * dt3;
+        s.z += s.vz * dt3;
+        s.marker.material.opacity = 0.3 + 0.5 * Math.abs(Math.sin(s.age * 12));
+        s.marker.scale.setScalar(1 + 0.15 * Math.sin(s.age * 9));
+        G2.fx.glow.spawn({ x: s.x, y: s.y, z: s.z, s0: 0.9, s1: 0.2, a0: 0.8, a1: 0, life: 0.1, r: [3, 0.8, 0.2] });
+        if (s.y <= s.ty + 0.3 || s.age > 4.5) {
+          G2.weapons.scheduleExplosion({ x: s.tx, y: s.ty + 0.5, z: s.tz }, 6.5, 16, 95, s.quelle, 0);
+          G2.audio.explosion({ x: s.tx, y: s.ty + 0.5, z: s.tz }, 1.2);
+          G2.fx.explosion({ x: s.tx, y: s.ty + 0.4, z: s.tz }, 5);
+          G2.scene.remove(s.marker);
+          this.moerserGranaten.splice(i, 1);
+        }
+      }
+    }
     // ---------------- Runde 22: Minen (4+ Sterne) ----------------
+    legeMine(x, z) {
+      const G2 = this.G;
+      const mine = { x, z, mesh: new window.THREE.Mesh(new window.THREE.SphereGeometry(0.5, 10, 8), new window.THREE.MeshStandardMaterial({ color: 1707277, emissive: 16722458, emissiveIntensity: 1.6 })) };
+      mine.mesh.position.set(x, G2.world.groundHeight(x, z) + 0.3, z);
+      G2.scene.add(mine.mesh);
+      this.mines.push(mine);
+      return mine;
+    }
     minenUpdate(dt3) {
       const G2 = this.G;
       this.mineT -= dt3;
       if (G2.police.stars >= 4 && this.mines.length < 10 && this.mineT <= 0) {
         for (let i = 0; i < 5; i++) {
           const a = rand(0, 6.28), d = rand(40, 90);
-          const x = clamp2(G2.player.pos.x + Math.sin(a) * d, -300, 300), z = clamp2(G2.player.pos.z + Math.cos(a) * d, -300, 300);
-          const mine = { x, z, mesh: new window.THREE.Mesh(new window.THREE.SphereGeometry(0.5, 10, 8), new window.THREE.MeshStandardMaterial({ color: 1707277, emissive: 16722458, emissiveIntensity: 1.6 })) };
-          mine.mesh.position.set(x, G2.world.groundHeight(x, z) + 0.3, z);
-          G2.scene.add(mine.mesh);
-          this.mines.push(mine);
+          this.legeMine(clamp2(G2.player.pos.x + Math.sin(a) * d, -300, 300), clamp2(G2.player.pos.z + Math.cos(a) * d, -300, 300));
         }
         this.mineT = 50;
       }
@@ -58889,6 +59377,50 @@ void main() {
             break;
           }
         }
+      }
+    }
+    // Runde 33 (#5): Minenleger — ab 5 Sternen wird ein KI-Auto zum Lege-Auto: es flieht und
+    // legt hinter sich einen Minenteppich. Prioritaetsziel: Zerstoerung zahlt 800 €.
+    minenlegerUpdate(dt3) {
+      const G2 = this.G;
+      this.mlegerT -= dt3;
+      if (!this.mleger && G2.police.stars >= 5 && this.mlegerT <= 0) {
+        const v2 = G2.vehicles.list.find((v3) => v3.ai && !v3.wrecked && !v3.def.police && !v3.militaer && v3.driver !== "player" && Math.hypot(v3.pos.x - G2.player.pos.x, v3.pos.z - G2.player.pos.z) < 140);
+        if (v2) {
+          this.mleger = v2;
+          v2.minenleger = true;
+          v2.legT = 0;
+          if (v2.ai) {
+            v2.ai.state = "flee";
+            v2.ai.fleeT = 40;
+          }
+          G2.ui.msg("MINENLEGER", "Auto legt Minen hinter sich \u2014 zerleg ihn, sonst liegt die Strasse voll", 3.4);
+          this.mlegerT = 75;
+        }
+      }
+      const v = this.mleger;
+      if (!v) return;
+      if (v.wrecked || v.driver === "player" || !v.ai) {
+        if (v.wrecked && !v._legerBezahlt && Math.hypot(v.pos.x - G2.player.pos.x, v.pos.z - G2.player.pos.z) < 300) {
+          v._legerBezahlt = true;
+          this.pay(800);
+          this.addXP(60);
+          G2.ui.msg("MINENLEGER ERLEDIGT", "+800 \u20AC", 2.2);
+        }
+        v.minenleger = false;
+        this.mleger = null;
+        return;
+      }
+      v.ai.state = "flee";
+      v.ai.fleeT = Math.max(v.ai.fleeT, 4);
+      v.legT -= dt3;
+      if (v.legT <= 0 && Math.abs(v.speed) > 4 && this.mines.length < 24) {
+        v.legT = 1.9;
+        this.legeMine(v.pos.x - Math.sin(v.yaw) * 4.5, v.pos.z - Math.cos(v.yaw) * 4.5);
+      }
+      if (Math.hypot(v.pos.x - G2.player.pos.x, v.pos.z - G2.player.pos.z) > 320) {
+        v.minenleger = false;
+        this.mleger = null;
       }
     }
     // ---------------- Runde 22: Militaer bei 6 Sternen (feindliche Panzer) ----------------
@@ -58949,22 +59481,22 @@ void main() {
       if (typeof window === "undefined" || !window.__RADIO_STATIONS) return;
       const namen = window.__RADIO_STATIONS.map((x) => x.name);
       if (fm >= 1 && !namen.includes("ARENA FM")) {
-        window.__RADIO_STATIONS.push({ name: "ARENA FM", tracks: [{ title: "Arena-Thema", seconds: 51.1, file: "radio_neon_drive.ogg" }] });
+        window.__RADIO_STATIONS.push({ name: "ARENA FM", tracks: [{ title: "Arena-Thema", gen: true }] });
         if (G2.audio.radio) {
           G2.audio.radio.listP = null;
           G2.audio.radio.list = null;
           if (G2.audio.radio.preload) G2.audio.radio.preload();
         }
-        G2.ui.msg("RADIO FREIGESCHALTET", "ARENA FM \xB7 3 Arena-Wellen geschafft", 3);
+        G2.ui.msg("RADIO FREIGESCHALTET", "ARENA FM \xB7 eigener Synth-Loop \xB7 3 Arena-Wellen geschafft", 3);
       }
       if (fm >= 2 && !namen.includes("ARENA FM GOLD")) {
-        window.__RADIO_STATIONS.unshift({ name: "ARENA FM GOLD", tracks: [{ title: "Gold Era", seconds: 51.1, file: "radio_sunset_fm.ogg" }] });
+        window.__RADIO_STATIONS.unshift({ name: "ARENA FM GOLD", tracks: [{ title: "Gold Era", gen: true }] });
         if (G2.audio.radio) {
           G2.audio.radio.listP = null;
           G2.audio.radio.list = null;
           if (G2.audio.radio.preload) G2.audio.radio.preload();
         }
-        G2.ui.msg("ARENA FM GOLD", "5 Wellen \u2014 im Radio-Rotationslauf", 3);
+        G2.ui.msg("ARENA FM GOLD", "eigener Synth-Loop \xB7 5 Wellen", 3);
       }
     }
     heliSpawn() {
@@ -59100,8 +59632,9 @@ void main() {
     // arc on the screen edge pointing at where the damage came from (world position)
     damageFrom(pos) {
       this.dmgPos = { x: pos.x, z: pos.z };
-      this.dmgT = 1.1;
+      this.dmgT = 1.5;
     }
+    // Runde 33 (#48): Pfeil laenger + deutlicher
     hitmarker(kill) {
       this.el.hitmark.classList.add("show");
       this.el.hitmark.classList.toggle("kill", !!kill);
@@ -59347,7 +59880,14 @@ void main() {
         ["Chaos-Rekord", z(K2.chaosBest) + " PKT"],
         ["Arena-Bestwert", (K2.arenaBest || 0) + " Wellen"],
         ["Klasse", K2.klasse ? KLASSEN[K2.klasse].name : "STURM"],
-        ["Rang", (K2.rang || 0) + " \xB7 " + z(K2.xp) + " XP"]
+        ["Rang", (K2.rang || 0) + " \xB7 " + z(K2.xp) + " XP"],
+        // Runde 33 (#25/#27): Tages-Trio-Fortschritt + Top-Waffe im Statistik-Panel
+        ...K2.trio ? K2.trio.ziele.map((zz, i) => ["Tagesziel " + (i + 1), (zz.fertig ? "\u2713 " : "") + zz.n + "/" + zz.ziel + " " + zz.name]) : [],
+        ...(() => {
+          const wk = K2.waffenKills || {};
+          const top = Object.entries(wk).sort((a, b) => b[1] - a[1])[0];
+          return top ? [["Top-Waffe", top[0].toUpperCase() + " \xB7 " + z(top[1]) + " Kills"]] : [];
+        })()
       ];
       this.el.stats.querySelector("#stats-zeilen").innerHTML = zeilen.map(([a, b]) => `<div class="srow"><span class="sname">${a}</span><span class="spreis">${b}</span></div>`).join("");
       if (!this.el.stats.dataset.klick) {
@@ -61071,7 +61611,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         G2.fx.dust({ x: _v8.x, y: gy, z: _v8.z }, 10, 0, 1, 0);
       }
       G2.audio.explosion(p, 1.5 * k);
-      G2.audio.mechStep(p, 1.5);
+      G2.audio.mechStep(p, 1.5, this.klasse.id);
       G2.audio.crash(p, 1.4);
       const d = Math.hypot(G2.player.pos.x - p.x, G2.player.pos.z - p.z);
       G2.gcam.addShake(clamp2(2 * k - d / 40, 0.3, 1.8));
@@ -61208,7 +61748,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           this.climb = { box: box2 };
           this.vel.set(0, 0, 0);
           this.speed = 0;
-          G2.audio.mechStep(this.pos, 1);
+          G2.audio.mechStep(this.pos, 1, this.klasse.id);
         }
       }
       const wheelOpen = G2.weapons.wheelOpen;
@@ -61520,7 +62060,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       const k = clamp2(0.5 + this.speed / this.statWalk * 0.6, 0.5, 1.1);
       G2.fx.dust(p, 8, 0, 1, 0, [0.5, 0.46, 0.4]);
       G2.fx.dustRing(p, 2.2 * k, 10, [0.5, 0.46, 0.4], 0.6);
-      G2.audio.mechStep(p, k);
+      G2.audio.mechStep(p, k, this.klasse.id);
       const d = Math.hypot(G2.player.pos.x - p.x, G2.player.pos.z - p.z);
       G2.gcam.addShake(clamp2(0.55 * k - d / 60, 0.08, 0.6));
       G2.gcam.addKick(0, 0.05 * k, 0, 0);
@@ -61546,7 +62086,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       G2.fx.crater(p, 5);
       G2.fx.sparks(p, 24, 0, 1, 0, true);
       G2.audio.explosion(p, 1.3);
-      G2.audio.mechStep(p, 1.8);
+      G2.audio.mechStep(p, 1.8, this.klasse.id);
       G2.gcam.addShake(1.4);
       G2.gcam.addKick(0, 0.3, 0, 6);
       G2.postfx.flash = Math.max(G2.postfx.flash, 0.1);
@@ -62506,6 +63046,167 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     }
   };
 
+  // src/replay.js
+  var DAUER = 10;
+  var RATE = 1 / 15;
+  var NPC_R2 = 3600;
+  var rid = 1;
+  var Replay = class {
+    constructor(G2) {
+      this.G = G2;
+      this.buf = [];
+      this.known = /* @__PURE__ */ new Map();
+      this.acc = 0;
+      this.on = false;
+      this.t = 0;
+      this.dur = 0;
+      this._i = 0;
+      this.ghosts = null;
+      this.grp = null;
+      this.matFremd = new MeshBasicMaterial({ color: 6543103, transparent: true, opacity: 0.32, depthWrite: false });
+      this.matSelbst = new MeshBasicMaterial({ color: 16752704, transparent: true, opacity: 0.45, depthWrite: false });
+    }
+    _ents(out) {
+      const G2 = this.G, m = G2.mechSys.mech;
+      if (m && m.mesh) out.push([m, "mech", true]);
+      for (const f of G2.krieg.list) if (f.mesh) out.push([f, "mech", false]);
+      for (const d of G2.krieg.drones) if (d.mesh) out.push([d, "klein", false]);
+      for (const h of G2.krieg.helis) if (h.mesh) out.push([h, "klein", false]);
+      for (const v of G2.vehicles.list) if (v.mesh) out.push([v, "veh", false]);
+      const p = G2.player.pos;
+      for (const n2 of G2.npcs.list) if (n2.root && (n2.pos.x - p.x) * (n2.pos.x - p.x) + (n2.pos.z - p.z) * (n2.pos.z - p.z) < NPC_R2) out.push([n2, "npc", false]);
+      if (G2.player.state === "foot" && G2.player.root) out.push([G2.player, "npc", true]);
+      return out;
+    }
+    record(realDt) {
+      if (this.on || this.G.state !== "playing") return;
+      this.acc += realDt;
+      if (this.acc < RATE) return;
+      this.acc = 0;
+      const f = { t: this.G.realTime, e: [] };
+      for (const [o, kind, selbst] of this._ents([])) {
+        if (!o.__rid) {
+          o.__rid = rid++;
+        }
+        this.known.set(o.__rid, { o, kind, selbst });
+        f.e.push([
+          o.__rid,
+          +o.pos.x.toFixed(2),
+          +o.pos.y.toFixed(2),
+          +o.pos.z.toFixed(2),
+          +(o.yaw || 0).toFixed(3),
+          o.dead || o.wrecked ? 1 : 0,
+          +(o.pitch || 0).toFixed(3),
+          +(o.roll || 0).toFixed(3)
+        ]);
+      }
+      this.buf.push(f);
+      const cut = this.G.realTime - DAUER;
+      while (this.buf.length && this.buf[0].t < cut) this.buf.shift();
+      if (this.known.size > 400) {
+        const live = /* @__PURE__ */ new Set();
+        for (const fr of this.buf) for (const e of fr.e) live.add(e[0]);
+        for (const id of this.known.keys()) if (!live.has(id)) this.known.delete(id);
+      }
+    }
+    start() {
+      const G2 = this.G;
+      if (this.on || this.buf.length < 20) {
+        G2.ui.msg("REPLAY", "noch nichts aufgezeichnet", 1.4);
+        return false;
+      }
+      this.on = true;
+      this.t = 0;
+      this._i = 0;
+      this.dur = Math.min(DAUER, G2.realTime - this.buf[0].t);
+      this.anchor = G2.player.pos.clone();
+      for (const e of this.buf[0].e) {
+        const k = this.known.get(e[0]);
+        if (k && k.selbst) {
+          this.anchor.set(e[1], e[2], e[3]);
+          break;
+        }
+      }
+      this.anchor.y = Math.max(this.anchor.y, G2.world.groundHeight(this.anchor.x, this.anchor.z));
+      this.grp = new Group();
+      this.grp.frustumCulled = false;
+      G2.scene.add(this.grp);
+      this.ghosts = /* @__PURE__ */ new Map();
+      const seen = /* @__PURE__ */ new Set();
+      for (const f of this.buf) for (const e of f.e) seen.add(e[0]);
+      for (const id of seen) {
+        const k = this.known.get(id);
+        if (!k) continue;
+        const src = k.o.mesh || k.o.root;
+        if (!src) continue;
+        const g2 = src.clone(true);
+        const mat = k.selbst ? this.matSelbst : this.matFremd;
+        g2.traverse((n2) => {
+          if (n2.isMesh) {
+            n2.material = mat;
+            n2.castShadow = false;
+            n2.receiveShadow = false;
+            n2.frustumCulled = false;
+          }
+        });
+        g2.visible = false;
+        this.grp.add(g2);
+        this.ghosts.set(id, g2);
+      }
+      G2.ui.msg("REPLAY", "letzte " + this.dur.toFixed(0) + " s \xB7 <kbd>R</kbd>/<kbd>Y</kbd> zur\xFCck", 2.6);
+      return true;
+    }
+    tick(realDt) {
+      const G2 = this.G;
+      this.t += realDt;
+      if (this.t >= this.dur || !this.buf.length) {
+        this.stop();
+        return;
+      }
+      const rt = this.buf[0].t + this.t;
+      let i = this._i;
+      while (i < this.buf.length - 2 && this.buf[i + 1].t < rt) i++;
+      this._i = i;
+      const a = this.buf[i], b = this.buf[i + 1] || a, k = b.t > a.t ? Math.min(1, (rt - a.t) / (b.t - a.t)) : 0;
+      const ea = /* @__PURE__ */ new Map(), eb = /* @__PURE__ */ new Map();
+      for (const e of a.e) ea.set(e[0], e);
+      for (const e of b.e) eb.set(e[0], e);
+      for (const [id, g2] of this.ghosts) {
+        const A2 = ea.get(id), B2 = eb.get(id) || A2;
+        if (!A2) {
+          g2.visible = false;
+          continue;
+        }
+        g2.visible = true;
+        g2.position.set(A2[1] + (B2[1] - A2[1]) * k, A2[2] + (B2[2] - A2[2]) * k, A2[3] + (B2[3] - A2[3]) * k);
+        let dy = B2[4] - A2[4];
+        while (dy > Math.PI) dy -= Math.PI * 2;
+        while (dy < -Math.PI) dy += Math.PI * 2;
+        g2.rotation.set((A2[6] || 0) + ((B2[6] || 0) - (A2[6] || 0)) * k, A2[4] + dy * k, (A2[7] || 0) + ((B2[7] || 0) - (A2[7] || 0)) * k);
+        if ((A2[5] || B2[5]) && !g2.__tot) {
+          g2.__tot = true;
+          g2.traverse((n2) => {
+            if (n2.isMesh) n2.material = this.matSelbst;
+          });
+        }
+      }
+      const an2 = this.anchor, w2 = this.camW = (this.camW || Math.atan2(G2.camera.position.x - an2.x, G2.camera.position.z - an2.z)) + realDt * 0.35;
+      G2.freeCam = [an2.x + Math.sin(w2) * 19, an2.y + 8.5, an2.z + Math.cos(w2) * 19, an2.x, an2.y + 3.5, an2.z];
+    }
+    stop() {
+      if (!this.on) return;
+      this.on = false;
+      if (this.grp) {
+        this.G.scene.remove(this.grp);
+        this.grp = null;
+      }
+      this.ghosts = null;
+      this.G.freeCam = null;
+      this.camW = 0;
+      this.G.ui.msg("REPLAY ENDE", "", 1);
+    }
+  };
+
   // src/main.js
   var G = { time: 0, realTime: 0, dt: 0, timeScale: 1, state: "start", stats: { kills: 0, wrecks: 0 }, fps: 0, frameMs: 0 };
   window.__G = G;
@@ -62617,6 +63318,8 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     G.mechSys = mechSys;
     const krieg = new KriegSystem(G);
     G.krieg = krieg;
+    const replay = new Replay(G);
+    G.replay = replay;
     const ui = new UI(G);
     G.ui = ui;
     const postfx = new PostFX(renderer, scene, camera, { exposure: 1, threshold: 1, bloom1: 0.2, bloom2: 0.34, vignette: 0.3, samples: 4 });
@@ -62780,12 +63483,17 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           if (input.pressed(keyFuer("arena", "KeyN"))) krieg.arenaToggle();
           if (input.pressed(keyFuer("einstellungen", "KeyO"))) ui.settingsToggle();
           if (input.pressed(keyFuer("foto", "KeyY")) && !krieg.shopOpen && !ui.settingsOpen && !ui.statsOpen) {
+            if (replay.on) replay.stop();
             const an2 = !document.body.classList.contains("foto");
             document.body.classList.toggle("foto", an2);
             G.timeScale = an2 ? 0.18 : 1;
             krieg._prevTs = 1;
-            ui.msg(an2 ? "FOTO-MODUS" : "FOTO-MODUS AUS", an2 ? "Zeitlupe \xB7 HUD aus" : "", 1.4);
+            ui.msg(an2 ? "FOTO-MODUS" : "FOTO-MODUS AUS", an2 ? "Zeitlupe \xB7 HUD aus \xB7 <kbd>R</kbd> = Replay 10 s" : "", 1.6);
           }
+          const fotoAn = document.body.classList.contains("foto");
+          if (input.pressed("KeyR") && fotoAn && !replay.on && !krieg.shopOpen) {
+            replay.start();
+          } else if (replay.on && (input.pressed("KeyR") || input.pressed("Escape"))) replay.stop();
           if (input.pressed(keyFuer("statistik", "KeyZ"))) ui.statsToggle();
           if (input.pressed("Escape")) {
             let zu = false;
@@ -62859,7 +63567,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           }
           if (input.pressed("KeyH")) ui.help(true);
           if (input.pressed("KeyM")) ui.msg(audio.toggleMute() ? "MUTED" : "SOUND ON", "", 1);
-          if (input.pressed("KeyR") && player.state === "vehicle" && audio.radio) audio.radio.next().then((t2) => ui.msg("RADIO", t2, 2)).catch(() => ui.msg("RADIO", "NO SIGNAL", 1.5));
+          if (input.pressed("KeyR") && player.state === "vehicle" && audio.radio && !fotoAn) audio.radio.next().then((t2) => ui.msg("RADIO", t2, 2)).catch(() => ui.msg("RADIO", "NO SIGNAL", 1.5));
           if (input.pressed("KeyB") && !player.dead) {
             const on2 = danceToggle();
             if (player.state === "foot") weapons.setVisible(!on2);
@@ -62867,7 +63575,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           }
           danceTick(dt3);
           if (input.pressed("KeyV")) ui.msg("CAMERA", gcam.mode === "drive" ? "chase (only mode in phase 1)" : "third person", 1.2);
-          if (!krieg.shopOpen) {
+          if (!krieg.shopOpen && !replay.on) {
             const safe = (name, fn) => {
               try {
                 fn();
@@ -62887,10 +63595,12 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
             safe("krieg", () => krieg.update(dt3));
             safe("props", () => props.update(dt3, audio, fx2, propTmp));
             fx2.update(dt3);
+            replay.record(realDt);
           }
           if (audio.radio) audio.radio.update(player);
           screens.update(realDt);
           if (audio.tanzton) audio.tanzton.update(mechSys.mech, player.state === "vehicle" && player.vehicle === mechSys.mech, realDt, player);
+          if (replay.on) replay.tick(realDt);
           gcam.update(realDt);
           if (G.freeCam) {
             camera.position.set(G.freeCam[0], G.freeCam[1], G.freeCam[2]);
