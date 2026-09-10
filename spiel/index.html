@@ -50260,6 +50260,51 @@ void main() {
       if (d > 35) this.tail(o, t2, clamp2(d / 240, 0, 1), type === "rocket" ? 0.5 : 0.22);
       v.kill(t2 + 1.3);
     }
+    // ---- Runde 26: eigene Sounds fuer die neuen Mech-Waffen ------------------------------------------
+    plasmaShot(p) {
+      p = p3(p);
+      if (!this.ready) return;
+      const d = this.dist(p);
+      if (d > 320 || this.voiceCount > 48) return;
+      const t2 = this.ctx.currentTime, v = this.voice(p, 12, "sfx", 600), pv = 1 + randSpread(0.06), o = v.out;
+      const s = this.ctx.createOscillator();
+      s.type = "sawtooth";
+      s.frequency.setValueAtTime(160 * pv, t2);
+      s.frequency.exponentialRampToValueAtTime(950 * pv, t2 + 0.16);
+      const sg = this.envGain(t2, 0.45, 0.02, 0.22);
+      s.connect(sg);
+      sg.connect(o);
+      s.start(t2);
+      s.stop(t2 + 0.3);
+      this.crack(o, t2 + 0.15, 1500 * pv, 0.55, 0.09, 0.8);
+      this.thump(o, t2 + 0.15, 95 * pv, 34, 0.3, 1);
+      if (d > 35) this.tail(o, t2, clamp2(d / 240, 0, 1), 0.3);
+      v.kill(t2 + 1.4);
+    }
+    flakShot(p) {
+      p = p3(p);
+      if (!this.ready) return;
+      const d = this.dist(p);
+      if (d > 320 || this.voiceCount > 48) return;
+      const t2 = this.ctx.currentTime, v = this.voice(p, 7, "sfx", 420), pv = 1 + randSpread(0.1), o = v.out;
+      this.crack(o, t2, 4300 * pv, 0.5, 0.028, 0.55);
+      this.thump(o, t2, 220 * pv, 62, 0.055, 0.55);
+      this.click(o, t2, 0.5);
+      if (d > 35) this.tail(o, t2, clamp2(d / 240, 0, 1), 0.16);
+      v.kill(t2 + 0.9);
+    }
+    moerserShot(p) {
+      p = p3(p);
+      if (!this.ready) return;
+      const d = this.dist(p);
+      if (d > 320 || this.voiceCount > 48) return;
+      const t2 = this.ctx.currentTime, v = this.voice(p, 10, "sfx", 400), o = v.out;
+      this.whoosh(o, t2, 0.7, 0.45);
+      this.thump(o, t2, 72, 26, 0.5, 1.2, "triangle");
+      this.click(o, t2, 0.35);
+      if (d > 35) this.tail(o, t2, clamp2(d / 240, 0, 1), 0.3);
+      v.kill(t2 + 1.4);
+    }
     explosion(p, size = 1) {
       p = p3(p);
       size = fin(size);
@@ -57824,6 +57869,13 @@ void main() {
     onFeindKill(f) {
       const istCop = f && f.cop;
       const istTitan = f && f.tier === "titan";
+      if (!f.dummy && !this.G.weapons.wheelOpen) {
+        this.G.hitStopT = istTitan ? 0.1 : 0.05;
+        if (istTitan || f.elite) {
+          this.G.slowmoT = 1.1;
+          if (this.G.audio.setSlowmo) this.G.audio.setSlowmo(true);
+        }
+      }
       this.killFeed(istTitan ? 200 : 12);
       const lohn = istTitan ? f.elite ? KRIEG.reward.titanElite : KRIEG.reward.titan : istCop ? KRIEG.reward.copMech : KRIEG.reward.feind;
       this.pay(lohn, true);
@@ -61224,8 +61276,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       _d4.subVectors(this.aimPoint, _a4).normalize();
       const v = 58;
       this.plasmaShots.push({ x: _a4.x, y: _a4.y, z: _a4.z, vx: _d4.x * v, vy: _d4.y * v + 2, vz: _d4.z * v, age: 0, life: 3 });
-      G2.audio.gunshot("mg", _a4);
-      G2.audio.explosion(_a4, 0.35);
+      G2.audio.plasmaShot(_a4);
       G2.fx.muzzle(_a4, _d4.x, _d4.y, _d4.z, 1.3);
       this.lights.push({ x: _a4.x, y: _a4.y, z: _a4.z, R: 16, r: 0.4, g: 1, b: 0.75, I: 240 });
       G2.gcam.addShake(0.3);
@@ -61289,7 +61340,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         G2.fx.tracerSet(h, _a4.x, _a4.y, _a4.z, _w6.x, _w6.y, _w6.z);
         this.gun.tr.push({ h, life: 0.05 });
       }
-      if (this.gun.n % 2 === 0) G2.audio.gunshot("mg", _a4);
+      if (this.gun.n % 2 === 0) G2.audio.flakShot(_a4);
       this.firing = 0.2;
       if (Math.random() < 0.15) G2.police.crime("gunfire", this.pos);
       if (!hit) return;
@@ -61327,8 +61378,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       const g2 = Md.grav;
       const vx = dx / dist * (dist / t2), vz = dz / dist * (dist / t2), vy = (this.aimPoint.y - _a4.y + 0.5 * g2 * t2 * t2) / t2;
       this.moerserShots.push({ x: _a4.x, y: _a4.y, z: _a4.z, vx, vy, vz, age: 0, life: t2 + 2.5 });
-      G2.audio.missileLaunch(_a4);
-      G2.audio.explosion(_a4, 0.4);
+      G2.audio.moerserShot(_a4);
       G2.fx.muzzle(_a4, 0, 1, 0, 0.8);
       G2.fx.smoke.spawn({ x: _a4.x, y: _a4.y, z: _a4.z, vx: 0, vy: 1.5, vz: 0, s0: 0.8, s1: 3, a0: 0.6, a1: 0, life: 1.2, r: [0.8, 0.78, 0.75], drag: 2 });
       G2.gcam.addShake(0.22);
@@ -61955,7 +62005,16 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       }
       if (G.state === "playing") {
         try {
-          const dt3 = realDt * G.timeScale;
+          let dt3 = realDt * G.timeScale;
+          if (G.hitStopT > 0) {
+            G.hitStopT -= realDt;
+            dt3 *= 0.08;
+          }
+          if (G.slowmoT > 0) {
+            G.slowmoT -= realDt;
+            dt3 *= 0.3;
+            if (G.slowmoT <= 0 && !weapons.wheelOpen && audio.setSlowmo) audio.setSlowmo(false);
+          }
           G.dt = dt3;
           G.time += dt3;
           if (!weapons.wheelOpen && (input.dx || input.dy)) gcam.look(input.dx, input.dy);
