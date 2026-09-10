@@ -57062,7 +57062,6 @@ void main() {
     "Backpack"
   ];
   var REST = { Hip: -0.34, Knee: 0.72, Foot: -0.38 };
-  var PELVIS_Y = 3.08;
   var _a3 = new Vector3();
   var _b3 = new Vector3();
   var _c5 = new Vector3();
@@ -57078,13 +57077,25 @@ void main() {
       this.weaponId = "mg";
       this.tier = opts.tier || "std";
       const T = this.cop ? KRIEG.polizei[this.tier] : KRIEG.raubRollen && KRIEG.raubRollen[this.tier] || null;
+      this.klasse = KLASSEN.sturm;
+      if (!this.cop && this.tier !== "titan" && this.tier !== "schild") {
+        const wahl = opts.klasse || (this.tier === "sprinter" ? "laeufer" : this.tier === "artillery" ? "panzer" : Math.random() < 0.34 ? "laeufer" : Math.random() < 0.5 ? "panzer" : "sturm");
+        this.klasse = KLASSEN[wahl] || KLASSEN.sturm;
+      }
       this.s = T ? T.scale : 1;
-      this.speedMax = T ? T.speed : KRIEG.feind.walkSpeed;
+      this.speedMax = (T ? T.speed : KRIEG.feind.walkSpeed) * this.klasse.walk;
       this.weaponId = T && T.weaponId ? T.weaponId : "mg";
       this.flucht = T && T.fluchtdistanz || 0;
-      this.mesh = makeMechMesh();
+      this.mesh = makeMechMesh(this.klasse);
       if (this.s !== 1) this.mesh.scale.setScalar(this.s);
       G2.scene.add(this.mesh);
+      if (!this.cop && this.klasse.id !== "sturm") {
+        const U = this.mesh.userData.mech;
+        if (U && U.mats) for (const k of ["eyes", "chest", "arms", "legs", "nozzle"]) {
+          const m = U.mats[k];
+          if (m && m.emissive) m.emissive.set("#ff3b1a");
+        }
+      }
       this.P = {};
       for (const n2 of PIVOTS) this.P[n2] = this.mesh.getObjectByName(n2);
       if (this.cop) {
@@ -57099,8 +57110,7 @@ void main() {
       this.vy = KRIEG.feind.drop.vy0;
       this.yaw = rand(0, Math.PI * 2);
       this.state = "falling";
-      this.hp = this.nest ? KRIEG.feind.hpNest : T && T.hp ? T.hp : KRIEG.feind.hp;
-      this.maxHealth = this.hp;
+      this.hp = (this.nest ? KRIEG.feind.hpNest : T && T.hp ? T.hp : KRIEG.feind.hp) * this.klasse.hp;
       this.maxHealth = this.hp;
       this.wrecked = false;
       this.dead = false;
@@ -57226,7 +57236,7 @@ void main() {
       e.set(REST.Foot, 0, 0);
       P.Foot_L.quaternion.setFromEuler(e);
       P.Foot_R.quaternion.setFromEuler(e);
-      P.Pelvis.position.set(0, PELVIS_Y, 0);
+      P.Pelvis.position.set(0, this.klasse.pelvisY, 0);
     }
     forward(out) {
       return out.set(Math.sin(this.yaw), 0, Math.cos(this.yaw));
@@ -57236,7 +57246,7 @@ void main() {
       return out.set(this.pos.x + lx * c + lz * s, this.pos.y + ly, this.pos.z - lx * s + lz * c);
     }
     updateAABB() {
-      const r = 2.1 * this.s, h = 6.1 * this.s;
+      const r = this.klasse.radius * this.s, h = this.klasse.height * this.s;
       const a = this.aabb;
       a.minX = this.pos.x - r;
       a.maxX = this.pos.x + r;
@@ -57252,7 +57262,7 @@ void main() {
       const lx = px2 * c - pz2 * s, lz = px2 * s + pz2 * c, ly = oy - this.pos.y;
       const ldx = dx * c - dz * s, ldz = dx * s + dz * c;
       let best = null;
-      for (const [hw, y0, y1, hl] of [[1.15 * this.s, 0, 3.4 * this.s, 1 * this.s], [2.05 * this.s, 3.1 * this.s, 6.2 * this.s, 1.25 * this.s]]) {
+      for (const [hw, y0, y1, hl] of [this.klasse.box.legs, this.klasse.box.torso].map(([hw2, y02, y12, hl2]) => [hw2 * this.s, y02 * this.s, y12 * this.s, hl2 * this.s])) {
         let tmin = 0, tmax = maxT, axis = -1;
         const slabs = [[lx, ldx, -hw, hw], [ly, dy, y0, y1], [lz, ldz, -hl, hl]];
         let ok = true;
@@ -57473,7 +57483,7 @@ void main() {
       P.Knee_R.quaternion.setFromEuler(new Euler(REST.Knee + Math.max(0, -Math.sin(ph + Math.PI)) * 0.55 * g2, 0, 0));
       P.Foot_L.quaternion.setFromEuler(new Euler(REST.Foot, 0, 0));
       P.Foot_R.quaternion.setFromEuler(new Euler(REST.Foot, 0, 0));
-      P.Pelvis.position.set(0, PELVIS_Y + Math.abs(Math.sin(ph)) * 0.12 * g2, 0);
+      P.Pelvis.position.set(0, this.klasse.pelvisY + Math.abs(Math.sin(ph)) * 0.12 * g2, 0);
       P.Torso.rotation.y = damp2(P.Torso.rotation.y, this.torsoYaw, 8, 0.016);
       if (P.Head) P.Head.rotation.y = P.Torso.rotation.y * 0.4;
     }
@@ -58877,7 +58887,7 @@ void main() {
         ctx.save();
         ctx.translate(m.pos.x - px2, m.pos.z - pz2);
         ctx.rotate(-m.yaw);
-        ctx.fillStyle = m.wrecked ? "#222" : "#ff8a2d";
+        ctx.fillStyle = m.wrecked ? "#222" : m.klasse ? m.klasse.farbe : "#ff8a2d";
         ctx.fillRect(-2.1, -2.1, 4.2, 4.2);
         ctx.fillStyle = "#fff";
         ctx.fillRect(-0.4, 1.4, 0.8, 1.2);
@@ -58886,10 +58896,34 @@ void main() {
       if (G2.krieg && G2.krieg.owned.has("scanner")) {
         for (const f of G2.krieg.list) {
           if (f.dead || Math.abs(f.pos.x - px2) > range || Math.abs(f.pos.z - pz2) > range) continue;
-          ctx.fillStyle = f.tier === "titan" ? "#ff2a1a" : "#ff9a4a";
-          ctx.beginPath();
-          ctx.arc(f.pos.x - px2, f.pos.z - pz2, f.tier === "titan" ? 3 : 1.8, 0, 6.28);
-          ctx.fill();
+          ctx.save();
+          ctx.translate(f.pos.x - px2, f.pos.z - pz2);
+          ctx.rotate(-f.yaw);
+          if (f.tier === "titan") {
+            ctx.fillStyle = "#ff2a1a";
+            ctx.beginPath();
+            ctx.arc(0, 0, 3, 0, 6.28);
+            ctx.fill();
+          } else if (f.klasse && f.klasse.id === "laeufer") {
+            ctx.fillStyle = "#ff9a4a";
+            ctx.beginPath();
+            ctx.moveTo(0, -3);
+            ctx.lineTo(2.2, 2.4);
+            ctx.lineTo(-2.2, 2.4);
+            ctx.closePath();
+            ctx.fill();
+          } else if (f.klasse && f.klasse.id === "panzer") {
+            ctx.fillStyle = "#ff9a4a";
+            ctx.fillRect(-2.4, -2.8, 4.8, 5.6);
+            ctx.fillStyle = "#7a2a12";
+            ctx.fillRect(-1.6, 0.6, 3.2, 1.6);
+          } else {
+            ctx.fillStyle = "#ff9a4a";
+            ctx.beginPath();
+            ctx.arc(0, 0, 1.8, 0, 6.28);
+            ctx.fill();
+          }
+          ctx.restore();
         }
         for (const d of G2.krieg.drones) {
           if (d.dead) continue;
