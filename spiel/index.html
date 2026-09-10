@@ -229,9 +229,14 @@
     <h3 style="font:800 20px var(--sans);margin-bottom:12px">EINSTELLUNGEN<span style="color:var(--accent)">.</span><button class="mx" data-close style="float:right;background:none;border:none;color:var(--ink);font:700 16px var(--sans);cursor:pointer">✕</button></h3>
     <div class="srow"><span class="skey">1</span><span class="sname">Schatten<small>Kamera-Naehe nur</small></span><span class="spreis" id="set-schatten">AN</span></div>
     <div class="srow"><span class="skey">2</span><span class="sname">Bloom<small>Licht-Glow</small></span><span class="spreis" id="set-bloom">AN</span></div>
-    <div class="srow"><span class="skey">3</span><span class="sname">Aufloesung<small>0.8 / 1.1 / 1.5</small></span><span class="spreis" id="set-dpr">1.25</span></div>
-    <div class="srow"><span class="skey">4</span><span class="sname">Regen<small>Wetter</small></span><span class="spreis" id="set-regen">AUS</span></div>
-    <div style="margin-top:12px;font:500 11px var(--mono);color:var(--ink-dim)">O schliesst · Einstellungen werden gespeichert</div>
+    <div class="srow"><span class="skey">3</span><span class="sname">Aufloesung<small>Render-Skalierung</small></span><span class="spreis" id="set-dpr">1.5</span></div>
+    <div class="srow"><span class="skey">4</span><span class="sname">Regen<small>Wetter-Umschalter</small></span><span class="spreis" id="set-regen">AN</span></div>
+    <div style="margin-top:10px;font:500 10px var(--mono);color:var(--ink-dim);letter-spacing:.1em">ESC schließt</div>
+  </div>
+  <div id="stats" style="display:none;position:absolute;left:50%;top:50%;transform:translateX(-50%);min-width:380px" class="panel">
+    <h3 style="font:800 20px var(--sans);margin-bottom:12px">STATISTIK<span style="color:var(--accent)">.</span><button class="mx" data-close style="float:right;background:none;border:none;color:var(--ink);font:700 16px var(--sans);cursor:pointer">✕</button></h3>
+    <div id="stats-zeilen" style="display:flex;flex-direction:column;gap:6px"></div>
+    <div style="margin-top:10px;font:500 10px var(--mono);color:var(--ink-dim);letter-spacing:.1em">Z schließt · Werte bleiben gespeichert</div>
   </div>
   <div id="shop" class="panel">
     <h3>WAFFENKAMMER<span>.</span><button class="mx" data-close>✕</button></h3>
@@ -57791,7 +57796,7 @@ void main() {
     // ---------------- Persistenz (Runde 20) ----------------
     save() {
       try {
-        localStorage.setItem("blocks.save", JSON.stringify({ m: this.money, u: [...this.owned], k: this.G.stats.kills || 0, w: this.G.stats.wrecks || 0, best: this.arenaBest || 0, xpsave: this.xp, titan: this.titanDead, klasse: this.klasse, chaos: this.chaosBest || 0 }));
+        localStorage.setItem("blocks.save", JSON.stringify({ m: this.money, u: [...this.owned], k: this.G.stats.kills || 0, w: this.G.stats.wrecks || 0, best: this.arenaBest || 0, xpsave: this.xp, titan: this.titanDead, klasse: this.klasse, chaos: this.chaosBest || 0, e: this.earnedTotal || 0 }));
       } catch (e) {
       }
     }
@@ -57807,6 +57812,7 @@ void main() {
         if (d.xpsave) this.xp = Math.max(this.xp, d.xpsave);
         this.titanDead = d.titan || 0;
         this.chaosBest = d.chaos || 0;
+        this.earnedTotal = d.e || 0;
         if (d.klasse && KLASSEN[d.klasse]) this.klasse = d.klasse;
       } catch (e) {
       }
@@ -57837,6 +57843,7 @@ void main() {
       if (window.__nacht && istKill) mult *= 1.5;
       if (mult > 1) n2 = Math.round(n2 * mult);
       this.money += n2;
+      this.earnedTotal = (this.earnedTotal || 0) + n2;
       G2.ui.moneyPop("+" + n2.toLocaleString("de-DE") + " \u20AC" + (mult > 1 ? " \xD7" + mult.toFixed(1).replace(".0", "") : ""));
       this.saveSoon();
       if (istKill) this.addChaos(clamp2(Math.round(n2 / 8), 20, 900));
@@ -58575,7 +58582,7 @@ void main() {
   var UI = class {
     constructor(G2) {
       this.G = G2;
-      this.el = { hp: $("hpbar"), wname: $("wname"), wammo: $("wammo"), reload: $("reload"), speedo: $("speedo"), kmh: $("kmh"), gear: $("gear"), rpm: $("rpm").firstElementChild, vname: $("vname"), prompt: $("prompt"), msg: $("msg"), vign: $("vignette"), fade: $("fade"), wheel: $("wheel"), wheelName: $("wheel-name"), cross: $("cross"), hitmark: $("hitmark"), controls: $("controls"), kills: $("kills"), wrecks: $("wrecks"), fps: $("fps"), flash: $("flash"), wanted: $("wanted"), stars: Array.from($("stars").children), starsBox: $("stars"), wlabel: $("wlabel"), evade: $("evade").firstElementChild, dmgdir: $("dmgdir"), radio: $("radio"), radioSt: $("radio-st"), radioTt: $("radio-tt"), mmode: $("mmode"), marmour: $("marmour"), mwname: $("mwname"), mwstat: $("mwstat"), mheat: $("mheat"), mfuel: $("mfuel"), mkeys: $("mkeys"), mradio: $("mradio"), mradioSt: $("mradio-st"), mradioTt: $("mradio-tt"), money: $("money"), moneypop: $("moneypop"), shop: $("shop"), shopRows: $("shop-rows"), titan: $("titanbar"), titanLabel: $("titan-label"), arena: $("arena"), bounty: $("bounty"), chaos: $("chaos"), settings: $("settings") };
+      this.el = { hp: $("hpbar"), wname: $("wname"), wammo: $("wammo"), reload: $("reload"), speedo: $("speedo"), kmh: $("kmh"), gear: $("gear"), rpm: $("rpm").firstElementChild, vname: $("vname"), prompt: $("prompt"), msg: $("msg"), vign: $("vignette"), fade: $("fade"), wheel: $("wheel"), wheelName: $("wheel-name"), cross: $("cross"), hitmark: $("hitmark"), controls: $("controls"), kills: $("kills"), wrecks: $("wrecks"), fps: $("fps"), flash: $("flash"), wanted: $("wanted"), stars: Array.from($("stars").children), starsBox: $("stars"), wlabel: $("wlabel"), evade: $("evade").firstElementChild, dmgdir: $("dmgdir"), radio: $("radio"), radioSt: $("radio-st"), radioTt: $("radio-tt"), mmode: $("mmode"), marmour: $("marmour"), mwname: $("mwname"), mwstat: $("mwstat"), mheat: $("mheat"), mfuel: $("mfuel"), mkeys: $("mkeys"), mradio: $("mradio"), mradioSt: $("mradio-st"), mradioTt: $("mradio-tt"), money: $("money"), moneypop: $("moneypop"), shop: $("shop"), shopRows: $("shop-rows"), titan: $("titanbar"), titanLabel: $("titan-label"), arena: $("arena"), bounty: $("bounty"), chaos: $("chaos"), settings: $("settings"), stats: $("stats") };
       this.mm = $("mm");
       this.mctx = this.mm.getContext("2d");
       this.hurtT = 0;
@@ -58881,6 +58888,39 @@ void main() {
         this.el.settings.dataset.klick = "1";
         this.el.settings.querySelectorAll(".srow").forEach((r, i) => r.addEventListener("click", () => this.settingsAktion(i)));
         this.el.settings.querySelector("[data-close]").addEventListener("click", () => this.settingsToggle());
+      }
+    }
+    // Runde 26: Statistik-Panel (Z) — Gesamt-Bilanz aus G.stats + Krieg-System
+    statsToggle() {
+      if (this.statsOpen) {
+        this.statsOpen = false;
+        this.el.stats.style.display = "none";
+        this.G.input.requestLock();
+        return;
+      }
+      this.statsOpen = true;
+      this.el.stats.style.display = "block";
+      if (document.exitPointerLock) document.exitPointerLock();
+      const G2 = this.G, K2 = G2.krieg, z = (n2) => (n2 || 0).toLocaleString("de-DE");
+      const min = Math.floor(G2.realTime / 60), sek = Math.floor(G2.realTime % 60);
+      const zeilen = [
+        ["Spielzeit", min + ":" + String(sek).padStart(2, "0")],
+        ["Verdient (gesamt)", z(K2.earnedTotal) + " \u20AC"],
+        ["Konto", z(K2.money) + " \u20AC"],
+        ["Kills / Wracks", z(G2.stats.kills) + " / " + z(G2.stats.wrecks)],
+        ["Titan zerlegt", z(K2.titanDead)],
+        ["Drohnen / Helis", z(K2.droneKills) + " / " + z(K2.heliKills)],
+        ["Geb\xE4ude eingeebnet", z(K2.kollapsZaehler)],
+        ["Beste Combo", "\xD7" + (1 + (K2._comboMax || 0))],
+        ["Chaos-Rekord", z(K2.chaosBest) + " PKT"],
+        ["Arena-Bestwert", (K2.arenaBest || 0) + " Wellen"],
+        ["Klasse", K2.klasse ? KLASSEN[K2.klasse].name : "STURM"],
+        ["Rang", (K2.rang || 0) + " \xB7 " + z(K2.xp) + " XP"]
+      ];
+      this.el.stats.querySelector("#stats-zeilen").innerHTML = zeilen.map(([a, b]) => `<div class="srow"><span class="sname">${a}</span><span class="spreis">${b}</span></div>`).join("");
+      if (!this.el.stats.dataset.klick) {
+        this.el.stats.dataset.klick = "1";
+        this.el.stats.querySelector("[data-close]").addEventListener("click", () => this.statsToggle());
       }
     }
     shopKlickBind() {
@@ -62072,6 +62112,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           if (input.pressed("KeyK") && !weapons.wheelOpen) krieg.toggleShop();
           if (input.pressed("KeyN")) krieg.arenaToggle();
           if (input.pressed("KeyO")) ui.settingsToggle();
+          if (input.pressed("KeyZ")) ui.statsToggle();
           if (input.pressed("Escape")) {
             let zu = false;
             if (krieg.shopOpen) {
@@ -62080,6 +62121,10 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
             }
             if (ui.settingsOpen) {
               ui.settingsToggle();
+              zu = true;
+            }
+            if (ui.statsOpen) {
+              ui.statsToggle();
               zu = true;
             }
             if (zu) input.requestLock();
