@@ -58458,6 +58458,9 @@ void main() {
         }
       } else this.waveT = Math.max(this.waveT, 12);
       for (let i = this.list.length - 1; i >= 0; i--) {
+        const P0 = G2.player.pos;
+        const dd0 = Math.hypot(this.list[i].pos.x - P0.x, this.list[i].pos.z - P0.z);
+        this.list[i].mesh.visible = dd0 < 280;
         if (this.list[i].update(dt3) === "remove") {
           const d = this.list[i];
           if (d.dummy) {
@@ -58563,6 +58566,7 @@ void main() {
       const G2 = this.G;
       for (let i = this.drones.length - 1; i >= 0; i--) {
         const d = this.drones[i];
+        if (d.mesh) d.mesh.visible = Math.hypot(d.pos.x - G2.player.pos.x, d.pos.z - G2.player.pos.z) < 220;
         if (d.update(dt3) === "remove" || d.dead) {
           if (d.remove) d.remove();
           this.drones.splice(i, 1);
