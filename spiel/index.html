@@ -57687,14 +57687,16 @@ void main() {
     }
   };
   var Hubschrauber = class {
-    constructor(G2, x, z) {
+    constructor(G2, x, z, o = {}) {
       this.G = G2;
       this.heli = true;
-      this.hp = 300;
+      this.gunship = !!o.gunship;
+      this.hp = this.gunship ? 1100 : 300;
       this.dead = false;
-      this.maxHealth = 300;
+      this.maxHealth = this.hp;
       const g2 = new Group();
       const mat = new MeshStandardMaterial({ color: 1845043, roughness: 0.6, metalness: 0.4 });
+      if (this.gunship) mat.color.setHex(3350543);
       const rumpf = new Mesh(new BoxGeometry(2.2, 1.7, 5), mat);
       rumpf.castShadow = true;
       g2.add(rumpf);
@@ -57717,6 +57719,10 @@ void main() {
       G2.scene.add(g2);
       this.mesh = g2;
       this.pos = g2.position;
+      if (this.gunship) {
+        g2.scale.setScalar(1.7);
+        this.dropT = 8;
+      }
       this.cd = 6;
       this.sekT = 14;
       this.yaw = 0;
@@ -57733,10 +57739,11 @@ void main() {
         G2.audio.explosion(_a3, 1.6);
         for (let i = 0; i < 10; i++) G2.fx.chunk(_a3.x + randSpread(2), _a3.y + randSpread(1), _a3.z + randSpread(2), randSpread(10), rand(2, 8), randSpread(10), 1, 0.35, 0.4, 0.4);
         if (vomSpieler && G2.krieg) {
-          G2.krieg.pay(KRIEG.reward.heli, true);
-          G2.krieg.addXP(60);
+          const lohn = this.gunship ? 3e3 : KRIEG.reward.heli;
+          G2.krieg.pay(lohn, true);
+          G2.krieg.addXP(this.gunship ? 150 : 60);
           G2.krieg.heliKills = (G2.krieg.heliKills || 0) + 1;
-          G2.ui.msg("HUPLI RUNTER", "+1000 \u20AC", 2);
+          G2.ui.msg(this.gunship ? "GUNSHIP RUNTER" : "HUPLI RUNTER", "+" + geld(lohn), 2.4);
         }
       }
     }
@@ -57785,6 +57792,19 @@ void main() {
         }
         G2.ui.msg("SEK-ABSETZUNG", "Der Hubschrauber setzt Spezialkraefte ab", 2);
         G2.audio.ui("door");
+      }
+      if (this.gunship) {
+        this.dropT -= dt3;
+        if (this.dropT <= 0) {
+          this.dropT = 16;
+          const bx = this.pos.x + randSpread(5), bz = this.pos.z + randSpread(5);
+          for (let i = 0; i < 2; i++) {
+            const n2 = G2.npcs.spawn(bx + randSpread(3), bz + randSpread(3), { armed: true, hostile: true });
+            n2.state = "engage";
+          }
+          G2.ui.msg("GUNSHIP", "S\xF6ldner abgesetzt", 1.6);
+          G2.audio.ui("door");
+        }
       }
       this.cd -= dt3;
       if (this.cd <= 0) {
@@ -57840,6 +57860,10 @@ void main() {
       this.chaosBest = 0;
       this.schaetze = [];
       this.schatzT = 15;
+      this.convoyT = 200;
+      this.convoyWrecks = 0;
+      this.convoyAktiv = false;
+      this.gunshipT = 150;
       this._achievements = [];
       this._skin = null;
       this._saveT = 0;
@@ -58034,6 +58058,17 @@ void main() {
       const G2 = this.G;
       if (v.lastHitBy !== "player" || G2.time - (v.lastHitT ?? -99) > KRIEG.attribution) return;
       this.pay(v.def.police ? KRIEG.reward.wreckPolice : KRIEG.reward.wreckCivil);
+      if (v._convoy) {
+        this.convoyWrecks = (this.convoyWrecks || 0) + 1;
+        if (this.convoyWrecks >= 3) {
+          this.convoyWrecks = 0;
+          this.convoyAktiv = false;
+          this.convoyT = 260;
+          this.pay(3e3);
+          this.addXP(120);
+          G2.ui.msg("CONVOY GEKAPERT", "alle 3 Panzer \xB7 +3000 \u20AC", 3);
+        }
+      }
       if (v.def.police) this.wreckCopZaehler = (this.wreckCopZaehler || 0) + 1;
     }
     // ---------------- Shop ----------------
@@ -58325,6 +58360,7 @@ void main() {
       this.arenaUpdate(dt3);
       this.chaosUpdate(dt3);
       this.schaetzeUpdate(dt3);
+      this.eventsUpdate(dt3);
       this.stationen(dt3);
       this.dronesUpdate(dt3);
       this.comboT -= dt3;
@@ -58425,6 +58461,28 @@ void main() {
     }
     bountyStart() {
       const G2 = this.G;
+      if (Math.random() < 0.25) {
+        const namen = ["KARBO der Sammler", "BLECH-BIANCA", "ROSTIGER RAY", "SCHROTT-K\xD6NIG", "MOTZ", "DIE KLINGE"];
+        const name = namen[Math.floor(Math.random() * namen.length)];
+        const f = this.spawnFeindNear(26);
+        f.name = name;
+        f.speedMax *= 1.2;
+        f.flucht = 30;
+        this.bounty = { text: name + " ausschalten", lohn: 1500, ziel: f, ist: (G22, B3) => B3.ziel.dead };
+        G2.ui.msg("KOPFGELD", name + " gesichtet \u2014 schnell und schlank \xB7 1500 \u20AC", 3.2);
+        return;
+      }
+      if (Math.random() < 0.35) {
+        for (let i = 0; i < 4; i++) {
+          const p = this.wellenSpawn();
+          if (p) this.spawnFeind(p.x, p.z, { klasse: ["laeufer", "sturm", "panzer"][i % 3] });
+        }
+        const B3 = { text: "\xDCBERFALL: 4 Raub-Mechs vernichten", lohn: 2e3, brauch: { feind: 4 }, ist: (G22, B22) => G22.krieg.feilZaeler >= B22.brauch.feind + B22.startFeind, rest: 150 };
+        B3.startFeind = this.feilZaeler || 0;
+        this.bounty = B3;
+        G2.ui.msg("\xDCBERFALL", "4 Raub-Mechs \u2014 alle in 150 s: 2000 \u20AC", 3.2);
+        return;
+      }
       const pool = [
         { text: "3 Raub-Mechs abschalten", lohn: 900, brauch: { feind: 3 }, ist: (G3, B3) => G3.krieg.feilZaeler >= B3.brauch.feind + B3.startFeind },
         { text: "8 Streifenwagen verschrotten", lohn: 600, brauch: {}, ist: (G3, B3) => G3.krieg.wreckCopZaehler >= 8 + B3.startWreck },
@@ -58462,6 +58520,35 @@ void main() {
       }
     }
     // ---------------- Runde 20: Tankstellen + Dach-Pads ----------------
+    // Runde 29: Gunship (6 Sterne) + Convoy-Überfall (3 Panzer, alle = 3000 €)
+    eventsUpdate(dt3) {
+      const G2 = this.G;
+      if (G2.police.stars >= 6 && !this.helis.some((h) => h.gunship && !h.dead)) {
+        this.gunshipT -= dt3;
+        if (this.gunshipT <= 0) {
+          const a = rand(0, 6.28);
+          this.helis.push(new Hubschrauber(G2, G2.player.pos.x + Math.sin(a) * 130, G2.player.pos.z + Math.cos(a) * 130, { gunship: true }));
+          this.gunshipT = 240;
+          G2.ui.msg("GUNSHIP", "Milit\xE4r-Brecher in der Luft \u2014 3000 \u20AC Kopfgeld, setzt S\xF6ldner ab", 3.5);
+        }
+      }
+      if (!this.convoyAktiv) {
+        this.convoyT -= dt3;
+        if (this.convoyT <= 0 && G2.state === "playing") {
+          this.convoyAktiv = true;
+          this.convoyWrecks = 0;
+          const a = rand(0, 6.28), P = G2.player.pos;
+          for (let i = 0; i < 3; i++) {
+            const v = G2.vehicles.spawnTank(clamp2(P.x + Math.sin(a) * (110 + i * 16), -300, 300), clamp2(P.z + Math.cos(a) * (110 + i * 16), -300, 300));
+            v._convoy = true;
+            v.driver = "ai";
+            v.wake();
+          }
+          this.convoyT = 260;
+          G2.ui.msg("CONVOY GESICHTET", "3 Panzer im Anmarsch \u2014 alle drei: 3000 \u20AC", 3.5);
+        }
+      }
+    }
     stationen(dt3) {
       const G2 = this.G, m = G2.mechSys.mech;
       if (!m || !m.piloted || m.wrecked) return;
