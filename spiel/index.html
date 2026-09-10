@@ -155,6 +155,9 @@
   #shop .sub b{color:var(--ink)}
   #shop-rows{margin-top:14px;display:flex;flex-direction:column;gap:8px}
   #shop-klassen{margin-top:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  #shop-canvas{width:100%;height:auto;margin-top:12px;border-radius:10px;background:radial-gradient(ellipse at 50% 70%,#20242c 0%,#0b0d11 75%);display:block}
+  #shop-test{margin-top:10px;cursor:pointer;text-align:center;font:700 11px var(--mono);letter-spacing:.1em;color:var(--ink);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:8px 10px;background:rgba(255,255,255,.05)}
+  #shop-test:hover{background:rgba(255,255,255,.11)}
   #shop-klassen .kkopf{grid-column:1/-1;font:700 10px var(--mono);letter-spacing:.14em;color:var(--ink-dim);text-transform:uppercase}
   #shop-klassen .kkarte{cursor:pointer;border:1px solid rgba(255,255,255,.12);border-left:3px solid var(--kk,#888);border-radius:8px;padding:8px 10px;background:rgba(255,255,255,.04)}
   #shop-klassen .kkarte:hover{background:rgba(255,255,255,.09)}
@@ -232,7 +235,9 @@
   <div id="shop" class="panel">
     <h3>WAFFENKAMMER<span>.</span><button class="mx" data-close>✕</button></h3>
     <div class="sub">Konto <b id="shop-konto">0 €</b> · Ziffer kauft · <b>K</b> schließt</div>
+    <canvas id="shop-canvas" width="480" height="300"></canvas>
     <div id="shop-klassen"></div>
+    <div id="shop-test">▶ TESTSTAND — 3 Ziel-Mechs vor dir aufbauen (kaufen nicht vergessen)</div>
     <div id="shop-rows"></div>
     <div id="shop-hinweis" style="margin-top:12px;font:500 11px var(--mono);color:var(--ink-dim);letter-spacing:.08em"></div>
     <div class="hinweis">Klick = kaufen · scrollen zum Blättern · ESC/K schließt · Upgrades wirken sofort — Raub-Mechs zahlen 1.200 €.</div>
@@ -57075,6 +57080,7 @@ void main() {
       this.nest = !!opts.nest;
       this.cop = !!opts.cop;
       this.weaponId = "mg";
+      this.dummy = !!opts.dummy;
       this.tier = opts.tier || "std";
       const T = this.cop ? KRIEG.polizei[this.tier] : KRIEG.raubRollen && KRIEG.raubRollen[this.tier] || null;
       this.klasse = KLASSEN.sturm;
@@ -57315,7 +57321,7 @@ void main() {
       if (vomSpieler) {
         this.lastHitT = G2.time;
       }
-      if (this.state === "guard") this.state = "hunt";
+      if (this.state === "guard" && !this.dummy) this.state = "hunt";
       if (this.hp <= 0) this.die(vomSpieler);
     }
     die(vomSpieler) {
@@ -57329,7 +57335,7 @@ void main() {
       G2.weapons.scheduleExplosion(_a3, 9 * this.s, 22, 200, this, 0.05);
       G2.fx.explosion({ x: _a3.x, y: _a3.y, z: _a3.z }, 8 * this.s);
       G2.audio.explosion(_a3, 1.8);
-      if (vomSpieler) {
+      if (vomSpieler && !this.dummy) {
         if (G2.police && this.cop) G2.police.crime("killCop", this.pos);
         if (G2.krieg) G2.krieg.onFeindKill(this);
       }
@@ -57378,14 +57384,14 @@ void main() {
         this.pos.y += this.vy * dt3;
         if (this.pos.y <= gy) {
           this.pos.y = gy;
-          this.state = this.nest ? "guard" : "hunt";
+          this.state = this.nest || this.dummy ? "guard" : "hunt";
           G2.fx.dust({ x: this.pos.x, y: gy + 0.3, z: this.pos.z }, 26, 0, 1, 0);
           G2.audio.explosion(_a3.copy(this.pos), 0.8);
           G2.gcam.addShake(clamp2(1.4 - Math.hypot(this.pos.x - P.pos.x, this.pos.z - P.pos.z) / 60, 0, 1));
         }
       } else if (this.state === "guard") {
         const d = Math.hypot(P.pos.x - this.pos.x, P.pos.z - this.pos.z);
-        if (!P.dead && (d < 70 || G2.time - this.lastHurt < 12)) this.state = "hunt";
+        if (!this.dummy && !P.dead && (d < 70 || G2.time - this.lastHurt < 12)) this.state = "hunt";
       } else if (this.state === "leave") {
         this.leaveT = (this.leaveT || 0) + dt3;
         const dx = this.pos.x - P.pos.x, dz = this.pos.z - P.pos.z;
@@ -58024,6 +58030,24 @@ void main() {
       this.list.push(f);
       return f;
     }
+    // Runde 26: Teststand — drei Dummy-Ziele (je Klasse) vor dem Spieler; kein Geld, sie kommen wieder
+    teststand() {
+      const G2 = this.G, P = G2.player, f = G2.gcam.flat;
+      const yaw = Math.atan2(f.x, f.z), ax = Math.sin(yaw), az = Math.cos(yaw), rx = -az, rz = ax;
+      const cx = P.pos.x + ax * 17, cz = P.pos.z + az * 17;
+      for (let i = this.list.length - 1; i >= 0; i--) if (this.list[i].dummy) {
+        this.list[i].mesh.removeFromParent();
+        this.list.splice(i, 1);
+      }
+      ["laeufer", "sturm", "panzer"].forEach((id, i) => {
+        const x = clamp2(cx + rx * (i - 1) * 7, -235, 235), z = clamp2(cz + rz * (i - 1) * 7, -235, 235);
+        const d = this.spawnFeind(x, z, { tier: "std", klasse: id, dummy: true });
+        d.yaw = Math.atan2(P.pos.x - x, P.pos.z - z);
+      });
+      G2.ui.msg("TESTSTAND", "3 Ziele (L\xE4ufer \xB7 Sturm \xB7 Panzer) \u2014 Waffen testen", 2.6);
+      if (this.shopOpen) this.toggleShop();
+      return true;
+    }
     spawnFeindNear(d = 40) {
       const G2 = this.G, P = G2.player;
       const a = rand(0, Math.PI * 2);
@@ -58149,8 +58173,22 @@ void main() {
       } else this.waveT = Math.max(this.waveT, 12);
       for (let i = this.list.length - 1; i >= 0; i--) {
         if (this.list[i].update(dt3) === "remove") {
-          this.list[i].mesh.removeFromParent();
-          this.list.splice(i, 1);
+          const d = this.list[i];
+          if (d.dummy) {
+            d.dead = false;
+            d.wrecked = false;
+            d.hp = d.maxHealth;
+            d.deadT = 0;
+            d.state = "falling";
+            d.speed = 0;
+            if (d.P.Pelvis) d.P.Pelvis.quaternion.identity();
+            d.pos.y = G2.world.groundHeight(d.pos.x, d.pos.z) + KRIEG.feind.drop.height;
+            d.vy = KRIEG.feind.drop.vy0;
+            d.restPose();
+          } else {
+            d.mesh.removeFromParent();
+            this.list.splice(i, 1);
+          }
         }
       }
     }
@@ -58652,6 +58690,81 @@ void main() {
           this.G.krieg.klasseWaehlen(k.dataset.klasse);
         });
       }
+      this.vorschauZeigen(K2.klasse);
+    }
+    // Runde 26: Live-Vorschau — eigener Mini-Renderer, rotierender Mech in der aktuellen Klasse.
+    // Frische, UNGEPATCHTE Materialien (das Welt-Licht-Raster greift hier nicht — die Vorschau bringt eigenes Licht mit).
+    vorschauInit() {
+      if (this.vp || !window.THREE) return;
+      const canvas = document.getElementById("shop-canvas");
+      if (!canvas) return;
+      const renderer = new window.THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+      renderer.setSize(480, 300, false);
+      const scene = new window.THREE.Scene();
+      const key = new window.THREE.DirectionalLight(16773856, 3.4);
+      key.position.set(6, 10, 8);
+      scene.add(key);
+      const fill2 = new window.THREE.DirectionalLight(9418495, 1.4);
+      fill2.position.set(-8, 4, -6);
+      scene.add(fill2);
+      const rim = new window.THREE.DirectionalLight(16761466, 2.2);
+      rim.position.set(-3, 6, -10);
+      scene.add(rim);
+      scene.add(new window.THREE.AmbientLight(6975608, 2.2));
+      const cam = new window.THREE.PerspectiveCamera(38, 480 / 300, 0.1, 120);
+      cam.position.set(9, 5, 11);
+      cam.lookAt(0, 3.5, 0);
+      this.vp = { renderer, scene, cam, mech: null, klasse: null, t: 0 };
+    }
+    vorschauZeigen(klasseId) {
+      this.vorschauInit();
+      if (!this.vp || this.vp.klasse === klasseId) return;
+      const K2 = KLASSEN[klasseId] || KLASSEN.sturm;
+      const src = ASSETS[K2.glb];
+      if (!src) return;
+      this.vp.klasse = klasseId;
+      if (this.vp.mech) this.vp.scene.remove(this.vp.mech);
+      const mech = src.clone(true);
+      mech.traverse((o) => {
+        if (!o.isMesh) return;
+        const a = o.material;
+        o.material = new window.THREE.MeshStandardMaterial({
+          color: a.color ? a.color.clone() : new window.THREE.Color(8947848),
+          roughness: a.roughness ?? 0.6,
+          metalness: a.metalness ?? 0.4,
+          emissive: a.emissive ? a.emissive.clone() : new window.THREE.Color(0),
+          emissiveIntensity: a.emissiveIntensity ?? 1
+        });
+      });
+      const e = new window.THREE.Euler();
+      const P = {};
+      for (const n2 of ["Pelvis", "Hip_L", "Hip_R", "Knee_L", "Knee_R", "Foot_L", "Foot_R", "UpperArm_L", "UpperArm_R", "Forearm_L", "Forearm_R"]) P[n2] = mech.getObjectByName(n2);
+      const rot = (n2, x, y2, z) => {
+        if (P[n2]) {
+          e.set(x, y2, z);
+          P[n2].quaternion.setFromEuler(e);
+        }
+      };
+      if (P.Pelvis) P.Pelvis.position.y = K2.pelvisY;
+      rot("Hip_L", -0.34, 0, 0);
+      rot("Hip_R", -0.34, 0, 0);
+      rot("Knee_L", 0.72, 0, 0);
+      rot("Knee_R", 0.72, 0, 0);
+      rot("Foot_L", -0.38, 0, 0);
+      rot("Foot_R", -0.38, 0, 0);
+      rot("UpperArm_L", 0, 0, 0.12);
+      rot("UpperArm_R", 0, 0, -0.12);
+      rot("Forearm_L", -0.35, 0, 0);
+      rot("Forearm_R", -0.35, 0, 0);
+      this.vp.mech = mech;
+      this.vp.scene.add(mech);
+    }
+    vorschauTick(dt3) {
+      if (!this.vp) return;
+      this.vp.t += dt3;
+      if (this.vp.mech) this.vp.mech.rotation.y = this.vp.t * 0.55;
+      this.vp.renderer.render(this.vp.scene, this.vp.cam);
     }
     settingsToggle() {
       if (this.settingsOpen) {
@@ -58684,6 +58797,11 @@ void main() {
           this.renderShop();
         });
         this.el.shop.querySelector("[data-close]").addEventListener("click", () => this.G.krieg.toggleShop());
+        const test = document.getElementById("shop-test");
+        if (test && !test.dataset.klick) {
+          test.dataset.klick = "1";
+          test.addEventListener("click", () => this.G.krieg.teststand());
+        }
       }
     }
     settingsKlick(i) {
@@ -61965,6 +62083,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           listenerU.set(0, 1, 0).applyQuaternion(camera.quaternion);
           audio.setListener(camera.position.x, camera.position.y, camera.position.z, listenerF.x, listenerF.y, listenerF.z, listenerU.x, listenerU.y, listenerU.z);
           ui.update(realDt);
+          ui.vorschauTick(realDt);
         } catch (e) {
           if (!G._frameErrT || G.realTime - G._frameErrT > 5) {
             console.error("frame error (gedeckelt geloggt):", e);
