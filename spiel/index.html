@@ -42771,6 +42771,9 @@ void main() {
       { id: "moerser", name: "M\xF6rser-Rack", preis: 1800, rang: 2, text: "Waffe: M\xF6rser \u2014 Granaten im Bogen, gro\xDFe Fl\xE4che", anbau: [{ teil: "Upgrade_moerser", pivot: "Backpack" }] },
       { id: "tesla", name: "Tesla-Kette", preis: 2e3, rang: 2, text: "Waffe: Blitz springt zwischen bis zu 4 Feinden", anbau: [] },
       { id: "schildarm", name: "Schild-Arm", preis: 1500, rang: 2, text: "T halten: Frontal-Block, 75 % weniger Schaden", anbau: [] },
+      { id: "overdrive", name: "Overdrive", preis: 1600, rang: 2, text: "X: 8 s halbe Cooldowns + Tempo, dann 4 s Sperre", anbau: [] },
+      { id: "brand", name: "Brand-Munition", preis: 800, rang: 1, text: "Minigun/Flak z\xFCnden Feinde (Nachbrennen)", anbau: [] },
+      { id: "frost", name: "Frost-Munition", preis: 800, rang: 1, text: "Treffer verlangsamen Feinde um die H\xE4lfte", anbau: [] },
       { id: "griff", name: "Luftgriff", preis: 1300, rang: 1, text: "Boost +50 % \xB7 drehen \xD71,5", anbau: [] },
       { id: "hover", name: "Hover-Feinmodus", preis: 800, rang: 1, text: "Streuung in der Luft \u221250 %", anbau: [] },
       { id: "greifhaken", name: "Greifhaken", preis: 1500, rang: 2, text: "C: Haken zum Zielpunkt \u2014 zieht dich hin, Schwung bleibt", anbau: [] },
@@ -57175,6 +57178,10 @@ void main() {
       this.wrecked = false;
       this.dead = false;
       this.deadT = 0;
+      this.plasmaFeind = !this.cop && !this.dummy && Math.random() < 0.3;
+      this.feindPlasma = [];
+      this._schildBis = 0;
+      this._wutAktiv = false;
       this.phase = 0;
       this.speed = 0;
       this.torsoYaw = 0;
@@ -57367,6 +57374,20 @@ void main() {
           this.G.fx.sparks({ x: this.pos.x, y: this.pos.y + 4, z: this.pos.z, nx: 0, ny: 1, nz: 0 }, 4, 0, 1, 0);
         }
       }
+      if (this.tier === "titan" && !this.dummy) {
+        if (this._schildBis && this.G.time < this._schildBis) {
+          amount *= 0.35;
+        } else if (!this._wutAktiv && this.hp <= this.maxHealth * 0.5) {
+          this._schildBis = this.G.time + 8;
+          this._wutAktiv = true;
+          this.G.ui.msg("TITAN-SCHILD", "Panzerung verschlossen \u2014 8 s", 2.4);
+          this.G.audio.ui("open");
+        } else if (this._wutAktiv && (!this._schildBis || this.G.time >= this._schildBis)) {
+          this._schildBis = 0;
+          this.speedMax *= 1.6;
+          this.G.ui.msg("TITAN-WUT", "Er kommt schnell \u2014 renn oder stirb", 2.6);
+        }
+      }
       this.hp -= amount;
       this.dmgFlash = 1;
       this.lastHurt = this.G.time;
@@ -57383,6 +57404,7 @@ void main() {
       this.dead = true;
       this.state = "dead";
       this.deadT = 0;
+      this.feindPlasma.length = 0;
       const G2 = this.G;
       _a3.copy(this.pos);
       _a3.y += 3.5;
@@ -57405,6 +57427,13 @@ void main() {
       if (d < 4 || d > KRIEG.feind.fireRange) return false;
       _b3.divideScalar(d);
       if (!G2.world.losStatic(_a3.x, _a3.y, _a3.z, ziel.x, ziel.y + 1.2, ziel.z)) return false;
+      if (this.plasmaFeind) {
+        const sp = 40;
+        this.feindPlasma.push({ x: _a3.x, y: _a3.y, z: _a3.z, vx: _b3.x * sp, vy: _b3.y * sp + d * 0.05, vz: _b3.z * sp, age: 0 });
+        G2.audio.plasmaShot(_a3);
+        G2.fx.muzzle(_a3, _b3.x, _b3.y, _b3.z, 0.8);
+        return true;
+      }
       G2.weapons.npcFire(_a3, _b3, this);
       return true;
     }
@@ -57429,6 +57458,25 @@ void main() {
         this._goodT = G2.time;
         (this._goodP || (this._goodP = new Vector3())).copy(this.pos);
         this._goodYaw = this.yaw;
+      }
+      if (this._brandBis && G2.time < this._brandBis && !this.dead) {
+        this.damage(15 * dt3, "brand", "player");
+        if (Math.random() < 8 * dt3) G2.fx.glow.spawn({ x: this.pos.x + randSpread(1.5), y: this.pos.y + rand(2, 5), z: this.pos.z + randSpread(1.5), s0: 1.3, s1: 0.3, a0: 0.8, a1: 0, life: 0.4, r: [2.4, 1.2, 0.3] });
+      }
+      for (let i = this.feindPlasma.length - 1; i >= 0; i--) {
+        const p = this.feindPlasma[i];
+        p.age += dt3;
+        p.vy -= 5 * dt3;
+        p.x += p.vx * dt3;
+        p.y += p.vy * dt3;
+        p.z += p.vz * dt3;
+        G2.fx.glow.spawn({ x: p.x, y: p.y, z: p.z, s0: 1.2, s1: 0.3, a0: 0.8, a1: 0, life: 0.08, r: [0.5, 2.4, 1.6] });
+        const pgy = G2.world.groundHeight(p.x, p.z);
+        if (p.y <= pgy || p.age > 4 || Math.hypot(P.pos.x - p.x, P.pos.y - p.y, P.pos.z - p.z) < 2.5) {
+          G2.weapons.scheduleExplosion({ x: p.x, y: Math.max(p.y, pgy), z: p.z }, 4.5, 10, 80, this, 0);
+          G2.audio.explosion({ x: p.x, y: p.y, z: p.z }, 0.8);
+          this.feindPlasma.splice(i, 1);
+        }
       }
       const gy = G2.world.groundHeight(this.pos.x, this.pos.z);
       if (this.state === "falling") {
@@ -57485,11 +57533,12 @@ void main() {
         const ruck = this.tier === "artillery" && d < KRIEG.raubRollen.artillery.fluchtdistanz;
         const willLaufen = ruck ? true : d > sollRange && !P.dead;
         const F = KRIEG.feind;
+        const froK = this._frostBis && G2.time < this._frostBis ? 0.5 : 1;
         this.speed = clamp2(this.speed + (willLaufen ? F.accel : -F.accel * 1.6) * dt3, 0, this.speedMax);
         if (this.speed > 0.05) {
           const richt = ruck ? -1 : 1;
-          this.pos.x += dx / d * this.speed * dt3 * richt;
-          this.pos.z += dz / d * this.speed * dt3 * richt;
+          this.pos.x += dx / d * this.speed * dt3 * richt * froK;
+          this.pos.z += dz / d * this.speed * dt3 * richt * froK;
         }
         this.phase += dt3 * (2.4 * this.speed / this.speedMax + (this.speed > 0.05 ? 0.4 : 0));
         const B2 = F.burst;
@@ -60318,6 +60367,9 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this.teslaCd = 0;
       this.blockE = 1;
       this.blockAktiv = false;
+      this.odT = 0;
+      this.odCd = 0;
+      this._odWar = false;
       this.grapple = null;
       this.lights = [];
       this.loop = null;
@@ -60340,7 +60392,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     }
     // Klassen-Stats als Live-View: Upgrades mutieren MECH.* (krieg.js anwenden) und wirken sofort weiter
     get statWalk() {
-      return MECH["walkSpeed"] * this.klasse.walk;
+      return MECH["walkSpeed"] * this.klasse.walk * (this.odT > 0 ? 1.3 : 1);
     }
     get statTurn() {
       return MECH["turnRate"] * this.klasse.turn;
@@ -60596,6 +60648,21 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this.blockAktiv = willBlock;
       if (willBlock) this.blockE = Math.max(0, this.blockE - 0.45 * dt3);
       else this.blockE = Math.min(1, this.blockE + 0.22 * dt3);
+      if (this.G.input.pressed("KeyX") && G2.krieg.owned.has("overdrive") && this.odT <= 0 && this.odCd <= 0 && this.piloted) {
+        this.odT = 8;
+        G2.ui.msg("OVERDRIVE", "8 s Vollgas", 2);
+        G2.audio.ui("open");
+      }
+      const odK = this.odT > 0 ? 2 : 1;
+      this.odT = Math.max(0, this.odT - dt3);
+      if (this.odT <= 0 && this._odWar) {
+        this._odWar = false;
+        this.odCd = 4;
+        G2.ui.msg("\xDCBERHITZT", "4 s Sperre", 1.6);
+      }
+      this.odCd = Math.max(0, this.odCd - dt3);
+      this.meleeCd = Math.max(0, this.meleeCd - odK * dt3);
+      this.teslaCd = Math.max(0, this.teslaCd - odK * dt3);
       this.applyPose(dt3);
       this.updateMesh();
       this.updateAABB();
@@ -61342,7 +61409,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       if (flak) {
         g2.spin = g2.on ? 1 : 0;
         if (g2.on) {
-          this.heat = Math.min(1, this.heat + Gd.heatRate * 1.9 * dt3);
+          if (this.odT <= 0) this.heat = Math.min(1, this.heat + Gd.heatRate * 1.9 * dt3);
           if (this.heat >= 1) this.overheat = Gd.overheatLock;
         } else this.heat = Math.max(0, this.heat - Gd.coolRate * dt3);
         g2.cd -= dt3;
@@ -61364,8 +61431,9 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         return;
       }
       g2.spin = clamp2(g2.spin + (g2.on ? dt3 / Gd.spinUp : -dt3 / (Gd.spinUp * 0.8)), 0, 1);
-      if (g2.on) this.heat = Math.min(1, this.heat + Gd.heatRate * dt3);
-      else this.heat = Math.max(0, this.heat - Gd.coolRate * dt3);
+      if (g2.on) {
+        if (this.odT <= 0) this.heat = Math.min(1, this.heat + Gd.heatRate * dt3);
+      } else this.heat = Math.max(0, this.heat - Gd.coolRate * dt3);
       if (this.heat >= 1) this.overheat = Gd.overheatLock;
       if (this.barrels) this.barrels.rotation.z += g2.spin * 34 * dt3;
       for (let i = g2.tr.length - 1; i >= 0; i--) {
@@ -61437,6 +61505,10 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       } else if (hit.kind === "mech") {
         const f = hit.ref;
         const dmg = Gd.damage * (f.isFeind ? 2.2 : 0.18);
+        if (f.isFeind) {
+          if (G2.krieg.owned.has("brand")) f._brandBis = G2.time + 3;
+          if (G2.krieg.owned.has("frost")) f._frostBis = G2.time + 3;
+        }
         f.damage(dmg, "bullet", "player");
         fx.sparks(hit, 6, hit.nx, hit.ny, hit.nz);
         if (f.isFeind) {
@@ -61482,7 +61554,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     }
     updatePlasma(dt3) {
       const G2 = this.G;
-      this.plasmaCd = Math.max(0, this.plasmaCd - dt3);
+      this.plasmaCd = Math.max(0, this.plasmaCd - (this.odT > 0 ? 2 : 1) * dt3);
       for (let i = this.plasmaShots.length - 1; i >= 0; i--) {
         const p = this.plasmaShots[i];
         p.age += dt3;
@@ -61550,8 +61622,11 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       G2.weapons.scheduleExplosion({ x: hit.x, y: hit.y, z: hit.z }, 2.2, 6, 46, "player", 0);
       G2.fx.sparks(hit, 4, hit.nx, hit.ny, hit.nz);
       if (hit.kind === "mech" && hit.ref.isFeind) {
-        G2.ui.hitmarker(hit.ref.dead);
-        if (this.gun.n % 3 === 0) G2.ui.dmgNumber(hit.x, hit.y + 0.4, hit.z, 46, hit.ref.dead);
+        const f = hit.ref;
+        if (G2.krieg.owned.has("brand")) f._brandBis = G2.time + 3;
+        if (G2.krieg.owned.has("frost")) f._frostBis = G2.time + 3;
+        G2.ui.hitmarker(f.dead);
+        if (this.gun.n % 3 === 0) G2.ui.dmgNumber(hit.x, hit.y + 0.4, hit.z, 46, f.dead);
       } else if (hit.kind === "vehicle") {
         hit.ref.damage(26, "bullet", "player");
         hit.ref.impulse(_d4.x * 160, _d4.z * 160, hit.x, hit.z);
@@ -61582,7 +61657,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     }
     updateMoerser(dt3) {
       const G2 = this.G, Md = MECH.moerser;
-      this.moerserCd = Math.max(0, this.moerserCd - dt3);
+      this.moerserCd = Math.max(0, this.moerserCd - (this.odT > 0 ? 2 : 1) * dt3);
       if (this.moerserAmmo < Md.ammo) {
         this.moerserRegenT += dt3;
         if (this.moerserRegenT >= Md.regen) {
