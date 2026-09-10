@@ -50893,6 +50893,72 @@ void main() {
         }
       };
     }
+    // Runde 32: Kampf-Puls (Katalog #40/#41) — dunkler Bass + Schwebung + Herzschlag-Puls, Anlauf per set(k).
+    // basis = Grundton je Mech-Klasse (Läufer hoch, Panzer tief) — die Klasse hört man im Bass.
+    kampfLoop(p, basis = 52) {
+      if (!this.ready) return null;
+      const ctx = this.ctx, t2 = ctx.currentTime, v = this.voice(p, 14, "sfx", 700, 0);
+      const o = ctx.createOscillator();
+      o.type = "sawtooth";
+      o.frequency.value = basis;
+      const of = ctx.createBiquadFilter();
+      of.type = "lowpass";
+      of.frequency.value = 420;
+      const og = ctx.createGain();
+      og.gain.value = 0.5;
+      o.connect(of);
+      of.connect(og);
+      og.connect(v.out);
+      o.start(t2);
+      const o2 = ctx.createOscillator();
+      o2.type = "sawtooth";
+      o2.frequency.value = basis * 1.06;
+      const og2 = ctx.createGain();
+      og2.gain.value = 0.3;
+      o2.connect(og2);
+      og2.connect(v.out);
+      o2.start(t2);
+      const pl = ctx.createOscillator();
+      pl.type = "sine";
+      pl.frequency.value = basis / 2;
+      const plg = ctx.createGain();
+      plg.gain.value = 0;
+      pl.connect(plg);
+      plg.connect(v.out);
+      pl.start(t2);
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 1.7;
+      const lg = ctx.createGain();
+      lg.gain.value = 0.5;
+      lfo.connect(lg);
+      lg.connect(plg.gain);
+      lfo.start(t2);
+      return {
+        set: (k, q) => {
+          const tt = ctx.currentTime;
+          v.out.gain.setTargetAtTime(fin(k) * 0.45, tt, 0.5);
+          if (q) {
+            if (v.pan.positionX) {
+              v.pan.positionX.setTargetAtTime(fin(q.x), tt, 0.05);
+              v.pan.positionY.setTargetAtTime(fin(q.y), tt, 0.05);
+              v.pan.positionZ.setTargetAtTime(fin(q.z), tt, 0.05);
+            } else v.pan.setPosition(fin(q.x), fin(q.y), fin(q.z));
+          }
+        },
+        stop: () => {
+          const tt = ctx.currentTime;
+          v.out.gain.setTargetAtTime(0, tt, 0.3);
+          try {
+            o.stop(tt + 0.5);
+            o2.stop(tt + 0.5);
+            pl.stop(tt + 0.5);
+            lfo.stop(tt + 0.5);
+          } catch (e) {
+          }
+          v.kill(tt + 0.6);
+        }
+      };
+    }
   };
   var SirenVoice = class {
     constructor(sys, p) {
@@ -57590,9 +57656,11 @@ void main() {
         const willLaufen = ruck ? true : d > sollRange && !P.dead;
         const F = KRIEG.feind;
         const froK = this._frostBis && G2.time < this._frostBis ? 0.5 : 1;
+        if (this._brandBis && G2.time < this._brandBis && Math.random() < 0.35 * dt3) this._panikBis = G2.time + rand(1.5, 3);
+        const panik = this._panikBis && G2.time < this._panikBis;
         this.speed = clamp2(this.speed + (willLaufen ? F.accel : -F.accel * 1.6) * dt3, 0, this.speedMax);
         if (this.speed > 0.05) {
-          const richt = ruck ? -1 : 1;
+          const richt = ruck || panik ? -1 : 1;
           this.pos.x += dx / d * this.speed * dt3 * richt * froK;
           this.pos.z += dz / d * this.speed * dt3 * richt * froK;
         }
@@ -58418,6 +58486,7 @@ void main() {
       this.schaetzeUpdate(dt3);
       this.eventsUpdate(dt3);
       this.dachUpdate(dt3);
+      this.stadtUpdate(dt3);
       this.stationen(dt3);
       this.dronesUpdate(dt3);
       this.comboT -= dt3;
@@ -58659,6 +58728,52 @@ void main() {
       if (G2.police.setStars) G2.police.setStars(5);
       else G2.police.stars = 5;
       G2.ui.msg("BENCHMARK", "20 s Volllast (Sterne 5 + Regen) \u2014 nicht ESC", 3);
+    }
+    // Runde 32: Stadt-Verteidigung (#37 light) — Raub-Mechs greifen das Zentrum an; Integrität sinkt,
+    // solange sie stehen. Alle aus = Rettungs-Bonus nach Rest-Integrität.
+    stadtUpdate(dt3) {
+      const G2 = this.G;
+      if (!this.stadt) {
+        this.stadtT = (this.stadtT ?? 240) - dt3;
+        if (this.stadtT <= 0 && !this.arena && G2.state === "playing") {
+          const plaza = G2.world.blocks.find((b) => b.template === "plaza");
+          if (!plaza) {
+            this.stadtT = 120;
+            return;
+          }
+          const cx = (plaza.lot.minX + plaza.lot.maxX) / 2, cz = (plaza.lot.minZ + plaza.lot.maxZ) / 2;
+          const feinds = [];
+          for (let i = 0; i < 5; i++) {
+            const a = i / 5 * 6.28;
+            const f = this.spawnFeind(cx + Math.sin(a) * 50, cz + Math.cos(a) * 50, { klasse: ["sturm", "panzer", "laeufer"][i % 3] });
+            f.stadt = true;
+            feinds.push(f);
+          }
+          this.stadt = { hp: 100, feinds };
+          this.stadtT = 420;
+          G2.ui.msg("STADT-ANGRIFF", "5 Raub-Mechs im Zentrum \u2014 die Integrit\xE4t sinkt, solange sie stehen!", 4);
+        }
+        return;
+      }
+      const S3 = this.stadt;
+      const lebend = S3.feinds.filter((f) => !f.dead);
+      if (!lebend.length) {
+        const lohn = 500 + Math.round(S3.hp * 20);
+        this.pay(lohn);
+        this.addXP(100);
+        G2.ui.msg("STADT GERETTET", "Integrit\xE4t " + Math.round(S3.hp) + "% \xB7 +" + geld(lohn), 4);
+        this.stadt = null;
+        this.stadtT = 420;
+        this.save();
+        return;
+      }
+      S3.hp = Math.max(0, S3.hp - 1.2 * lebend.length * dt3);
+      if (S3.hp <= 0) {
+        G2.ui.msg("STADT GEFALLEN", "das Zentrum ist zerlegt \u2014 n\xE4chstes Mal schneller", 4);
+        for (const f of lebend) f.damage(9999, "explosion", "system");
+        this.stadt = null;
+        this.stadtT = 420;
+      }
     }
     stationen(dt3) {
       const G2 = this.G, m = G2.mechSys.mech;
@@ -59327,6 +59442,9 @@ void main() {
       if (G2.krieg && G2.krieg.arena && this.el.arena) {
         const A2 = G2.krieg.arena;
         this.el.arena.textContent = "ARENA \xB7 WELLE " + A2.welle + (A2.welle <= 5 ? " / 5" : "+") + " \xB7 " + (KLASSEN[A2.zwang] ? KLASSEN[A2.zwang].name + "-BONUS" : "");
+        this.el.arena.style.display = "block";
+      } else if (G2.krieg && G2.krieg.stadt && this.el.arena) {
+        this.el.arena.textContent = "STADT-INTEGRIT\xC4T " + Math.max(0, Math.round(G2.krieg.stadt.hp)) + "% \u2014 " + G2.krieg.stadt.feinds.filter((f) => !f.dead).length + " MECHS";
         this.el.arena.style.display = "block";
       } else if (this.el.arena) this.el.arena.style.display = "none";
       if (G2.krieg && this.el.chaos) {
@@ -60750,6 +60868,10 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this.flying = false;
       this.climb = null;
       this.roll = null;
+      if (this.kampf) {
+        this.kampf.stop();
+        this.kampf = null;
+      }
       _v8.copy(this.pos);
       _v8.y += 3.5;
       G2.weapons.scheduleExplosion(_v8, 9, 22, 200, this, 0.05);
@@ -60884,6 +61006,16 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this.blockAktiv = willBlock;
       if (willBlock) this.blockE = Math.max(0, this.blockE - 0.45 * dt3);
       else this.blockE = Math.min(1, this.blockE + 0.22 * dt3);
+      const kampfAn = this.piloted && !this.wrecked && G2.police.stars >= 4 ? clamp2((G2.police.stars - 3) / 3, 0.25, 1) : 0;
+      if (kampfAn && !this.kampf) {
+        const basis = this.klasse.id === "laeufer" ? 62 : this.klasse.id === "panzer" ? 41 : 52;
+        this.kampf = G2.audio.kampfLoop(this.pos, basis);
+      }
+      if (!kampfAn && this.kampf) {
+        this.kampf.stop();
+        this.kampf = null;
+      }
+      if (this.kampf) this.kampf.set(kampfAn, this.pos);
       if (this.G.input.pressed("KeyX") && G2.krieg.owned.has("overdrive") && this.odT <= 0 && this.odCd <= 0 && this.piloted) {
         this.odT = 8;
         G2.ui.msg("OVERDRIVE", "8 s Vollgas", 2);
@@ -62258,6 +62390,10 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     remove() {
       this.gunStop();
       this.stopLoop();
+      if (this.kampf) {
+        this.kampf.stop();
+        this.kampf = null;
+      }
       for (let i = this.missiles.length - 1; i >= 0; i--) this.removeMissile(i);
       this.G.scene.remove(this.mesh);
     }
