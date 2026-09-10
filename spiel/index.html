@@ -180,6 +180,14 @@
   .srow.hat .spreis{color:var(--accent2)}
   #shop .hinweis{margin-top:12px;font:500 11px var(--mono);color:var(--ink-dim);letter-spacing:.08em}
 </style>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#ff7a1a">
+<script>
+  // Runde 31 (Katalog #54): Service Worker — Spiel läuft offline vom Home-Screen
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
+</script>
 </head>
 <body>
 <canvas id="gl" tabindex="0"></canvas>
