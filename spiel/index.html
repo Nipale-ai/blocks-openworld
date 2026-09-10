@@ -246,6 +246,12 @@
     <div class="srow"><span class="skey">4</span><span class="sname">Regen<small>Wetter-Umschalter</small></span><span class="spreis" id="set-regen">AN</span></div>
     <div class="srow"><span class="skey">5</span><span class="sname">Save exportieren<small>in die Zwischenablage</small></span><span class="spreis">→</span></div>
     <div class="srow"><span class="skey">6</span><span class="sname">Save importieren<small>einfügen + Neustart</small></span><span class="spreis">←</span></div>
+    <div class="srow"><span class="skey">7</span><span class="sname">Benchmark<small>20 s Volllast, Ø fps</small></span><span class="spreis">▶</span></div>
+    <div class="srow"><span class="skey">8</span><span class="sname">Taste: Waffenkammer<small>klicken, dann Taste drücken</small></span><span class="spreis" id="set-key-waffenkammer">K</span></div>
+    <div class="srow"><span class="skey">9</span><span class="sname">Taste: Arena<small>klicken, dann Taste drücken</small></span><span class="spreis" id="set-key-arena">N</span></div>
+    <div class="srow"><span class="skey">10</span><span class="sname">Taste: Einstellungen<small>klicken, dann Taste drücken</small></span><span class="spreis" id="set-key-einstellungen">O</span></div>
+    <div class="srow"><span class="skey">11</span><span class="sname">Taste: Statistik<small>klicken, dann Taste drücken</small></span><span class="spreis" id="set-key-statistik">Z</span></div>
+    <div class="srow"><span class="skey">12</span><span class="sname">Taste: Foto-Modus<small>klicken, dann Taste drücken</small></span><span class="spreis" id="set-key-foto">Y</span></div>
     <div style="margin-top:10px;font:500 10px var(--mono);color:var(--ink-dim);letter-spacing:.1em">ESC schließt</div>
   </div>
   <div id="stats" style="display:none;position:absolute;left:50%;top:50%;transform:translateX(-50%);min-width:380px" class="panel">
@@ -42130,6 +42136,19 @@ void main() {
 
   // src/util.js
   var clamp2 = (v, a, b) => v < a ? a : v > b ? b : v;
+  var _KEYMAP = {};
+  try {
+    _KEYMAP = JSON.parse(localStorage.getItem("blocks.keys") || "{}") || {};
+  } catch (e) {
+  }
+  var keyFuer = (aktion, def) => _KEYMAP[aktion] || def;
+  var setzeKey = (aktion, code) => {
+    _KEYMAP[aktion] = code;
+    try {
+      localStorage.setItem("blocks.keys", JSON.stringify(_KEYMAP));
+    } catch (e) {
+    }
+  };
   var lerp2 = (a, b, t2) => a + (b - a) * t2;
   var smoothstep2 = (a, b, x) => {
     const t2 = clamp2((x - a) / (b - a), 0, 1);
@@ -58558,6 +58577,21 @@ void main() {
     // Runde 29: Gunship (6 Sterne) + Convoy-Überfall (3 Panzer, alle = 3000 €)
     eventsUpdate(dt3) {
       const G2 = this.G;
+      if (this.bench) {
+        const B2 = this.bench;
+        B2.acc += dt3;
+        const f = G2.fps || 60;
+        B2.fps += f;
+        B2.n++;
+        B2.min = Math.min(B2.min, f);
+        B2.max = Math.max(B2.max, f);
+        if (G2.realTime >= B2.end) {
+          const avg = Math.round(B2.fps / Math.max(1, B2.n));
+          console.log("[BENCH] avg", avg, "min", B2.min, "max", B2.max);
+          G2.ui.msg("BENCHMARK-FERTIG", "\xD8 " + avg + " fps \xB7 min " + B2.min + " \xB7 max " + B2.max, 8);
+          this.bench = null;
+        }
+      }
       if (G2.police.stars >= 6 && !this.helis.some((h) => h.gunship && !h.dead)) {
         this.gunshipT -= dt3;
         if (this.gunshipT <= 0) {
@@ -58604,6 +58638,15 @@ void main() {
         alive.push(n2);
         G2.ui.msg("DACH-SCH\xDCTZE", "Scharfsch\xFCtze auf einem Dach \u2014 Deckung!", 2.2);
       }
+    }
+    // Runde 31: Benchmark starten (Einstellungen Zeile 7) — 20 s Sterne 5 + Regen, dann Ø/min/max fps
+    benchStarten() {
+      const G2 = this.G;
+      this.bench = { end: G2.realTime + 20, acc: 0, fps: 0, n: 0, min: 999, max: 0 };
+      window.__regen = true;
+      if (G2.police.setStars) G2.police.setStars(5);
+      else G2.police.stars = 5;
+      G2.ui.msg("BENCHMARK", "20 s Volllast (Sterne 5 + Regen) \u2014 nicht ESC", 3);
     }
     stationen(dt3) {
       const G2 = this.G, m = G2.mechSys.mech;
@@ -59138,10 +59181,18 @@ void main() {
       this.el.settings.querySelector("#set-bloom").textContent = G2.postfx.bloom1 > 0.05 ? "AN" : "AUS";
       this.el.settings.querySelector("#set-dpr").textContent = String(G2.dpr);
       this.el.settings.querySelector("#set-regen").textContent = window.__regen ? "AN" : "AUS";
+      this.settingsKeys();
       if (!this.el.settings.dataset.klick) {
         this.el.settings.dataset.klick = "1";
         this.el.settings.querySelectorAll(".srow").forEach((r, i) => r.addEventListener("click", () => this.settingsAktion(i)));
         this.el.settings.querySelector("[data-close]").addEventListener("click", () => this.settingsToggle());
+      }
+    }
+    settingsKeys() {
+      const namen = [["set-key-waffenkammer", "waffenkammer", "KeyK"], ["set-key-arena", "arena", "KeyN"], ["set-key-einstellungen", "einstellungen", "KeyO"], ["set-key-statistik", "statistik", "KeyZ"], ["set-key-foto", "foto", "KeyY"]];
+      for (const [id, a, def] of namen) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = keyFuer(a, def).replace("Key", "");
       }
     }
     // Runde 26: Statistik-Panel (Z) — Gesamt-Bilanz aus G.stats + Krieg-System
@@ -59235,6 +59286,18 @@ void main() {
             G2.ui.msg("SAVE UNG\xDCLTIG", "kein g\xFCltiges JSON", 2);
           }
         }
+      } else if (i === 7) {
+        G2.krieg.benchStarten();
+      } else if (i >= 8 && i <= 12) {
+        const aktionen = ["waffenkammer", "arena", "einstellungen", "statistik", "foto"];
+        const namen = { waffenkammer: "Waffenkammer", arena: "Arena", einstellungen: "Einstellungen", statistik: "Statistik", foto: "Foto-Modus" };
+        const a = aktionen[i - 8];
+        const s = prompt("Neue Taste f\xFCr " + namen[a] + " (z. B. KeyP):", keyFuer(a, "Key?"));
+        if (s && /^Key[A-Z]$/.test(s.trim())) {
+          setzeKey(a, s.trim());
+          G2.ui.msg(namen[a].toUpperCase(), "Taste: " + s.trim(), 2);
+          this.settingsKeys();
+        } else if (s) G2.ui.msg("UNG\xDCLTIG", "Format Key + Gro\xDFbuchstabe", 2);
       }
       try {
         localStorage.setItem("blocks.settings", JSON.stringify({ shadow: G2.sun.castShadow, bloom: G2.postfx.bloom1 > 0.05, dpr: G2.dpr }));
@@ -62273,7 +62336,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     }
     update(dt3) {
       const G2 = this.G, I2 = G2.input, P = G2.player;
-      if (I2.pressed("KeyG") && !P.dead && P.state === "foot") this.call();
+      if (I2.pressed(keyFuer("mech", "KeyG")) && !P.dead && P.state === "foot") this.call();
       if (this.callT >= 0) this.callT += dt3;
       this.lights = this.mech ? this.mech.lights : [];
       if (!this.mech) return;
@@ -62565,17 +62628,17 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           G.dt = dt3;
           G.time += dt3;
           if (!weapons.wheelOpen && (input.dx || input.dy)) gcam.look(input.dx, input.dy);
-          if (input.pressed("KeyK") && !weapons.wheelOpen) krieg.toggleShop();
-          if (input.pressed("KeyN")) krieg.arenaToggle();
-          if (input.pressed("KeyO")) ui.settingsToggle();
-          if (input.pressed("KeyY") && !krieg.shopOpen && !ui.settingsOpen && !ui.statsOpen) {
+          if (input.pressed(keyFuer("waffenkammer", "KeyK")) && !weapons.wheelOpen) krieg.toggleShop();
+          if (input.pressed(keyFuer("arena", "KeyN"))) krieg.arenaToggle();
+          if (input.pressed(keyFuer("einstellungen", "KeyO"))) ui.settingsToggle();
+          if (input.pressed(keyFuer("foto", "KeyY")) && !krieg.shopOpen && !ui.settingsOpen && !ui.statsOpen) {
             const an2 = !document.body.classList.contains("foto");
             document.body.classList.toggle("foto", an2);
             G.timeScale = an2 ? 0.18 : 1;
             krieg._prevTs = 1;
             ui.msg(an2 ? "FOTO-MODUS" : "FOTO-MODUS AUS", an2 ? "Zeitlupe \xB7 HUD aus" : "", 1.4);
           }
-          if (input.pressed("KeyZ")) ui.statsToggle();
+          if (input.pressed(keyFuer("statistik", "KeyZ"))) ui.statsToggle();
           if (input.pressed("Escape")) {
             let zu = false;
             if (krieg.shopOpen) {
@@ -62631,8 +62694,8 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
             } else ui.msg("BESTECHUNG", "erst kaufen", 1.2);
           }
           if (ui.settingsOpen) {
-            for (let i = 1; i <= 6; i++) if (input.pressed("Digit" + i)) ui.settingsAktion(i);
-            if (input.pressed("KeyO") === false && input.pressed("Escape")) ui.settingsToggle();
+            for (let i = 1; i <= 12; i++) if (input.pressed("Digit" + i)) ui.settingsAktion(i);
+            if (input.pressed(keyFuer("einstellungen", "KeyO")) === false && input.pressed("Escape")) ui.settingsToggle();
           }
           if (krieg.shopOpen) krieg.shopInput();
           else if (input.pressed("KeyE") && !player.dead) {
