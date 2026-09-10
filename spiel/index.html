@@ -231,6 +231,8 @@
     <div class="srow"><span class="skey">2</span><span class="sname">Bloom<small>Licht-Glow</small></span><span class="spreis" id="set-bloom">AN</span></div>
     <div class="srow"><span class="skey">3</span><span class="sname">Aufloesung<small>Render-Skalierung</small></span><span class="spreis" id="set-dpr">1.5</span></div>
     <div class="srow"><span class="skey">4</span><span class="sname">Regen<small>Wetter-Umschalter</small></span><span class="spreis" id="set-regen">AN</span></div>
+    <div class="srow"><span class="skey">5</span><span class="sname">Save exportieren<small>in die Zwischenablage</small></span><span class="spreis">→</span></div>
+    <div class="srow"><span class="skey">6</span><span class="sname">Save importieren<small>einfügen + Neustart</small></span><span class="spreis">←</span></div>
     <div style="margin-top:10px;font:500 10px var(--mono);color:var(--ink-dim);letter-spacing:.1em">ESC schließt</div>
   </div>
   <div id="stats" style="display:none;position:absolute;left:50%;top:50%;transform:translateX(-50%);min-width:380px" class="panel">
@@ -59161,6 +59163,24 @@ void main() {
       } else if (i === 4) {
         window.__regen = !window.__regen;
         this.el.settings.querySelector("#set-regen").textContent = window.__regen ? "AN" : "AUS";
+      } else if (i === 5) {
+        try {
+          navigator.clipboard.writeText(localStorage.getItem("blocks.save") || "{}");
+          G2.ui.msg("SAVE EXPORTIERT", "in der Zwischenablage", 2);
+        } catch (e) {
+          prompt("Save kopieren:", localStorage.getItem("blocks.save") || "{}");
+        }
+      } else if (i === 6) {
+        const s = prompt("Save einf\xFCgen (leer = abbrechen):", "");
+        if (s) {
+          try {
+            JSON.parse(s);
+            localStorage.setItem("blocks.save", s);
+            location.reload();
+          } catch (e) {
+            G2.ui.msg("SAVE UNG\xDCLTIG", "kein g\xFCltiges JSON", 2);
+          }
+        }
       }
       try {
         localStorage.setItem("blocks.settings", JSON.stringify({ shadow: G2.sun.castShadow, bloom: G2.postfx.bloom1 > 0.05, dpr: G2.dpr }));
@@ -62542,7 +62562,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
             } else ui.msg("BESTECHUNG", "erst kaufen", 1.2);
           }
           if (ui.settingsOpen) {
-            for (let i = 1; i <= 4; i++) if (input.pressed("Digit" + i)) ui.settingsAktion(i);
+            for (let i = 1; i <= 6; i++) if (input.pressed("Digit" + i)) ui.settingsAktion(i);
             if (input.pressed("KeyO") === false && input.pressed("Escape")) ui.settingsToggle();
           }
           if (krieg.shopOpen) krieg.shopInput();
@@ -62639,6 +62659,21 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         if (Math.random() < 0.45) {
           window.__regen = !window.__regen;
           if (window.__regen) ui.msg("REGEN", "die Strasse gl\xE4nzt noch mehr", 2.4);
+        }
+      }
+      if (window.__regen) {
+        window.__blitzT = (window.__blitzT ?? 6) - realDt;
+        if (window.__blitzT <= 0) {
+          window.__blitzT = 5 + Math.random() * 8;
+          const ba = Math.random() * 6.28, bd = 25 + Math.random() * 105;
+          const bx = player.pos.x + Math.sin(ba) * bd, bz = player.pos.z + Math.cos(ba) * bd, by = world.groundHeight(bx, bz);
+          postfx.flash = Math.max(postfx.flash, 0.45 - bd / 400);
+          fx2.glow.spawn({ x: bx, y: by + 7, z: bz, s0: 3, s1: 0.4, a0: 1, a1: 0, life: 0.22, r: [2.2, 2.2, 3] });
+          fx2.crater({ x: bx, y: by, z: bz }, 2.6);
+          setTimeout(() => audio.explosion({ x: bx, y: by, z: bz }, 1.9), Math.round(bd / 340 * 1e3));
+          const dp = Math.hypot(player.pos.x - bx, player.pos.z - bz);
+          if (dp < 8 && !player.dead) player.damage(Math.round(60 * (1 - dp / 8)), { x: bx, y: by, z: bz }, "blitz", false);
+          if (mechSys.mech && !mechSys.mech.wrecked && Math.hypot(mechSys.mech.pos.x - bx, mechSys.mech.pos.z - bz) < 6) mechSys.mech.damage(90, "blitz", null);
         }
       }
       if (G.empT > 0) G.empT -= realDt;
