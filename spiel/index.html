@@ -57787,6 +57787,8 @@ void main() {
       this.decoy = null;
       this.chaos = { p: 0, mult: 1, t: 0 };
       this.chaosBest = 0;
+      this.schaetze = [];
+      this.schatzT = 15;
       this._achievements = [];
       this._skin = null;
       this._saveT = 0;
@@ -57864,7 +57866,9 @@ void main() {
       this.combo = Math.min(3, this.combo + 1);
       this._comboMax = Math.max(this._comboMax || 0, this.combo);
       this.addXP(kind);
+      if (this.combo >= 2) this.G.ui.msg(this.combo >= 3 ? "DREIFACH-KILL!" : "DOPPELKILL", "Combo \xD7" + (1 + this.combo) + " auf das Konto", 1.4);
     }
+    // Runde 26: Streak-Banner
     // Runde 26: Chaos-Punkte — Zerstörungs-Combo; Multiplikator wächst je Treffer, verfällt nach 4 s ohne Zerstörung
     addChaos(p = 50) {
       const C2 = this.chaos;
@@ -57886,6 +57890,37 @@ void main() {
         C2.p = 0;
         C2.mult = 1;
         C2.t = 0;
+      }
+    }
+    // Runde 26: Schatz-Kisten — 10 leuchtende Kisten in der Stadt; drüberfahren = 500 €
+    schaetzeUpdate(dt3) {
+      const G2 = this.G;
+      this.schatzT -= dt3;
+      if (this.schaetze.length < 10 && this.schatzT <= 0) {
+        const P = G2.player;
+        const a = rand(0, 6.28), d = rand(70, 240);
+        const x = clamp2(P.pos.x + Math.sin(a) * d, -300, 300), z = clamp2(P.pos.z + Math.cos(a) * d, -300, 300);
+        const m = new window.THREE.Mesh(new window.THREE.BoxGeometry(1, 0.8, 1), new window.THREE.MeshStandardMaterial({ color: 2759941, emissive: 16757575, emissiveIntensity: 1.8, roughness: 0.4 }));
+        m.position.set(x, G2.world.groundHeight(x, z) + 0.4, z);
+        m.rotation.y = rand(0, 6.28);
+        G2.scene.add(m);
+        this.schaetze.push({ x, z, mesh: m });
+        this.schatzT = 30;
+      }
+      const P2 = G2.player.pos;
+      const mpos = G2.mechSys.mech && !G2.mechSys.mech.wrecked ? G2.mechSys.mech.pos : P2;
+      for (let i = this.schaetze.length - 1; i >= 0; i--) {
+        const s = this.schaetze[i];
+        if (Math.hypot(P2.x - s.x, P2.z - s.z) < 3 || Math.hypot(mpos.x - s.x, mpos.z - s.z) < 4.5) {
+          this.pay(500);
+          this.addChaos(60);
+          G2.audio.ui("open");
+          G2.ui.msg("SCHATZ GEBORGEN", "+500 \u20AC \xB7 " + this.schaetze.length + " weitere Kisten stehen rum", 2);
+          G2.fx.sparks({ x: s.x, y: s.mesh.position.y, z: s.z }, 14, 0, 1, 0, true);
+          G2.scene.remove(s.mesh);
+          this.schaetze.splice(i, 1);
+          this.schatzT = 30;
+        }
       }
     }
     saveSoon() {
@@ -58216,6 +58251,7 @@ void main() {
       this.bountyUpdate(dt3);
       this.arenaUpdate(dt3);
       this.chaosUpdate(dt3);
+      this.schaetzeUpdate(dt3);
       this.stationen(dt3);
       this.dronesUpdate(dt3);
       this.comboT -= dt3;
@@ -59192,6 +59228,13 @@ void main() {
           ctx.beginPath();
           ctx.arc(d.pos.x - px2, d.pos.z - pz2, 1.6, 0, 6.28);
           ctx.fill();
+        }
+        if (G2.krieg.schaetze) {
+          ctx.fillStyle = "#ffd34a";
+          for (const s2 of G2.krieg.schaetze) {
+            if (Math.abs(s2.x - px2) > range || Math.abs(s2.z - pz2) > range) continue;
+            ctx.fillRect(s2.x - px2 - 1.4, s2.z - pz2 - 1.4, 2.8, 2.8);
+          }
         }
         for (const m of G2.krieg.mines) {
           if (Math.abs(m.x - px2) > range || Math.abs(m.z - pz2) > range) continue;
@@ -60529,6 +60572,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     land(gy, vImpact, callIn) {
       const G2 = this.G;
       const slipX = this.G.krieg.owned.has("klappen") ? this.vel.x : 0, slipZ = this.G.krieg.owned.has("klappen") ? this.vel.z : 0;
+      const luft = this.airT;
       this.pos.y = gy;
       this.vel.set(slipX * 0.7, 0, slipZ * 0.7);
       this.onGround = true;
@@ -60571,6 +60615,13 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       }
       G2.npcs.alertGunfire(p, callIn, 3);
       G2.npcs.explode(p, 6 * k, 7, 40 * k, this.piloted);
+      if (this.piloted && luft > 1.8 && !callIn) {
+        const bonus = Math.round(50 * Math.min(4, luft));
+        G2.krieg.pay(bonus);
+        G2.krieg.addChaos(40);
+        G2.ui.msg("STUNT", luft.toFixed(1) + " s Luft \xB7 +" + bonus + " \u20AC", 1.6);
+        G2.audio.ui("open");
+      }
       if (callIn) {
         G2.ui.msg("MECH DOWN", "walk up \xB7 E to board", 2.6);
         G2.police.report();
