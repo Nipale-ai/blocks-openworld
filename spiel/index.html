@@ -154,6 +154,14 @@
   #shop .sub{font:500 11px var(--mono);letter-spacing:.14em;color:var(--ink-dim);margin-top:4px;text-transform:uppercase}
   #shop .sub b{color:var(--ink)}
   #shop-rows{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+  #shop-klassen{margin-top:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  #shop-klassen .kkopf{grid-column:1/-1;font:700 10px var(--mono);letter-spacing:.14em;color:var(--ink-dim);text-transform:uppercase}
+  #shop-klassen .kkarte{cursor:pointer;border:1px solid rgba(255,255,255,.12);border-left:3px solid var(--kk,#888);border-radius:8px;padding:8px 10px;background:rgba(255,255,255,.04)}
+  #shop-klassen .kkarte:hover{background:rgba(255,255,255,.09)}
+  #shop-klassen .kkarte.aktiv{border-color:var(--kk);background:color-mix(in srgb,var(--kk) 12%,transparent)}
+  #shop-klassen .kkarte b{font:800 13px var(--sans);color:var(--kk)}
+  #shop-klassen .kkarte span{display:block;font:500 10px var(--mono);color:var(--ink-dim);margin-top:3px;min-height:26px}
+  #shop-klassen .kkarte i{display:block;font:600 9px var(--mono);color:var(--ink);margin-top:3px;font-style:normal;letter-spacing:.04em}
   .srow{display:flex;align-items:center;gap:12px;padding:9px 12px;border:1px solid rgba(255,255,255,.1);border-radius:8px;background:rgba(255,255,255,.04)}
   .srow .skey{font:700 13px var(--mono);color:var(--accent2);border:1px solid rgba(255,255,255,.25);border-radius:5px;padding:2px 8px;min-width:26px;text-align:center}
   .mx{background:none;border:none;color:var(--ink-dim);font:700 14px var(--sans);cursor:pointer;float:right;padding:0 2px}
@@ -224,6 +232,7 @@
   <div id="shop" class="panel">
     <h3>WAFFENKAMMER<span>.</span><button class="mx" data-close>✕</button></h3>
     <div class="sub">Konto <b id="shop-konto">0 €</b> · Ziffer kauft · <b>K</b> schließt</div>
+    <div id="shop-klassen"></div>
     <div id="shop-rows"></div>
     <div id="shop-hinweis" style="margin-top:12px;font:500 11px var(--mono);color:var(--ink-dim);letter-spacing:.08em"></div>
     <div class="hinweis">Klick = kaufen · scrollen zum Blättern · ESC/K schließt · Upgrades wirken sofort — Raub-Mechs zahlen 1.200 €.</div>
@@ -42626,6 +42635,59 @@ void main() {
     police: false
   };
   VEHICLE_DEFS.mech = { name: "Mech", id: "mech", mech: true, length: 4.2, width: 4.2, height: 6.1, mass: 38e3, seat: MECH.seat, exitOffset: MECH.exitOffset, paint: ["#1c2026"], police: false };
+  var KLASSEN = {
+    sturm: {
+      id: "sturm",
+      name: "STURM",
+      glb: "mech",
+      pelvisY: 3.099,
+      farbe: "#ff7a1a",
+      height: 6.1,
+      radius: 2.1,
+      seatY: 4.35,
+      desc: "Ausgewogen. Der Standard \u2014 keine Schw\xE4che, keine Spezialit\xE4t.",
+      hp: 1,
+      walk: 1,
+      turn: 1,
+      thrust: 1,
+      fuel: 1,
+      box: { legs: [1.15, 0, 3.4, 1], torso: [2.05, 3.1, 6.2, 1.25] }
+    },
+    laeufer: {
+      id: "laeufer",
+      name: "L\xC4UFER",
+      glb: "mechLaeufer",
+      pelvisY: 3.584,
+      farbe: "#2fd6c8",
+      height: 6.6,
+      radius: 1.85,
+      seatY: 4.18,
+      desc: "Hoch, schlank, schnell. Lange Schritte, mehr Schub \u2014 tr\xE4gt weniger Panzer.",
+      hp: 0.75,
+      walk: 1.25,
+      turn: 1.35,
+      thrust: 1.3,
+      fuel: 1.2,
+      box: { legs: [0.95, 0, 3.9, 0.85], torso: [1.8, 3.6, 6.9, 1.1] }
+    },
+    panzer: {
+      id: "panzer",
+      name: "PANZER",
+      glb: "mechPanzer",
+      pelvisY: 2.985,
+      farbe: "#ff4438",
+      height: 6,
+      radius: 2.45,
+      seatY: 4.44,
+      desc: "Breit, schwer, gepanzert. Langsam, aber er h\xE4lt enorm viel aus.",
+      hp: 1.5,
+      walk: 0.8,
+      turn: 0.75,
+      thrust: 0.85,
+      fuel: 0.9,
+      box: { legs: [1.35, 0, 3.1, 1.2], torso: [2.35, 2.8, 6.3, 1.45] }
+    }
+  };
   var weaponWheelItems = () => WEAPON_ORDER.map((id) => {
     const d = WEAPON_DEFS[id];
     return { name: d.name, sub: `${d.magazine} rd \xB7 ${d.id === "rocket" ? "heavy" : d.auto ? "auto" : "semi"}` };
@@ -47088,8 +47150,8 @@ void main() {
   }();
 
   // src/loader.js
-  var ASSETS = { ready: false, vehicles: {}, characters: {}, weapons: {}, buildings: {}, props: {}, mech: null, upgrades: {}, materials: /* @__PURE__ */ new Set(), stats: {}, onNewMaterial: null, lightmaps: null };
-  var GLBS = ["vehicles.glb", "characters.glb", "weapons.glb", "buildings_city.glb", "buildings_industrial.glb", "props.glb", "mech.glb"];
+  var ASSETS = { ready: false, vehicles: {}, characters: {}, weapons: {}, buildings: {}, props: {}, mech: null, mechLaeufer: null, mechPanzer: null, upgrades: {}, materials: /* @__PURE__ */ new Set(), stats: {}, onNewMaterial: null, lightmaps: null };
+  var GLBS = ["vehicles.glb", "characters.glb", "weapons.glb", "buildings_city.glb", "buildings_industrial.glb", "props.glb", "mech.glb", "mech_laeufer.glb", "mech_panzer.glb"];
   var LM_DISTRICTS = ["downtown", "midtown", "industrial"];
   var LM_FILES = [...LM_DISTRICTS, "ground"].flatMap((d) => [`${d}_lm.ktx2`, `${d}_ao.ktx2`]);
   var BASIS2 = ["basis/basis_transcoder.js", "basis/basis_transcoder.wasm"];
@@ -47309,13 +47371,14 @@ void main() {
         ASSETS.materials.add(o.material);
       }
     });
-    if (r["mech.glb"]) {
-      for (const o of allScenesChildren(r["mech.glb"])) if (o.name === "Mech") {
-        o.removeFromParent();
-        noteMaterials(o);
-        ASSETS.mech = o;
+    for (const [mfile, mkey] of [["mech.glb", "mech"], ["mech_laeufer.glb", "mechLaeufer"], ["mech_panzer.glb", "mechPanzer"]])
+      if (r[mfile]) {
+        for (const o of allScenesChildren(r[mfile])) if (o.name === "Mech") {
+          o.removeFromParent();
+          noteMaterials(o);
+          ASSETS[mkey] = o;
+        }
       }
-    }
     for (const m of ASSETS.materials) tidyMaterial(m);
   }
   function tidyMaterial(m) {
@@ -48048,9 +48111,10 @@ void main() {
     m.renderOrder = -10;
     return m;
   }
-  function makeMechMesh() {
-    const src = ASSETS.mech;
-    if (!src) throw new Error("mech.glb is not loaded (ASSETS.mech missing)");
+  function makeMechMesh(klasse = null) {
+    const src = klasse ? ASSETS[klasse.glb] : ASSETS.mech;
+    if (!src) throw new Error((klasse ? klasse.glb : "mech.glb") + " is not loaded (ASSETS missing)");
+    const dims = klasse ? { height: klasse.height, radius: klasse.radius } : { height: 6.1, radius: 2.1 };
     const root = src.clone(true);
     root.name = "Mech";
     root.position.set(0, 0, 0);
@@ -48090,7 +48154,7 @@ void main() {
       o.receiveShadow = !emissive;
       o.frustumCulled = true;
     });
-    if (!glowBase || !eyesBase) throw new Error("mech.glb: mech_glow / mech_eyes materials missing");
+    if (!glowBase || !eyesBase) throw new Error("mech GLB: mech_glow / mech_eyes materials missing");
     for (const r of ["chest", "arms", "legs", "nozzle"]) inst("mech_glow_" + r, glowBase);
     for (const k in M) if (/^mech_glow_|^mech_eyes$/.test(k)) M[k].emissiveIntensity = 0;
     M.flame = new MeshBasicMaterial({ color: new Color(1.4, 0.6, 0.2), transparent: true, opacity: 0.65, blending: AdditiveBlending, depthWrite: false, side: DoubleSide, name: "mech_flame" });
@@ -48098,7 +48162,7 @@ void main() {
     const flames = [];
     for (const [n2, R] of [["Nozzle_Back_L", 0.3], ["Nozzle_Back_R", 0.3], ["Nozzle_Foot_L", 0.2], ["Nozzle_Foot_R", 0.2]]) {
       const piv = root.getObjectByName(n2);
-      if (!piv) throw new Error("mech.glb: " + n2 + " missing");
+      if (!piv) throw new Error("mech GLB: " + n2 + " missing");
       const f = new Group();
       f.name = "Flame";
       f.position.y = -R * 0.3;
@@ -48134,8 +48198,8 @@ void main() {
       }
       hyd.push({ body, rod, a, b, len: 0 });
     }
-    for (const n2 of ["Pelvis", "Torso", "Head", "Hatch", "Cockpit", "Backpack", "Pod_L", "Pod_R", "Shoulder_L", "Shoulder_R", "UpperArm_L", "UpperArm_R", "Forearm_L", "Forearm_R", "Hip_L", "Hip_R", "Knee_L", "Knee_R", "Foot_L", "Foot_R", "LaserMuzzle", "Tube_L_0", "Tube_R_5", "Eyes"]) if (!root.getObjectByName(n2)) throw new Error("mech.glb: node " + n2 + " missing");
-    root.userData.mech = { mats: { eyes: M.mech_eyes, chest: M.mech_glow_chest, arms: M.mech_glow_arms, legs: M.mech_glow_legs, nozzle: M.mech_glow_nozzle }, flames, hyd, dims: { height: 6.1, radius: 2.1 }, mats_all: M };
+    for (const n2 of ["Pelvis", "Torso", "Head", "Hatch", "Cockpit", "Backpack", "Pod_L", "Pod_R", "Shoulder_L", "Shoulder_R", "UpperArm_L", "UpperArm_R", "Forearm_L", "Forearm_R", "Hip_L", "Hip_R", "Knee_L", "Knee_R", "Foot_L", "Foot_R", "LaserMuzzle", "Tube_L_0", "Tube_R_5", "Eyes"]) if (!root.getObjectByName(n2)) throw new Error("mech GLB: node " + n2 + " missing");
+    root.userData.mech = { mats: { eyes: M.mech_eyes, chest: M.mech_glow_chest, arms: M.mech_glow_arms, legs: M.mech_glow_legs, nozzle: M.mech_glow_nozzle }, flames, hyd, dims, mats_all: M };
     return root;
   }
 
@@ -57630,6 +57694,7 @@ void main() {
       this._prevTs = 1;
       this._attachedMech = null;
       this._anbauten = [];
+      this.klasse = "sturm";
       this.loadSave();
       this.bounty = null;
       this.bountyT = 6;
@@ -57657,7 +57722,7 @@ void main() {
     // ---------------- Persistenz (Runde 20) ----------------
     save() {
       try {
-        localStorage.setItem("blocks.save", JSON.stringify({ m: this.money, u: [...this.owned], k: this.G.stats.kills || 0, w: this.G.stats.wrecks || 0, best: this.arenaBest || 0, xpsave: this.xp, titan: this.titanDead }));
+        localStorage.setItem("blocks.save", JSON.stringify({ m: this.money, u: [...this.owned], k: this.G.stats.kills || 0, w: this.G.stats.wrecks || 0, best: this.arenaBest || 0, xpsave: this.xp, titan: this.titanDead, klasse: this.klasse }));
       } catch (e) {
       }
     }
@@ -57672,8 +57737,19 @@ void main() {
         this.arenaBest = d.best || 0;
         if (d.xpsave) this.xp = Math.max(this.xp, d.xpsave);
         this.titanDead = d.titan || 0;
+        if (d.klasse && KLASSEN[d.klasse]) this.klasse = d.klasse;
       } catch (e) {
       }
+    }
+    // Runde 24: Klassenwechsel aus der Waffenkammer — kostenlos, sofort, persistiert
+    klasseWaehlen(id) {
+      const K2 = KLASSEN[id];
+      if (!K2 || id === this.klasse) return false;
+      if (!this.G.mechSys.wechsel(id)) return false;
+      this.klasse = id;
+      this.save();
+      this.G.ui.renderShop();
+      return true;
     }
     wipeSave() {
       try {
@@ -58034,9 +58110,9 @@ void main() {
       this.polizeiKader(dt3);
       const m = G2.mechSys.mech;
       if (m && !m.wrecked) {
-        m.maxHealth = MECH.maxHealth + (this.owned.has("panzer") ? 600 : 0);
+        m.hpMax = MECH.maxHealth * m.klasse.hp + (this.owned.has("panzer") ? 600 : 0);
         const repRate = 25 + (this.owned.has("nano2") ? 35 : 0) + (this.owned.has("rep") ? 10 : 0);
-        if ((this.owned.has("nanorep") || this.owned.has("rep")) && G2.time - (m.lastHurt ?? -99) > 5 && m.hp < m.maxHealth) m.hp = Math.min(m.maxHealth, m.hp + repRate * dt3);
+        if ((this.owned.has("nanorep") || this.owned.has("rep")) && G2.time - (m.lastHurt ?? -99) > 5 && m.hp < m.hpMax) m.hp = Math.min(m.hpMax, m.hp + repRate * dt3);
         if (this._attachedMech !== m) this.anbauen();
       }
       if (m && m.piloted && !m.wrecked) {
@@ -58523,6 +58599,7 @@ void main() {
     renderShop() {
       const K2 = this.G.krieg;
       if (!K2) return;
+      this.renderKlassen();
       const rows = KRIEG_UPGRADES_VIEW.map((u2, i) => {
         const nr = i < 9 ? String(i + 1) : "\xB7";
         const hat = K2.owned.has(u2.id);
@@ -58543,6 +58620,24 @@ void main() {
         });
       }
       this.el.shop.querySelector("#shop-hinweis").innerHTML = "Zifferntaste 1\u20139, 0 = kaufen \xB7 <b>greifhaken/dash/russ zuerst</b> \u2014 g\xFCnstige Upgrades brauchen keinen Rang";
+    }
+    // Runde 24: Klassenwahl — drei Karten über der Upgrade-Liste, Klick = sofortiger Wechsel (gratis)
+    renderKlassen() {
+      const K2 = this.G.krieg;
+      const box2 = this.el.shopKlassen || (this.el.shopKlassen = document.getElementById("shop-klassen"));
+      if (!box2) return;
+      box2.innerHTML = '<div class="kkopf">MECH-KLASSE \u2014 Klick wechselt sofort (gratis), Lieferung per Drop</div>' + Object.values(KLASSEN).map((k) => {
+        const aktiv = k.id === K2.klasse;
+        return `<div class="kkarte${aktiv ? " aktiv" : ""}" data-klasse="${k.id}" style="--kk:${k.farbe}"><b>${k.name}${aktiv ? " \u2713" : ""}</b><span>${k.desc}</span><i>Panzerung \xD7${k.hp} \xB7 Tempo \xD7${k.walk} \xB7 Schub \xD7${k.thrust}</i></div>`;
+      }).join("");
+      if (!box2.dataset.klick) {
+        box2.dataset.klick = "1";
+        box2.addEventListener("click", (e) => {
+          const k = e.target.closest(".kkarte");
+          if (!k) return;
+          this.G.krieg.klasseWaehlen(k.dataset.klasse);
+        });
+      }
     }
     settingsToggle() {
       if (this.settingsOpen) {
@@ -59720,16 +59815,19 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
   var AIM_STRAFE = 0.72;
   var PIVOTS2 = ["Pelvis", "Torso", "Head", "Hatch", "Cockpit", "Shoulder_L", "Shoulder_R", "Pod_L", "Pod_R", "UpperArm_L", "UpperArm_R", "Forearm_L", "Forearm_R", "Hip_L", "Hip_R", "Knee_L", "Knee_R", "Foot_L", "Foot_R", "Nozzle_Foot_L", "Nozzle_Foot_R", "Nozzle_Back_L", "Nozzle_Back_R", "LaserMuzzle", "Backpack"];
   var REST2 = { Hip: -0.34, Knee: 0.72, Foot: -0.38 };
-  var PELVIS_Y2 = 3.08;
   var Mech = class _Mech {
-    constructor(G2, x, z, yaw) {
+    constructor(G2, x, z, yaw, klasseId = null) {
       this.G = G2;
-      this.def = VEHICLE_DEFS.mech;
-      this.name = "Mech";
+      this.klasse = klasseId && KLASSEN[klasseId] || KLASSEN.sturm;
+      const K2 = this.klasse;
+      this.hpMax = MECH.maxHealth * K2.hp;
+      this.pelvisY = K2.pelvisY;
+      this.def = { ...VEHICLE_DEFS.mech, height: K2.height, seat: { ...MECH.seat, y: K2.seatY } };
+      this.name = "Mech " + K2.name;
       this.isMech = true;
       this.type = "mech";
       this.id = 9e3 + _Mech.count++;
-      this.mesh = makeMechMesh();
+      this.mesh = makeMechMesh(K2);
       G2.scene.add(this.mesh);
       const U = this.mesh.userData.mech;
       this.mats = U.mats;
@@ -59756,7 +59854,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         e.set(REST2.Foot, 0, 0);
         P0.Foot_L.quaternion.setFromEuler(e);
         P0.Foot_R.quaternion.setFromEuler(e);
-        P0.Pelvis.position.set(0, PELVIS_Y2, 0);
+        P0.Pelvis.position.set(0, this.pelvisY, 0);
         this.mesh.position.set(0, 0, 0);
         this.mesh.rotation.set(0, 0, 0);
         this.mesh.updateMatrixWorld(true);
@@ -59792,7 +59890,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this.yawRate = 0;
       this.speed = 0;
       this.state = "falling";
-      this.hp = MECH.maxHealth;
+      this.hp = this.hpMax;
       this.wrecked = false;
       this.driver = null;
       this.controls = { steer: 0, throttle: 0, brake: 0, handbrake: false, reverse: false };
@@ -59858,6 +59956,17 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     get piloted() {
       return this.state === "piloted";
     }
+    // Klassen-Stats als Live-View: Upgrades mutieren MECH.* (krieg.js anwenden) und wirken sofort weiter
+    get statWalk() {
+      return MECH["walkSpeed"] * this.klasse.walk;
+    }
+    get statTurn() {
+      return MECH["turnRate"] * this.klasse.turn;
+    }
+    get statFlight() {
+      const F = MECH.flight, K2 = this.klasse;
+      return { ...F, thrust: F.thrust * K2.thrust, fuelTime: F.fuelTime * K2.fuel, refuelTime: F.refuelTime / K2.fuel };
+    }
     get enterable() {
       return this.state === "landed" && !this.wrecked && this.landT > 0.6 && this.hatchT <= 0;
     }
@@ -59886,7 +59995,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       const ldx = dx * c - dz * s, ldz = dx * s + dz * c;
       const lift = -this.crumple * 1.8;
       let best = null;
-      for (const [hw, y0, y1, hl] of [[1.15, 0, 3.4 + lift, 1], [2.05, 3.1 + lift, 6.2 + lift, 1.25]]) {
+      for (const [hw, y0, y1, hl] of [this.klasse.box.legs, this.klasse.box.torso].map(([hw2, y02, y12, hl2]) => [hw2, y02 + lift, y12 + lift, hl2])) {
         let tmin = 0, tmax = maxT, axis = -1, sgn = 0;
         const slabs = [[lx, ldx, -hw, hw], [ly, dy, y0, y1], [lz, ldz, -hl, hl]];
         let ok = true;
@@ -59934,13 +60043,13 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       return best;
     }
     updateAABB() {
-      const a = this.aabb, r = MECH.radius;
+      const a = this.aabb, r = this.klasse.radius;
       a.minX = this.pos.x - r;
       a.maxX = this.pos.x + r;
       a.minZ = this.pos.z - r;
       a.maxZ = this.pos.z + r;
       a.minY = this.pos.y;
-      a.maxY = this.pos.y + MECH.height;
+      a.maxY = this.pos.y + this.klasse.height;
     }
     // ---- damage -------------------------------------------------------------------------------------------------------
     damage(amount, kind, source) {
@@ -60013,7 +60122,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this.dmgFlash = Math.max(0, this.dmgFlash - dt3 * 4);
       this.stomp.cd = Math.max(0, this.stomp.cd - dt3);
       if (this.landT >= 0) this.landT += dt3;
-      if (!this.wrecked && this.hp < MECH.maxHealth && G2.time - (this.lastHurt ?? -99) > 6) this.hp = Math.min(MECH.maxHealth, this.hp + 12 * dt3);
+      if (!this.wrecked && this.hp < this.hpMax && G2.time - (this.lastHurt ?? -99) > 6) this.hp = Math.min(this.hpMax, this.hp + 12 * dt3);
       let thrustWant = 0;
       if (this.state === "falling") {
         this.vel.y = Math.max(-MECH.dropSpeed, this.vel.y - MECH.gravity * dt3);
@@ -60104,7 +60213,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this.pos.y = gy;
       this.onGround = true;
       this.gait = damp2(this.gait, 0, 6, dt3);
-      this.fuel = Math.min(1, this.fuel + dt3 / MECH.flight.refuelTime);
+      this.fuel = Math.min(1, this.fuel + dt3 / this.statFlight.refuelTime);
       this.heat = Math.max(0, this.heat - MECH.gun.coolRate * dt3);
       this.overheat = Math.max(0, this.overheat - dt3);
     }
@@ -60190,7 +60299,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     }
     // ---- piloting --------------------------------------------------------------------------------------------------------
     pilot(dt3, gy, h) {
-      const G2 = this.G, I2 = G2.input, cam = G2.gcam, F = MECH.flight;
+      const G2 = this.G, I2 = G2.input, cam = G2.gcam, F = this.statFlight;
       let thrustWant = 0;
       const fwd = (I2.down("KeyW") ? 1 : 0) - (I2.down("KeyS") ? 1 : 0), side = (I2.down("KeyD") ? 1 : 0) - (I2.down("KeyA") ? 1 : 0);
       let wx = cam.flat.x * fwd + cam.right.x * side, wz = cam.flat.z * fwd + cam.right.z * side;
@@ -60311,23 +60420,23 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       }
       const sp = this.speed;
       if (this.onGround) {
-        const target = moving && !stomping ? MECH.walkSpeed : 0;
+        const target = moving && !stomping ? this.statWalk : 0;
         const a = target > sp ? MECH.accel : MECH.decel;
         this.speed = sp + clamp2(target - sp, -a * dt3, a * dt3);
         if (this.G.krieg.owned.has("dash") && I2.down("ShiftLeft") && moving && !stomping && (this.dashT || 0) <= 0) {
           this.dashT = 2;
-          this.speed = MECH.walkSpeed * 3.2;
+          this.speed = this.statWalk * 3.2;
         }
         this.dashT = Math.max(0, (this.dashT || 0) - dt3);
-        const zielSpeed = this.dashT > 0 ? MECH.walkSpeed * 3.2 : MECH.walkSpeed;
+        const zielSpeed = this.dashT > 0 ? this.statWalk * 3.2 : this.statWalk;
         this.speed = clamp2(this.speed, 0, zielSpeed);
         if (aimMode) {
           const d = angleDelta(this.yaw, this.aimYaw);
-          const mx = MECH.turnRate * 1.15 * dt3;
+          const mx = this.statTurn * 1.15 * dt3;
           const step = clamp2(d, -mx, mx);
           this.yaw += step;
           this.yawRate = step / Math.max(dt3, 1e-4);
-          this.speed = Math.min(this.speed, MECH.walkSpeed * AIM_STRAFE);
+          this.speed = Math.min(this.speed, this.statWalk * AIM_STRAFE);
           if (moving && !stomping) {
             this.vel.x = wx * this.speed;
             this.vel.z = wz * this.speed;
@@ -60340,14 +60449,14 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           if (moving && !stomping) {
             const want = Math.atan2(wx, wz);
             const d = angleDelta(this.yaw, want);
-            const mx = MECH.turnRate * dt3 * (0.6 + 0.9 * (1 - this.speed / MECH.walkSpeed));
+            const mx = this.statTurn * dt3 * (0.6 + 0.9 * (1 - this.speed / this.statWalk));
             this.yawRate = clamp2(d, -mx, mx) / Math.max(dt3, 1e-4);
             this.yaw += clamp2(d, -mx, mx);
             if (Math.abs(d) > 1.8) this.speed = Math.min(this.speed, 1.5);
           } else {
             const d = angleDelta(this.yaw, this.aimYaw);
             if (Math.abs(d) > 1.05) {
-              const mx = MECH.turnRate * 0.7 * dt3;
+              const mx = this.statTurn * 0.7 * dt3;
               this.yaw += clamp2(d, -mx, mx);
               this.yawRate = clamp2(d, -mx, mx) / Math.max(dt3, 1e-4);
             } else this.yawRate = damp2(this.yawRate, 0, 8, dt3);
@@ -60385,7 +60494,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         if (aimMode || moving) {
           const want = aimMode ? this.aimYaw : Math.atan2(wx, wz);
           const d = angleDelta(this.yaw, want);
-          const mx = MECH.turnRate * F.turnAir * griff * dt3;
+          const mx = this.statTurn * F.turnAir * griff * dt3;
           this.yaw += clamp2(d, -mx, mx);
         }
         if (I2.pressed("KeyF") && !stomping && this.stomp.cd <= 0) {
@@ -60530,7 +60639,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       const f = this.P["Foot_" + side];
       f.getWorldPosition(_v8);
       const p = { x: _v8.x, y: gy, z: _v8.z };
-      const k = clamp2(0.5 + this.speed / MECH.walkSpeed * 0.6, 0.5, 1.1);
+      const k = clamp2(0.5 + this.speed / this.statWalk * 0.6, 0.5, 1.1);
       G2.fx.dust(p, 8, 0, 1, 0, [0.5, 0.46, 0.4]);
       G2.fx.dustRing(p, 2.2 * k, 10, [0.5, 0.46, 0.4], 0.6);
       G2.audio.mechStep(p, k);
@@ -61045,7 +61154,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       if (danceAktiv() && this.onGround && !this.wrecked && !this.flying) {
         poseDanceMech(P, REST2, DANCE.t);
         P.Pelvis.position.x += (MECH_BECKEN.dx - P.Pelvis.position.x) * k;
-        P.Pelvis.position.y += (PELVIS_Y2 + MECH_BECKEN.dy - P.Pelvis.position.y) * k;
+        P.Pelvis.position.y += (this.pelvisY + MECH_BECKEN.dy - P.Pelvis.position.y) * k;
         P.Pelvis.position.z += (MECH_BECKEN.dz - P.Pelvis.position.z) * k;
         this.mesh.updateMatrixWorld(true);
         this.tanzBeine();
@@ -61107,7 +61216,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       tg(P.Foot_L, -(hipL + kneeL) * (1 - flyK) + 0.25 * flyK - 0.2 * g2 * Math.max(0, Math.sin(ph + 1.4)), 0, 0);
       tg(P.Foot_R, -(hipR + kneeR) * (1 - flyK) + 0.25 * flyK - 0.2 * g2 * Math.max(0, Math.sin(ph + Math.PI + 1.4)) + 0.3 * stL, 0, 0);
       const bob = -0.16 * g2 * (0.5 - 0.5 * Math.cos(2 * ph - 0.7)) - 0.75 * land - 1.85 * crump - 0.25 * stS + 0.1 * flyK;
-      P.Pelvis.position.y += (PELVIS_Y2 + bob - P.Pelvis.position.y) * k;
+      P.Pelvis.position.y += (this.pelvisY + bob - P.Pelvis.position.y) * k;
       P.Pelvis.position.x += (0.14 * g2 * Math.sin(ph - 0.5) + 0.3 * stL - P.Pelvis.position.x) * k;
       const accLean = clamp2((this.speed - (this.prevSpeed || 0)) / Math.max(dt3, 1e-3) * 0.04, -0.12, 0.12);
       this.prevSpeed = this.speed;
@@ -61216,10 +61325,27 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         return false;
       }
       if (this.mech) this.mech.remove();
-      this.mech = new Mech(G2, spot.x, spot.z, Math.atan2(P.pos.x - spot.x, P.pos.z - spot.z));
+      this.mech = new Mech(G2, spot.x, spot.z, Math.atan2(P.pos.x - spot.x, P.pos.z - spot.z), G2.krieg && G2.krieg.klasse);
       G2.ui.msg("MECH INBOUND", "clear the drop zone", 2.4);
       G2.audio.chatter(1);
       G2.audio.sting("up");
+      this.callT = 0;
+      return true;
+    }
+    // Runde 24: Klassenwechsel (Waffenkammer) — gilt sofort: alter Mech verschwindet, die neue Klasse
+    // kommt als Anlieferung vom Himmel. Nur außerhalb des Cockpits möglich.
+    wechsel(klasseId) {
+      const G2 = this.G, K2 = KLASSEN[klasseId];
+      if (!K2 || this.mech && this.mech.piloted) {
+        if (this.mech && this.mech.piloted) G2.ui.msg("KLASSE", "erst aussteigen (F)", 1.6);
+        return false;
+      }
+      const alt = this.mech && !this.mech.wrecked ? this.mech : null;
+      const spot = this.dropSpot() || (alt ? { x: alt.pos.x, z: alt.pos.z } : { x: G2.player.pos.x + G2.gcam.flat.x * 14, z: G2.player.pos.z + G2.gcam.flat.z * 14 });
+      if (this.mech) this.mech.remove();
+      this.mech = new Mech(G2, spot.x, spot.z, Math.atan2(G2.player.pos.x - spot.x, G2.player.pos.z - spot.z), klasseId);
+      G2.ui.msg("NEUE KLASSE", K2.name + " wird geliefert", 2.2);
+      G2.audio.chatter(1);
       this.callT = 0;
       return true;
     }
@@ -61745,7 +61871,14 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     let wetterT = 150;
     requestAnimationFrame(frame);
     window.__KUP = KRIEG_UPGRADES_VIEW;
+    window.__KLASSEN = KLASSEN;
     window.__dbg = {
+      klasse: (id) => krieg.klasseWaehlen(id),
+      // QA-Runde 24: Klassenwechsel ohne UI
+      mechInfo: () => {
+        const m = mechSys.mech;
+        return m ? { klasse: m.klasse.id, hpMax: Math.round(m.hpMax), pelvisY: +m.pelvisY.toFixed(3), pelvisIst: +m.P.Pelvis.position.y.toFixed(3), radius: m.klasse.radius, box: m.klasse.box } : null;
+      },
       start: () => begin(),
       state: () => ({ state: G.state, time: +G.time.toFixed(2), pos: [player.pos.x, player.pos.y, player.pos.z].map((v) => +v.toFixed(2)), yaw: +player.yaw.toFixed(2), hp: Math.round(player.health), pstate: player.state, vehicle: player.vehicle ? player.vehicle.isMech ? { type: "mech", speed: +player.vehicle.speed.toFixed(2), hp: Math.round(player.vehicle.hp) } : { type: player.vehicle.type, speed: +player.vehicle.speed.toFixed(2), rpm: Math.round(player.vehicle.rpm), gear: player.vehicle.gear, hp: Math.round(player.vehicle.hp), slip: +player.vehicle.slip.toFixed(2) } : null, weapon: weapons.current.def.id, ammo: weapons.current.ammo, reloading: weapons.current.reloading, wheel: weapons.wheelOpen, timeScale: G.timeScale, cam: [camera.position.x, camera.position.y, camera.position.z].map((v) => +v.toFixed(2)), camDist: +gcam.curDist.toFixed(2), fps: ui.fpsShown, draws: renderer.info.render.calls, tris: renderer.info.render.triangles, kills: G.stats.kills, wrecks: G.stats.wrecks, mech: mechSys.mech ? mechSys.mech.state : null, shots: weapons.shotsFired, hits: weapons.hits, npcShots: weapons.npcShots || 0, frameMs: G.frameMs, projectiles: weapons.projectiles.length, npcs: npcs.list.length, npcStates: npcs.list.reduce((a, n2) => {
         a[n2.state] = (a[n2.state] || 0) + 1;
