@@ -42789,6 +42789,7 @@ void main() {
       { id: "overdrive", name: "Overdrive", preis: 1600, rang: 2, text: "X: 8 s halbe Cooldowns + Tempo, dann 4 s Sperre", anbau: [] },
       { id: "brand", name: "Brand-Munition", preis: 800, rang: 1, text: "Minigun/Flak z\xFCnden Feinde (Nachbrennen)", anbau: [] },
       { id: "frost", name: "Frost-Munition", preis: 800, rang: 1, text: "Treffer verlangsamen Feinde um die H\xE4lfte", anbau: [] },
+      { id: "teppich", name: "Raketenteppich", preis: 1600, rang: 2, text: "M\xF6rser feuert 3 Granaten im F\xE4cher", anbau: [] },
       { id: "griff", name: "Luftgriff", preis: 1300, rang: 1, text: "Boost +50 % \xB7 drehen \xD71,5", anbau: [] },
       { id: "hover", name: "Hover-Feinmodus", preis: 800, rang: 1, text: "Streuung in der Luft \u221250 %", anbau: [] },
       { id: "greifhaken", name: "Greifhaken", preis: 1500, rang: 2, text: "C: Haken zum Zielpunkt \u2014 zieht dich hin, Schwung bleibt", anbau: [] },
@@ -58470,8 +58471,10 @@ void main() {
       }
       const B2 = this.bounty;
       if (B2.ist(G2, B2)) {
-        this.pay(B2.lohn);
-        G2.ui.msg("BOUNTY ERFUELLT", B2.text + " \xB7 +" + geld(B2.lohn), 2.6);
+        this.bountyKette = (this.bountyKette || 0) + 1;
+        const lohn = Math.round(B2.lohn * (1 + Math.min(1, (this.bountyKette - 1) * 0.15)));
+        this.pay(lohn);
+        G2.ui.msg("BOUNTY ERFUELLT", B2.text + " \xB7 +" + geld(lohn) + (this.bountyKette > 1 ? " \xB7 KETTE \xD7" + this.bountyKette : ""), 2.6);
         this.bounty = null;
         this.bountyT = 14;
         this.save();
@@ -61807,6 +61810,14 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this.moerserShots.push({ x: _a4.x, y: _a4.y, z: _a4.z, vx, vy, vz, age: 0, life: t2 + 2.5 });
       G2.audio.moerserShot(_a4);
       G2.fx.muzzle(_a4, 0, 1, 0, 0.8);
+      if (G2.krieg.owned.has("teppich")) {
+        for (const w2 of [-0.16, 0.16]) {
+          const dxw = dx * Math.cos(w2) - dz * Math.sin(w2), dzw = dx * Math.sin(w2) + dz * Math.cos(w2), dw = Math.hypot(dxw, dzw) || 1;
+          this.moerserShots.push({ x: _a4.x, y: _a4.y, z: _a4.z, vx: dxw / dw * (dist / t2), vy: vy * 0.94, vz: dzw / dw * (dist / t2), age: 0, life: t2 + 2.5 });
+        }
+        this.moerserAmmo = Math.max(0, this.moerserAmmo - 1);
+        G2.ui.msg("RAKETENTEPPICH", "3 Granaten im F\xE4cher", 1);
+      }
       G2.fx.smoke.spawn({ x: _a4.x, y: _a4.y, z: _a4.z, vx: 0, vy: 1.5, vz: 0, s0: 0.8, s1: 3, a0: 0.6, a1: 0, life: 1.2, r: [0.8, 0.78, 0.75], drag: 2 });
       G2.gcam.addShake(0.22);
       this.firing = 0.6;
