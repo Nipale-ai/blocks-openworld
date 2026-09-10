@@ -42769,6 +42769,8 @@ void main() {
       { id: "streu", name: "Streukassette", preis: 1400, rang: 1, text: "Raketen explodieren dreifach", anbau: [] },
       { id: "plasma", name: "Plasma-Kammer", preis: 1600, rang: 1, text: "Plasma: +35 % Splash & Schaden + Kanonen-Modul", anbau: [{ teil: "Upgrade_plasma", pivot: "Forearm_L" }] },
       { id: "moerser", name: "M\xF6rser-Rack", preis: 1800, rang: 2, text: "Waffe: M\xF6rser \u2014 Granaten im Bogen, gro\xDFe Fl\xE4che", anbau: [{ teil: "Upgrade_moerser", pivot: "Backpack" }] },
+      { id: "tesla", name: "Tesla-Kette", preis: 2e3, rang: 2, text: "Waffe: Blitz springt zwischen bis zu 4 Feinden", anbau: [] },
+      { id: "schildarm", name: "Schild-Arm", preis: 1500, rang: 2, text: "T halten: Frontal-Block, 75 % weniger Schaden", anbau: [] },
       { id: "griff", name: "Luftgriff", preis: 1300, rang: 1, text: "Boost +50 % \xB7 drehen \xD71,5", anbau: [] },
       { id: "hover", name: "Hover-Feinmodus", preis: 800, rang: 1, text: "Streuung in der Luft \u221250 %", anbau: [] },
       { id: "greifhaken", name: "Greifhaken", preis: 1500, rang: 2, text: "C: Haken zum Zielpunkt \u2014 zieht dich hin, Schwung bleibt", anbau: [] },
@@ -58059,6 +58061,8 @@ void main() {
         MECH.flight.maxUp = 19;
       } else if (u2.id === "schild") {
         this.installSchild(this.G.mechSys.mech);
+      } else if (u2.id === "schildarm") {
+        this.installSchildArm(this.G.mechSys.mech);
       } else if (u2.id && u2.id.startsWith("lack")) this.skinAnwenden(u2.id);
     }
     installSchild(m) {
@@ -58083,6 +58087,26 @@ void main() {
       m.damage = (amount, kind, source) => {
         orig(amount, kind, source);
         if (source && source.pos && source.damage && source !== this.G.mechSys.mech && amount > 8) source.damage(amount * 0.15, "reflekt", m);
+      };
+    }
+    installSchildArm(m) {
+      if (!m || m._schildArmVerbaut) return;
+      m._schildArmVerbaut = true;
+      const orig = m.damage.bind(m);
+      const G2 = this.G;
+      m.damage = (amount, kind, source) => {
+        if (m.blockAktiv && amount > 0 && !m.wrecked && source && source.pos && m.blockE > 0.05) {
+          const dx = source.pos.x - m.pos.x, dz = source.pos.z - m.pos.z;
+          const d = Math.hypot(dx, dz) || 1;
+          const frontal = dx / d * Math.sin(m.yaw) + dz / d * Math.cos(m.yaw);
+          if (frontal > 0.2) {
+            amount *= 0.25;
+            m.blockE = Math.max(0, m.blockE - 0.3);
+            G2.fx.sparks({ x: m.pos.x + Math.sin(m.yaw) * 3, y: m.pos.y + 4, z: m.pos.z + Math.cos(m.yaw) * 3, nx: -Math.sin(m.yaw), ny: 0, nz: -Math.cos(m.yaw) }, 8, 0, 1, 0);
+            G2.postfx.flash = Math.max(G2.postfx.flash, 0.06);
+          }
+        }
+        orig(amount, kind, source);
       };
     }
     skinAnwenden(id) {
@@ -58277,6 +58301,8 @@ void main() {
         m.hpMax = MECH.maxHealth * m.klasse.hp + (this.owned.has("panzer") ? 600 : 0);
         const repRate = 25 + (this.owned.has("nano2") ? 35 : 0) + (this.owned.has("rep") ? 10 : 0);
         if ((this.owned.has("nanorep") || this.owned.has("rep")) && G2.time - (m.lastHurt ?? -99) > 5 && m.hp < m.hpMax) m.hp = Math.min(m.hpMax, m.hp + repRate * dt3);
+        if (this.owned.has("schild") && !m._schildVerbaut) this.installSchild(m);
+        if (this.owned.has("schildarm") && !m._schildArmVerbaut) this.installSchildArm(m);
         if (this._attachedMech !== m) this.anbauen();
       }
       if (m && m.piloted && !m.wrecked) {
@@ -60285,6 +60311,13 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this.moerserCd = 0;
       this.moerserAmmo = MECH.moerser.ammo;
       this.moerserRegenT = 0;
+      this.meleeT = 0;
+      this.meleeCd = 0;
+      this.meleeCombo = 0;
+      this.meleeComboT = 0;
+      this.teslaCd = 0;
+      this.blockE = 1;
+      this.blockAktiv = false;
       this.grapple = null;
       this.lights = [];
       this.loop = null;
@@ -60554,6 +60587,15 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this.updateGun(dt3);
       this.updatePlasma(dt3);
       this.updateMoerser(dt3);
+      this.meleeCd = Math.max(0, this.meleeCd - dt3);
+      this.teslaCd = Math.max(0, this.teslaCd - dt3);
+      this.meleeComboT = Math.max(0, this.meleeComboT - dt3);
+      if (this.meleeComboT <= 0) this.meleeCombo = 0;
+      this.meleeT = Math.max(0, this.meleeT - dt3);
+      const willBlock = this.G.krieg.owned.has("schildarm") && this.G.input.down("KeyT") && this.blockE > 0.05 && this.piloted;
+      this.blockAktiv = willBlock;
+      if (willBlock) this.blockE = Math.max(0, this.blockE - 0.45 * dt3);
+      else this.blockE = Math.min(1, this.blockE + 0.22 * dt3);
       this.applyPose(dt3);
       this.updateMesh();
       this.updateAABB();
@@ -60955,6 +60997,12 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       } else if (this.weapon === 4) {
         this.gunStop();
         if (I2.mousePressed(0) && this.moerserCd <= 0 && this.moerserAmmo >= 1 && !stomping && !wheelOpen) this.fireMoerser();
+      } else if (this.weapon === 5) {
+        this.gunStop();
+        if (I2.mousePressed(0) && this.meleeCd <= 0 && !stomping && !wheelOpen) this.fausthieb();
+      } else if (this.weapon === 6) {
+        this.gunStop();
+        if (I2.mousePressed(0) && this.teslaCd <= 0 && !stomping && !wheelOpen) this.teslaSchuss();
       } else this.gunStop();
       this.pos.x += this.vel.x * dt3;
       this.pos.z += this.vel.z * dt3;
@@ -60985,6 +61033,8 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       const s = [0, 1, 2];
       if (o.has("flak")) s.push(3);
       if (o.has("moerser")) s.push(4);
+      s.push(5);
+      if (o.has("tesla")) s.push(6);
       return s;
     }
     wheelItems() {
@@ -60992,6 +61042,8 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       const it2 = [{ name: "MISSILES", sub: `${MECH.missiles.salvo} rd \xB7 salvo` }, { name: "MINIGUN", sub: "auto \xB7 hitze" }, { name: "PLASMA", sub: "schlag \xB7 splash" }];
       if (o.has("flak")) it2.push({ name: "FLAK", sub: "serien \xB7 luft \xD79" });
       if (o.has("moerser")) it2.push({ name: "M\xD6RSER", sub: "bogen \xB7 fl\xE4che" });
+      it2.push({ name: "FAUST", sub: "nahkampf \xB7 kombo" });
+      if (o.has("tesla")) it2.push({ name: "TESLA", sub: "kette \xB7 4 ziele" });
       return it2;
     }
     wheelPick(pos) {
@@ -61014,7 +61066,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this.gunStop();
       if (this.barrels) this.barrels.visible = slot !== 2;
       this.G.audio.ui("tick");
-      const N2 = ["MISSILES", "MINIGUN", "PLASMA", "FLAK", "M\xD6RSER"][slot], T = ["salvo", "auto \xB7 hitze", "schlag \xB7 splash", "serien \xB7 luft", "bogen \xB7 fl\xE4che"][slot];
+      const N2 = ["MISSILES", "MINIGUN", "PLASMA", "FLAK", "M\xD6RSER", "FAUST", "TESLA"][slot], T = ["salvo", "auto \xB7 hitze", "schlag \xB7 splash", "serien \xB7 luft", "bogen \xB7 fl\xE4che", "nahkampf \xB7 kombo", "kette \xB7 4 ziele"][slot];
       this.G.ui.msg(N2, slot === 4 ? `${this.moerserAmmo} Granaten \xB7 ${T}` : T, 1.2);
     }
     aim() {
@@ -61565,6 +61617,114 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         p.z = nz;
       }
     }
+    // ---- Runde 27: FAUSTHIEB — Nahkampf mit 3er-Kombo (letzter Hieb Wucht) ----
+    fausthieb() {
+      const G2 = this.G;
+      this.meleeCd = 0.55;
+      this.meleeT = 0.34;
+      this.meleeCombo = this.meleeComboT > 0 ? this.meleeCombo % 3 + 1 : 1;
+      this.meleeComboT = 1.2;
+      const dmg = this.meleeCombo === 3 ? 190 : 90;
+      G2.audio.explosion(this.pos, 0.25);
+      G2.gcam.addShake(0.22);
+      G2.gcam.addKick(0, 0, 0, 3);
+      this.firing = 0.25;
+      let hit = this.aimHit && Math.hypot(this.aimHit.x - this.pos.x, this.aimHit.z - this.pos.z) < 15 ? this.aimHit : null;
+      if (!hit) {
+        let bd = 14, best = null;
+        for (const f of G2.krieg.list) {
+          if (f.dead) continue;
+          const dx = f.pos.x - this.pos.x, dz = f.pos.z - this.pos.z;
+          const d = Math.hypot(dx, dz) || 1;
+          if (d < bd && dx / d * Math.sin(this.yaw) + dz / d * Math.cos(this.yaw) > 0.4) {
+            bd = d;
+            best = f;
+          }
+        }
+        if (best) hit = { kind: "mech", ref: best, x: best.pos.x, y: best.pos.y + 4, z: best.pos.z, nx: -(best.pos.x - this.pos.x), ny: 0, nz: -(best.pos.z - this.pos.z) };
+      }
+      if (!hit) return;
+      G2.fx.sparks(hit, 10, hit.nx, hit.ny, hit.nz);
+      G2.fx.shockwave({ x: hit.x, y: hit.y, z: hit.z }, 2.2, 16767400);
+      if (hit.kind === "mech") {
+        const f = hit.ref;
+        const d2 = f.isFeind ? dmg : 25;
+        f.damage(d2, "melee", "player");
+        G2.ui.hitmarker(f.dead);
+        if (f.isFeind) G2.ui.dmgNumber(hit.x, hit.y + 0.6, hit.z, d2, f.dead);
+      } else if (hit.kind === "vehicle") {
+        const v = hit.ref;
+        v.damage(dmg * 0.8, "melee", "player");
+        v.impulse(Math.sin(this.yaw) * 900, Math.cos(this.yaw) * 900, hit.x, hit.z);
+        G2.ui.hitmarker(v.wrecked);
+      } else if (hit.kind === "npc") {
+        G2.npcs.damage(hit.ref, dmg * 1.2, Math.sin(this.yaw), 0.3, Math.cos(this.yaw), false, true, hit);
+        G2.ui.hitmarker(!!hit.head);
+      } else if (hit.kind === "prop") {
+        G2.props.damage(hit.ref, dmg, hit.x, hit.y, hit.z);
+      } else {
+        G2.fx.decal(hit, hit.nx, hit.ny, hit.nz, 0.6);
+      }
+    }
+    // ---- Runde 27: TESLA-KETTE — Blitz springt zwischen bis zu 4 Zielen ----
+    teslaSchuss() {
+      const G2 = this.G;
+      this.teslaCd = 1.1;
+      this.P.LaserMuzzle.getWorldPosition(_a4);
+      const treffer = [];
+      let erste = null, bd = 14;
+      for (const f of G2.krieg.list) {
+        if (f.dead || f.state === "falling") continue;
+        const dd = Math.hypot(f.pos.x - this.aimPoint.x, f.pos.z - this.aimPoint.z);
+        if (dd < bd) {
+          bd = dd;
+          erste = f;
+        }
+      }
+      if (erste) treffer.push(erste);
+      else if (this.aimHit && this.aimHit.t < 60 && (this.aimHit.kind === "mech" || this.aimHit.kind === "vehicle")) treffer.push(this.aimHit.ref);
+      while (treffer.length < 4) {
+        const last = treffer[treffer.length - 1];
+        let best = null, bd2 = 16;
+        for (const f of G2.krieg.list) {
+          if (f.dead || f.state === "falling" || treffer.includes(f)) continue;
+          const dd = Math.hypot(f.pos.x - last.pos.x, f.pos.z - last.pos.z);
+          if (dd < bd2) {
+            bd2 = dd;
+            best = f;
+          }
+        }
+        if (!best) break;
+        treffer.push(best);
+      }
+      const zap = (x0, y0, z0, x1, y1, z1) => {
+        const h = G2.fx.tracerAcquire(9431295, 0.14);
+        if (h) {
+          G2.fx.tracerSet(h, x0, y0, z0, x1, y1, z1);
+          setTimeout(() => G2.fx.tracerRelease(h), 110);
+        }
+      };
+      let vx = _a4.x, vy = _a4.y, vz = _a4.z;
+      treffer.forEach((f, i) => {
+        const dmg = Math.round(220 * Math.pow(0.75, i));
+        const tx = f.pos.x, ty = f.pos.y + 4, tz = f.pos.z;
+        zap(vx, vy, vz, tx, ty, tz);
+        this.lights.push({ x: tx, y: ty, z: tz, R: 14, r: 0.5, g: 0.9, b: 1, I: 230 });
+        G2.fx.sparks({ x: tx, y: ty, z: tz, nx: 0, ny: 1, nz: 0 }, 10, 0, 1, 0, true);
+        f.damage(dmg, "tesla", "player");
+        G2.ui.hitmarker(f.dead);
+        if (f.isFeind) G2.ui.dmgNumber(tx, ty + 0.6, tz, dmg, f.dead);
+        vx = tx;
+        vy = ty;
+        vz = tz;
+      });
+      if (!treffer.length) zap(_a4.x, _a4.y, _a4.z, this.aimPoint.x, this.aimPoint.y, this.aimPoint.z);
+      G2.audio.plasmaShot(this.pos);
+      G2.audio.flakShot(this.pos);
+      G2.gcam.addShake(0.18);
+      this.firing = 0.3;
+      G2.police.crime("gunfire", this.pos);
+    }
     // ---- entry / exit hooks (called by player.js) ---------------------------------------------------------------------------
     openHatch() {
       this.hatchT = 1e-3;
@@ -61723,8 +61883,9 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       const pitch = clamp2(this.aimPitch, -0.9, 0.9);
       tg(P.UpperArm_L, 0.4 * g2 * sw - 0.25 * flyK + 0.3 * land, 0, 0.12 + 0.35 * flyK + 0.15 * land, ks);
       tg(P.Forearm_L, -0.35 - 0.3 * g2 + 0.2 * flyK, 0, 0, ks);
-      tg(P.UpperArm_R, -0.4 * g2 * sw * (1 - ar) - 0.55 * ar - 0.25 * flyK + 0.3 * land, 0, -0.12 - 0.35 * flyK * (1 - ar) - 0.15 * land, ks);
-      tg(P.Forearm_R, (-0.35 - 0.3 * g2) * (1 - ar) + (0.55 - pitch) * ar + 0.2 * flyK * (1 - ar), 0, 0, ks);
+      const punch = this.meleeT > 0 ? Math.sin(clamp2(1 - this.meleeT / 0.34, 0, 1) * Math.PI) : 0;
+      tg(P.UpperArm_R, -0.4 * g2 * sw * (1 - ar) - 0.55 * ar - 0.25 * flyK + 0.3 * land - 0.95 * punch, 0, -0.12 - 0.35 * flyK * (1 - ar) - 0.15 * land + 0.3 * punch, ks);
+      tg(P.Forearm_R, ((-0.35 - 0.3 * g2) * (1 - ar) + (0.55 - pitch) * ar + 0.2 * flyK * (1 - ar)) * (1 - punch) - 0.1 * punch, 0, 0, ks);
       tg(P.Shoulder_L, 0.03 * g2 * sw, 0, 0.04 * g2 * sw, ks);
       tg(P.Shoulder_R, -0.03 * g2 * sw, 0, 0.04 * g2 * sw, ks);
       if (this.wings.length) {
