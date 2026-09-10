@@ -42602,6 +42602,9 @@ void main() {
       tracerEvery: 2,
       soundEvery: 2
     },
+    // Runde 25: Waffen-Vielfalt — Plasma ersetzt die Railgun; Flak + Moerser sind Waffenkammer-Freischaltungen.
+    plasma: { cd: 0.85, dmg: 280, radius: 5.5, impulse: 16 },
+    moerser: { cd: 2.4, ammo: 5, regen: 3.5, range: 90, grav: 26, dmg: 340, radius: 7.5, impulse: 22 },
     seat: { x: 0, y: 4.35, z: 0.55 },
     exitOffset: 3.4,
     enterTime: 3,
@@ -42751,9 +42754,10 @@ void main() {
       { id: "panzer3", name: "Panzerplatten Mk3", preis: 1800, rang: 2, text: "+1000 Panzerung \xB7 15 % Racheschaden", anbau: [] },
       { id: "schub3", name: "Schubd\xFCsen Mk3", preis: 2200, rang: 2, text: "\u2248350 km/h \xB7 Gleitflug", anbau: [] },
       { id: "nano2", name: "Nanoreparatur Mk2", preis: 1600, rang: 1, text: "+60 HP/s", anbau: [] },
-      { id: "flak", name: "Flak-Munition", preis: 1200, rang: 1, text: "Minigun \xD73 an Drohnen", anbau: [] },
+      { id: "flak", name: "Flak-Batterie", preis: 1200, rang: 1, text: "Waffe: Flak (Serien, Luft \xD79) + Minigun-Drohnen \xD73", anbau: [{ teil: "Upgrade_flakpod", pivot: "Pod_L" }, { teil: "Upgrade_flakpod", pivot: "Pod_R", spiegel: true }] },
       { id: "streu", name: "Streukassette", preis: 1400, rang: 1, text: "Raketen explodieren dreifach", anbau: [] },
-      { id: "plasma", name: "Plasmaspitze", preis: 2e3, rang: 2, text: "Railgun-Schuss explodiert (AoE)", anbau: [] },
+      { id: "plasma", name: "Plasma-Kammer", preis: 1600, rang: 1, text: "Plasma: +35 % Splash & Schaden + Kanonen-Modul", anbau: [{ teil: "Upgrade_plasma", pivot: "Forearm_L" }] },
+      { id: "moerser", name: "M\xF6rser-Rack", preis: 1800, rang: 2, text: "Waffe: M\xF6rser \u2014 Granaten im Bogen, gro\xDFe Fl\xE4che", anbau: [{ teil: "Upgrade_moerser", pivot: "Backpack" }] },
       { id: "griff", name: "Luftgriff", preis: 1300, rang: 1, text: "Boost +50 % \xB7 drehen \xD71,5", anbau: [] },
       { id: "hover", name: "Hover-Feinmodus", preis: 800, rang: 1, text: "Streuung in der Luft \u221250 %", anbau: [] },
       { id: "greifhaken", name: "Greifhaken", preis: 1500, rang: 2, text: "C: Haken zum Zielpunkt \u2014 zieht dich hin, Schwung bleibt", anbau: [] },
@@ -56019,9 +56023,9 @@ void main() {
       const mech = P.vehicle && P.vehicle.isMech && P.vehicle.piloted && !P.vehicle.wrecked && P.state === "vehicle" && !P.dead && G2.state === "playing" ? P.vehicle : null;
       const kind = onFoot ? "foot" : mech ? "mech" : null;
       const items = kind === "mech" ? mech.wheelItems() : weaponWheelItems();
-      const curSel = kind === "mech" ? mech.weapon : this.cur;
+      const curSel = kind === "mech" ? Math.max(0, mech.waffenSlots().indexOf(mech.weapon)) : this.cur;
       const pick = (i) => {
-        if (kind === "mech") mech.selectWeapon(i);
+        if (kind === "mech") mech.wheelPick(i);
         else this.select(i);
       };
       if (kind && I2.pressed("Tab") && !this.wheelOpen) {
@@ -58795,14 +58799,15 @@ void main() {
     // round 10: mech HUD (armour, weapon state, heat, thrust fuel, mode)
     updateMech(m, dt3) {
       const E2 = this.el;
-      const arm = clamp2(m.hp / (m.maxHealth || 1400), 0, 1);
+      const arm = clamp2(m.hp / (m.hpMax || m.maxHealth || 1400), 0, 1);
       E2.marmour.firstElementChild.style.width = (arm * 100).toFixed(1) + "%";
       E2.marmour.classList.toggle("low", arm < 0.3);
       const mode = m.state === "piloted" ? m.flying || !m.onGround ? "FLIGHT" : m.stomp.t >= 0 ? "STOMP" : "GROUND" : m.state === "landed" ? this.G.player.state === "entering" ? "BOARDING" : "LEAVING" : m.state.toUpperCase();
       if (E2.mmode.textContent !== mode) E2.mmode.textContent = mode;
-      const wn2 = m.weapon ? "MINIGUN" : "MISSILES";
+      const WN = ["MISSILES", "MINIGUN", "PLASMA", "FLAK", "M\xD6RSER"];
+      const wn2 = WN[m.weapon] || "MISSILES";
       if (E2.mwname.textContent !== wn2) E2.mwname.textContent = wn2;
-      const st = m.weapon ? m.overheat > 0 ? "OVERHEAT " + m.overheat.toFixed(1) : m.gun.spin >= 0.4 ? "FIRING" : m.gun.on ? "SPINNING UP" : "READY" : m.salvo > 0 ? "SALVO" : m.reloadT > 0 ? "RELOADING " + m.reloadT.toFixed(1) : "READY \xB7 6";
+      const st = m.weapon === 0 ? m.salvo > 0 ? "SALVO" : m.reloadT > 0 ? "RELOADING " + m.reloadT.toFixed(1) : "READY \xB7 " + MECH.missiles.salvo : m.weapon === 2 ? m.plasmaCd > 0.05 ? "AUFLADEN " + m.plasmaCd.toFixed(1) : "BEREIT" : m.weapon === 4 ? m.moerserCd > 0.05 ? "NACHLADEN " + m.moerserCd.toFixed(1) : "BEREIT \xB7 " + m.moerserAmmo + " GR" : m.overheat > 0 ? "OVERHEAT " + m.overheat.toFixed(1) : m.gun.spin >= 0.4 || m.weapon === 3 && m.gun.on ? "FIRING" : m.gun.on ? "SPINNING UP" : "READY";
       if (E2.mwstat.textContent !== st) E2.mwstat.textContent = st;
       E2.mheat.firstElementChild.style.width = (m.heat * 100).toFixed(1) + "%";
       E2.mheat.classList.toggle("low", m.heat > 0.8 || m.overheat > 0);
@@ -59935,7 +59940,13 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this.armRaise = 0;
       this.aimPoint = new Vector3();
       this.gun = { on: false, hit: null, spin: 0, cd: 0, n: 0, decalT: 0, tr: [], end: new Vector3() };
-      this.rail = { charge: 0, heat: 0, wasFire: false };
+      this.plasmaShots = [];
+      this.plasmaCd = 0;
+      this.flakCd = 0;
+      this.moerserShots = [];
+      this.moerserCd = 0;
+      this.moerserAmmo = MECH.moerser.ammo;
+      this.moerserRegenT = 0;
       this.grapple = null;
       this.lights = [];
       this.loop = null;
@@ -60203,6 +60214,8 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       }
       this.updateMissiles(dt3);
       this.updateGun(dt3);
+      this.updatePlasma(dt3);
+      this.updateMoerser(dt3);
       this.applyPose(dt3);
       this.updateMesh();
       this.updateAABB();
@@ -60382,7 +60395,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         G2.ui.msg("AIM MODE", "strafe \xB7 body follows the crosshair", 1.1);
       }
       this.aimMode = aimMode;
-      if (I2.pressed("KeyQ") && !G2.weapons.wheelOpen) this.selectWeapon((this.weapon + 1) % 3);
+      if (I2.pressed("KeyQ") && !G2.weapons.wheelOpen) this.zyklWaffe(1);
       if (I2.pressed("KeyF") && this.onGround && this.stomp.t < 0 && this.stomp.cd <= 0 && !this.flying) {
         this.stomp.t = 0;
       }
@@ -60588,9 +60601,15 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         }
       } else if (this.weapon === 1) {
         this.gunTrigger(fire && this.overheat <= 0 && this.heat < 1);
-      } else {
-        this.updateRail(fire && this.rail.heat < 1, dt3);
-      }
+      } else if (this.weapon === 2) {
+        this.gunStop();
+        if (I2.mousePressed(0) && this.plasmaCd <= 0 && !stomping && !wheelOpen) this.firePlasma();
+      } else if (this.weapon === 3) {
+        this.gunTrigger(fire && this.overheat <= 0 && this.heat < 1);
+      } else if (this.weapon === 4) {
+        this.gunStop();
+        if (I2.mousePressed(0) && this.moerserCd <= 0 && this.moerserAmmo >= 1 && !stomping && !wheelOpen) this.fireMoerser();
+      } else this.gunStop();
       this.pos.x += this.vel.x * dt3;
       this.pos.z += this.vel.z * dt3;
       this.pos.y += this.vel.y * dt3;
@@ -60613,18 +60632,44 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this.prevYaw = this.yaw;
       return thrustWant;
     }
-    // Runde 13: die zwei Mech-Waffen in der Form, die das Rad erwartet (defs.js weaponWheelItems liefert dieselbe Form zu Fuss)
-    wheelItems() {
-      return [{ name: "MISSILES", sub: `${MECH.missiles.salvo} rd \xB7 salvo` }, { name: "MINIGUN", sub: "auto \xB7 heat" }, { name: "RAILGUN", sub: "aufladen \xB7 durchschlag" }];
+    // Runde 25: Waffen-Slots — 0 Raketen · 1 Minigun · 2 Plasma (immer) · 3 Flak (Kauf 'flak') · 4 Mörser (Kauf 'moerser').
+    // Das Rad zeigt nur freigeschaltete Slots; Ziffern/Q laufen über dieselbe Liste.
+    waffenSlots() {
+      const o = this.G.krieg.owned;
+      const s = [0, 1, 2];
+      if (o.has("flak")) s.push(3);
+      if (o.has("moerser")) s.push(4);
+      return s;
     }
-    selectWeapon(i) {
-      const w2 = Math.max(0, Math.min(2, i | 0));
-      if (w2 === this.weapon) return;
-      this.weapon = w2;
+    wheelItems() {
+      const o = this.G.krieg.owned;
+      const it2 = [{ name: "MISSILES", sub: `${MECH.missiles.salvo} rd \xB7 salvo` }, { name: "MINIGUN", sub: "auto \xB7 hitze" }, { name: "PLASMA", sub: "schlag \xB7 splash" }];
+      if (o.has("flak")) it2.push({ name: "FLAK", sub: "serien \xB7 luft \xD79" });
+      if (o.has("moerser")) it2.push({ name: "M\xD6RSER", sub: "bogen \xB7 fl\xE4che" });
+      return it2;
+    }
+    wheelPick(pos) {
+      const s = this.waffenSlots();
+      if (s[pos] !== void 0) this.selectWeapon(s[pos]);
+    }
+    zyklWaffe(dir) {
+      const s = this.waffenSlots();
+      this.selectWeapon(s[(s.indexOf(this.weapon) + dir + s.length) % s.length]);
+    }
+    selectWeapon(slot) {
+      slot |= 0;
+      if (!this.waffenSlots().includes(slot)) {
+        this.G.ui.msg("WAFFE", "erst in der Waffenkammer kaufen (K)", 1.4);
+        this.G.audio.ui("empty");
+        return;
+      }
+      if (slot === this.weapon) return;
+      this.weapon = slot;
       this.gunStop();
-      this.rail.charge = 0;
+      if (this.barrels) this.barrels.visible = slot !== 2;
       this.G.audio.ui("tick");
-      this.G.ui.msg(w2 === 0 ? "MISSILES" : w2 === 1 ? "MINIGUN" : "RAILGUN", w2 === 0 ? `${MECH.missiles.salvo}-round salvo` : w2 === 1 ? "hold to fire \xB7 spins up" : "halten zum Aufladen \xB7 durchschlaegt alles", 1.2);
+      const N2 = ["MISSILES", "MINIGUN", "PLASMA", "FLAK", "M\xD6RSER"][slot], T = ["salvo", "auto \xB7 hitze", "schlag \xB7 splash", "serien \xB7 luft", "bogen \xB7 fl\xE4che"][slot];
+      this.G.ui.msg(N2, slot === 4 ? `${this.moerserAmmo} Granaten \xB7 ${T}` : T, 1.2);
     }
     aim() {
       const G2 = this.G, cam = G2.gcam;
@@ -60895,9 +60940,35 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
     }
     updateGun(dt3) {
       const G2 = this.G, g2 = this.gun, Gd = MECH.gun;
+      const flak = this.weapon === 3;
+      if (flak) {
+        g2.spin = g2.on ? 1 : 0;
+        if (g2.on) {
+          this.heat = Math.min(1, this.heat + Gd.heatRate * 1.9 * dt3);
+          if (this.heat >= 1) this.overheat = Gd.overheatLock;
+        } else this.heat = Math.max(0, this.heat - Gd.coolRate * dt3);
+        g2.cd -= dt3;
+        if (g2.on && this.overheat <= 0) {
+          let schutz2 = 6;
+          while (g2.cd <= 0 && schutz2-- > 0) {
+            g2.cd += 0.13;
+            this.fireFlakPellet();
+          }
+        } else if (!g2.on) g2.cd = Math.max(g2.cd, 0);
+        for (let i = g2.tr.length - 1; i >= 0; i--) {
+          const t2 = g2.tr[i];
+          t2.life -= dt3;
+          if (t2.life <= 0) {
+            G2.fx.tracerRelease(t2.h);
+            g2.tr.splice(i, 1);
+          }
+        }
+        return;
+      }
       g2.spin = clamp2(g2.spin + (g2.on ? dt3 / Gd.spinUp : -dt3 / (Gd.spinUp * 0.8)), 0, 1);
       if (g2.on) this.heat = Math.min(1, this.heat + Gd.heatRate * dt3);
       else this.heat = Math.max(0, this.heat - Gd.coolRate * dt3);
+      if (this.heat >= 1) this.overheat = Gd.overheatLock;
       if (this.barrels) this.barrels.rotation.z += g2.spin * 34 * dt3;
       for (let i = g2.tr.length - 1; i >= 0; i--) {
         const t2 = g2.tr[i];
@@ -60993,85 +61064,161 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
         if (G2.props.damage(r, Gd.propDamage, hit.x, hit.y, hit.z)) G2.ui.hitmarker(true);
       }
     }
-    // ---- Runde 20: Railgun — halten zum Aufladen, Schuss mit Durchschlag (trifft alles auf der Linie) ----
-    updateRail(fire, dt3) {
-      const G2 = this.G, r = this.rail;
-      r.heat = Math.max(0, r.heat - dt3 * 0.45);
-      if (!fire) {
-        if (r.charge > 0 && r.wasFire !== false) {
-        }
-        if (r.charge > 0.99) {
-          this.fireRailgun();
-          r.charge = 0;
-          r.heat = Math.min(1, r.heat + 0.55);
-        } else if (r.charge > 0 && r.wasFire) {
-          r.charge = Math.max(0, r.charge - dt3 * 2);
-        }
-        r.wasFire = fire;
-        return;
-      }
-      r.wasFire = true;
-      r.charge = Math.min(1, r.charge + dt3 / 1.1);
-      if (r.charge < 1) {
-        if (Math.random() < 0.25) G2.audio.ui("tick");
-        this.lights.push({ x: this.pos.x, y: this.pos.y + 5, z: this.pos.z, R: 8, r: 0.5, g: 0.85, b: 1, I: 40 * r.charge });
-        return;
-      }
-      this.fireRailgun();
-      r.charge = 0;
-      r.heat = Math.min(1, r.heat + 0.55);
-    }
-    fireRailgun() {
-      const G2 = this.G;
+    // ---- Runde 25: PLASMA-CASTER (ersetzt die Railgun) — langsamer leuchtender Schuss mit Splash ----
+    firePlasma() {
+      const G2 = this.G, Pd = MECH.plasma;
+      this.plasmaCd = Pd.cd;
       this.P.LaserMuzzle.getWorldPosition(_a4);
       _d4.subVectors(this.aimPoint, _a4).normalize();
+      const v = 58;
+      this.plasmaShots.push({ x: _a4.x, y: _a4.y, z: _a4.z, vx: _d4.x * v, vy: _d4.y * v + 2, vz: _d4.z * v, age: 0, life: 3 });
       G2.audio.gunshot("mg", _a4);
-      G2.audio.explosion(_a4, 0.5);
-      G2.fx.muzzle(_a4, _d4.x, _d4.y, _d4.z, 1.4);
-      G2.gcam.addShake(0.5);
-      G2.gcam.addKick(0, 0, 0, 7);
-      G2.postfx.flash = Math.max(G2.postfx.flash, 0.2);
-      this.lights.push({ x: _a4.x, y: _a4.y, z: _a4.z, R: 16, r: 0.55, g: 0.85, b: 1, I: 260 });
-      let ox = _a4.x, oy = _a4.y, oz = _a4.z;
-      let treffer = 0;
-      for (let seg = 0; seg < 4 && treffer < 4; seg++) {
-        const hit = G2.weapons.raycastWorld(ox, oy, oz, _d4.x, _d4.y, _d4.z, 400, { ignoreMech: true, player: false, ignoreVehicle: null, ignoreNpc: null, minT: 0.4 });
-        const t2 = hit ? hit.t : 400;
-        const ex = ox + _d4.x * t2, ey = oy + _d4.y * t2, ez = oz + _d4.z * t2;
-        const h = G2.fx.tracerAcquire(9427199, 0.16);
-        if (h) {
-          G2.fx.tracerSet(h, ox, oy, oz, ex, ey, ez);
-          setTimeout(() => G2.fx.tracerRelease(h), 90);
-        }
-        if (!hit) break;
-        if (hit.kind === "mech") {
-          const dmg = hit.ref.isFeind ? 520 : 40;
-          hit.ref.damage(dmg, "rail", "player");
-          G2.ui.hitmarker(hit.ref.dead);
-          G2.ui.dmgNumber(hit.x, hit.y + 0.6, hit.z, Math.round(dmg), hit.ref.dead);
-          treffer++;
-        } else if (hit.kind === "vehicle") {
-          hit.ref.damage(260, "rail", "player");
-          hit.ref.impulse(_d4.x * 600, _d4.z * 600, hit.x, hit.z);
-          G2.ui.hitmarker(hit.ref.wrecked);
-          treffer++;
-        } else if (hit.kind === "building") {
-          G2.world.damageBuilding(hit.ref, 340, hit.x, hit.y, hit.z);
-          treffer++;
-        } else if (hit.kind === "npc") {
-          G2.npcs.damage(hit.ref, 500, _d4.x, _d4.y, _d4.z, false, true, hit);
-          treffer++;
-        } else {
-          G2.fx.sparks(hit, 14, hit.nx, hit.ny, hit.nz);
-          G2.fx.decal(hit, hit.nx, hit.ny, hit.nz, 1.4);
-          if (G2.krieg.owned.has("plasma")) {
-            G2.weapons.explode({ x: hit.x, y: hit.y, z: hit.z }, 5, 14, 90, "player");
+      G2.audio.explosion(_a4, 0.35);
+      G2.fx.muzzle(_a4, _d4.x, _d4.y, _d4.z, 1.3);
+      this.lights.push({ x: _a4.x, y: _a4.y, z: _a4.z, R: 16, r: 0.4, g: 1, b: 0.75, I: 240 });
+      G2.gcam.addShake(0.3);
+      G2.gcam.addKick(0, 0, 0, 4);
+      G2.postfx.flash = Math.max(G2.postfx.flash, 0.05);
+      this.firing = 0.5;
+      G2.police.crime("gunfire", this.pos);
+      G2.npcs.alertGunfire(this.pos, true, 2);
+    }
+    updatePlasma(dt3) {
+      const G2 = this.G;
+      this.plasmaCd = Math.max(0, this.plasmaCd - dt3);
+      for (let i = this.plasmaShots.length - 1; i >= 0; i--) {
+        const p = this.plasmaShots[i];
+        p.age += dt3;
+        p.vy -= 6 * dt3;
+        const ox = p.x, oy = p.y, oz = p.z;
+        const nx = ox + p.vx * dt3, ny = oy + p.vy * dt3, nz = oz + p.vz * dt3;
+        const len = Math.hypot(nx - ox, ny - oy, nz - oz);
+        let hit = null;
+        if (len > 1e-5) hit = G2.weapons.raycastWorld(ox, oy, oz, (nx - ox) / len, (ny - oy) / len, (nz - oz) / len, len, { ignoreMech: true, player: false, ignoreVehicle: null, ignoreNpc: null, minT: 0 });
+        G2.fx.glow.spawn({ x: p.x, y: p.y, z: p.z, s0: 1.6, s1: 0.4, a0: 0.9, a1: 0, life: 0.1, r: [0.5, 2.4, 1.6] });
+        this.lights.push({ x: p.x, y: p.y, z: p.z, R: 12, r: 0.4, g: 1, b: 0.7, I: 170 });
+        if (hit || p.age >= p.life) {
+          const q = hit || { x: nx, y: ny, z: nz };
+          const boost = G2.krieg.owned.has("plasma");
+          const R = MECH.plasma.radius * (boost ? 1.35 : 1), DMG = MECH.plasma.dmg * (boost ? 1.3 : 1);
+          G2.weapons.explode(q, R, MECH.plasma.impulse, DMG, "player");
+          G2.world.damageBuildingsAt(q.x, q.y, q.z, R * 1.5, DMG * 2);
+          G2.fx.sparks(q, 18, 0, 1, 0, true);
+          G2.audio.explosion(q, 1.1);
+          G2.gcam.addShake(clamp2(1.4 - Math.hypot(q.x - G2.player.pos.x, q.z - G2.player.pos.z) / 40, 0, 1.4) * 0.4);
+          if (hit && hit.kind === "mech" && hit.ref.isFeind) {
+            G2.ui.hitmarker(hit.ref.dead);
+            G2.ui.dmgNumber(q.x, q.y + 0.6, q.z, Math.round(DMG * 0.7), hit.ref.dead);
           }
-          break;
+          this.plasmaShots.splice(i, 1);
+          continue;
         }
-        ox = hit.x + _d4.x * 0.9;
-        oy = hit.y + _d4.y * 0.9;
-        oz = hit.z + _d4.z * 0.9;
+        p.x = nx;
+        p.y = ny;
+        p.z = nz;
+      }
+    }
+    // ---- Runde 25: FLAK — schnelle Pellets mit kleiner Luft-Zündung, Drohnen ×9 ----
+    fireFlakPellet() {
+      const G2 = this.G, Gd = MECH.gun;
+      this.gun.n++;
+      this.P.LaserMuzzle.getWorldPosition(_a4);
+      _d4.subVectors(this.aimPoint, _a4).normalize();
+      const sp = 3.4 * Math.PI / 180;
+      _d4.x += rand(-sp, sp);
+      _d4.y += rand(-sp, sp) * 0.8;
+      _d4.z += rand(-sp, sp);
+      _d4.normalize();
+      const hit = G2.weapons.raycastWorld(_a4.x, _a4.y, _a4.z, _d4.x, _d4.y, _d4.z, 130, { ignoreMech: true, player: false, ignoreVehicle: null, ignoreNpc: null, minT: 0.5 });
+      const len = hit ? hit.t : 130;
+      _w6.copy(_a4).addScaledVector(_d4, len);
+      const h = G2.fx.tracerAcquire(13625599, 0.07);
+      if (h) {
+        G2.fx.tracerSet(h, _a4.x, _a4.y, _a4.z, _w6.x, _w6.y, _w6.z);
+        this.gun.tr.push({ h, life: 0.05 });
+      }
+      if (this.gun.n % 2 === 0) G2.audio.gunshot("mg", _a4);
+      this.firing = 0.2;
+      if (Math.random() < 0.15) G2.police.crime("gunfire", this.pos);
+      if (!hit) return;
+      if (hit.kind === "drone") {
+        const d = hit.ref;
+        const dmg = 52 * 9;
+        d.damage(dmg, "bullet", "player");
+        G2.fx.sparks(hit, 6, hit.nx, hit.ny, hit.nz);
+        G2.ui.hitmarker(d.dead);
+        if (d.dead || this.gun.n % 3 === 0) G2.ui.dmgNumber(hit.x, hit.y + 0.3, hit.z, Math.round(dmg), d.dead);
+        return;
+      }
+      G2.weapons.scheduleExplosion({ x: hit.x, y: hit.y, z: hit.z }, 2.2, 6, 46, "player", 0);
+      G2.fx.sparks(hit, 4, hit.nx, hit.ny, hit.nz);
+      if (hit.kind === "mech" && hit.ref.isFeind) {
+        G2.ui.hitmarker(hit.ref.dead);
+        if (this.gun.n % 3 === 0) G2.ui.dmgNumber(hit.x, hit.y + 0.4, hit.z, 46, hit.ref.dead);
+      } else if (hit.kind === "vehicle") {
+        hit.ref.damage(26, "bullet", "player");
+        hit.ref.impulse(_d4.x * 160, _d4.z * 160, hit.x, hit.z);
+      } else if (hit.kind === "npc") {
+        G2.npcs.damage(hit.ref, 60, _d4.x, _d4.y, _d4.z, hit.head, true, hit);
+        G2.ui.hitmarker(!!hit.head);
+      } else if (hit.kind === "building" && hit.ref && hit.ref.hp !== void 0) G2.world.damageBuilding(hit.ref, 30, hit.x, hit.y, hit.z);
+    }
+    // ---- Runde 25: MÖRSER — Granate im Bogen auf den Zielpunkt, große Fläche ----
+    fireMoerser() {
+      const G2 = this.G, Md = MECH.moerser;
+      this.moerserCd = Md.cd;
+      this.moerserAmmo--;
+      this.P.Backpack.getWorldPosition(_a4);
+      _a4.y += 2.2;
+      const dx = this.aimPoint.x - _a4.x, dz = this.aimPoint.z - _a4.z, dist = Math.hypot(dx, dz) || 1;
+      const t2 = clamp2(dist / 42, 0.8, 2.4);
+      const g2 = Md.grav;
+      const vx = dx / dist * (dist / t2), vz = dz / dist * (dist / t2), vy = (this.aimPoint.y - _a4.y + 0.5 * g2 * t2 * t2) / t2;
+      this.moerserShots.push({ x: _a4.x, y: _a4.y, z: _a4.z, vx, vy, vz, age: 0, life: t2 + 2.5 });
+      G2.audio.missileLaunch(_a4);
+      G2.audio.explosion(_a4, 0.4);
+      G2.fx.muzzle(_a4, 0, 1, 0, 0.8);
+      G2.fx.smoke.spawn({ x: _a4.x, y: _a4.y, z: _a4.z, vx: 0, vy: 1.5, vz: 0, s0: 0.8, s1: 3, a0: 0.6, a1: 0, life: 1.2, r: [0.8, 0.78, 0.75], drag: 2 });
+      G2.gcam.addShake(0.22);
+      this.firing = 0.6;
+      G2.police.crime("gunfire", this.pos);
+      G2.ui.msg("M\xD6RSER", `${this.moerserAmmo} Granaten \xB7 Nachschub alle ${Md.regen} s`, 1);
+    }
+    updateMoerser(dt3) {
+      const G2 = this.G, Md = MECH.moerser;
+      this.moerserCd = Math.max(0, this.moerserCd - dt3);
+      if (this.moerserAmmo < Md.ammo) {
+        this.moerserRegenT += dt3;
+        if (this.moerserRegenT >= Md.regen) {
+          this.moerserRegenT = 0;
+          this.moerserAmmo++;
+        }
+      }
+      for (let i = this.moerserShots.length - 1; i >= 0; i--) {
+        const p = this.moerserShots[i];
+        p.age += dt3;
+        p.vy -= Md.grav * dt3;
+        const ox = p.x, oy = p.y, oz = p.z;
+        const nx = ox + p.vx * dt3, ny = oy + p.vy * dt3, nz = oz + p.vz * dt3;
+        const len = Math.hypot(nx - ox, ny - oy, nz - oz);
+        let hit = null;
+        if (len > 1e-5) hit = G2.weapons.raycastWorld(ox, oy, oz, (nx - ox) / len, (ny - oy) / len, (nz - oz) / len, len, { ignoreMech: true, player: false, ignoreVehicle: null, ignoreNpc: null, minT: 0 });
+        G2.fx.glow.spawn({ x: p.x, y: p.y, z: p.z, s0: 0.7, s1: 0.2, a0: 0.8, a1: 0, life: 0.08, r: [2.4, 1.3, 0.5] });
+        if (Math.random() < 0.5) G2.fx.smoke.spawn({ x: p.x, y: p.y, z: p.z, vx: randSpread(0.4), vy: 0.3, vz: randSpread(0.4), s0: 0.3, s1: 1.4, a0: 0.45, a1: 0, life: 0.9, r: [0.8, 0.78, 0.75], drag: 2 });
+        if (hit || p.age >= p.life || ny <= G2.world.groundHeight(nx, nz)) {
+          const q = hit || { x: nx, y: ny, z: nz };
+          G2.weapons.explode(q, Md.radius, Md.impulse, Md.dmg, "player");
+          G2.world.damageBuildingsAt(q.x, q.y, q.z, Md.radius * 1.6, Md.dmg * 2.2);
+          G2.fx.crater(q, 3.2);
+          G2.fx.dustRing(q, Md.radius * 0.8, 26, [0.5, 0.46, 0.4], 1);
+          G2.audio.explosion(q, 1.5);
+          G2.gcam.addShake(clamp2(2 - Math.hypot(q.x - G2.player.pos.x, q.z - G2.player.pos.z) / 35, 0, 2) * 0.5);
+          this.moerserShots.splice(i, 1);
+          continue;
+        }
+        p.x = nx;
+        p.y = ny;
+        p.z = nz;
       }
     }
     // ---- entry / exit hooks (called by player.js) ---------------------------------------------------------------------------
@@ -61103,6 +61250,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
       this._rollZ = 0;
       this.aimYaw = this.yaw;
       this.torsoYaw = 0;
+      if (this.barrels) this.barrels.visible = this.weapon !== 2;
       this.G.police.mechBoarded && this.G.police.mechBoarded(this);
     }
     // QA-Fix: Flags nicht in die naechste Boarding-Session schleppen
@@ -61698,7 +61846,7 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
             const m = player.vehicle && player.vehicle.isMech ? player.vehicle : null;
             if (m && krieg.owned.has("notaus")) {
               m.gunStop && m.gunStop();
-              m.rail && (m.rail.heat = 0);
+              m.heat = 0;
               m.overheat = 0;
               if (m.reloadT) m.reloadT = 0;
               m.fuel = Math.min(1, m.fuel + 0.3);
