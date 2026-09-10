@@ -223,6 +223,7 @@
   <div id="msg"></div>
   <div id="titanbar" style="display:none;position:absolute;left:50%;top:64px;transform:translateX(-50%);width:380px"><div id="titan-label" style="font:700 11px var(--mono);letter-spacing:.16em;color:var(--danger);text-align:center;margin-bottom:4px">TITAN</div><div style="height:8px;border-radius:4px;background:rgba(255,255,255,.14);overflow:hidden"><b style="display:block;height:100%;width:100%;background:linear-gradient(90deg,#ff8a7a,#ff4d3d)"></b></div></div>
   <div id="arena" style="display:none;position:absolute;left:50%;top:88px;transform:translateX(-50%);font:700 12px var(--mono);letter-spacing:.14em;color:var(--accent2)"></div>
+  <div id="chaos" style="display:none;position:absolute;left:50%;top:110px;transform:translateX(-50%);font:800 13px var(--mono);letter-spacing:.12em;color:#ffb347;text-shadow:0 0 12px rgba(255,140,40,.45)"></div>
   <div id="bounty" style="display:none;position:absolute;left:50%;bottom:44px;transform:translateX(-50%);font:600 11px var(--mono);letter-spacing:.1em;color:var(--accent)"></div>
   <div id="settings" style="display:none;position:absolute;left:50%;top:50%;transform:translateX(-50%);min-width:340px" class="panel">
     <h3 style="font:800 20px var(--sans);margin-bottom:12px">EINSTELLUNGEN<span style="color:var(--accent)">.</span><button class="mx" data-close style="float:right;background:none;border:none;color:var(--ink);font:700 16px var(--sans);cursor:pointer">✕</button></h3>
@@ -48451,6 +48452,7 @@ void main() {
       if (G2.krieg) {
         G2.krieg.kollapsZaehler = (G2.krieg.kollapsZaehler || 0) + 1;
         G2.krieg.addXP(25);
+        G2.krieg.addChaos(250);
         if (d < 160) {
           G2.krieg.pay(KRIEG.reward.building);
           G2.ui.msg("+" + KRIEG.reward.building + " \u20AC", "Geb\xE4ude eingeebnet", 1.4);
@@ -57778,6 +57780,8 @@ void main() {
       this.comboT = 0;
       this.rauchT = 0;
       this.decoy = null;
+      this.chaos = { p: 0, mult: 1, t: 0 };
+      this.chaosBest = 0;
       this._achievements = [];
       this._skin = null;
       this._saveT = 0;
@@ -57787,7 +57791,7 @@ void main() {
     // ---------------- Persistenz (Runde 20) ----------------
     save() {
       try {
-        localStorage.setItem("blocks.save", JSON.stringify({ m: this.money, u: [...this.owned], k: this.G.stats.kills || 0, w: this.G.stats.wrecks || 0, best: this.arenaBest || 0, xpsave: this.xp, titan: this.titanDead, klasse: this.klasse }));
+        localStorage.setItem("blocks.save", JSON.stringify({ m: this.money, u: [...this.owned], k: this.G.stats.kills || 0, w: this.G.stats.wrecks || 0, best: this.arenaBest || 0, xpsave: this.xp, titan: this.titanDead, klasse: this.klasse, chaos: this.chaosBest || 0 }));
       } catch (e) {
       }
     }
@@ -57802,6 +57806,7 @@ void main() {
         this.arenaBest = d.best || 0;
         if (d.xpsave) this.xp = Math.max(this.xp, d.xpsave);
         this.titanDead = d.titan || 0;
+        this.chaosBest = d.chaos || 0;
         if (d.klasse && KLASSEN[d.klasse]) this.klasse = d.klasse;
       } catch (e) {
       }
@@ -57834,6 +57839,7 @@ void main() {
       this.money += n2;
       G2.ui.moneyPop("+" + n2.toLocaleString("de-DE") + " \u20AC" + (mult > 1 ? " \xD7" + mult.toFixed(1).replace(".0", "") : ""));
       this.saveSoon();
+      if (istKill) this.addChaos(clamp2(Math.round(n2 / 8), 20, 900));
     }
     addXP(n2) {
       this.xp += n2;
@@ -57851,6 +57857,29 @@ void main() {
       this.combo = Math.min(3, this.combo + 1);
       this._comboMax = Math.max(this._comboMax || 0, this.combo);
       this.addXP(kind);
+    }
+    // Runde 26: Chaos-Punkte — Zerstörungs-Combo; Multiplikator wächst je Treffer, verfällt nach 4 s ohne Zerstörung
+    addChaos(p = 50) {
+      const C2 = this.chaos;
+      C2.mult = Math.min(8, C2.mult + 0.25);
+      C2.t = 4;
+      C2.p += Math.round(p * C2.mult);
+      this.chaosBest = Math.max(this.chaosBest || 0, C2.p);
+    }
+    chaosUpdate(dt3) {
+      const C2 = this.chaos, G2 = this.G;
+      if (C2.t > 0) {
+        C2.t -= dt3;
+        if (C2.t <= 0) {
+          C2.mult = 1;
+          this.saveSoon();
+        }
+      }
+      if (G2.player.dead && C2.p > 0) {
+        C2.p = 0;
+        C2.mult = 1;
+        C2.t = 0;
+      }
     }
     saveSoon() {
       this._saveT = 2;
@@ -57906,6 +57935,7 @@ void main() {
         this.pay(KRIEG.reward.cop);
         this.copKillZaehler = (this.copKillZaehler || 0) + 1;
       } else if (n2.hostile) this.pay(KRIEG.reward.hostile);
+      else this.addChaos(15);
     }
     onVehicleWreck(v) {
       const G2 = this.G;
@@ -58178,6 +58208,7 @@ void main() {
       }
       this.bountyUpdate(dt3);
       this.arenaUpdate(dt3);
+      this.chaosUpdate(dt3);
       this.stationen(dt3);
       this.dronesUpdate(dt3);
       this.comboT -= dt3;
@@ -58339,6 +58370,7 @@ void main() {
     arenaToggle() {
       const G2 = this.G;
       if (this.arena) {
+        this.arenaBest = Math.max(this.arenaBest || 0, this.arena.welle - 1);
         this.arena = null;
         for (const f of this.list) if (!f.cop) f.damage(9999, "explosion", "system");
         G2.ui.msg("ARENA VORBEI", "Best: " + (this.arenaBest || 0) + " Wellen", 3);
@@ -58348,36 +58380,48 @@ void main() {
       const plaza = G2.world.blocks.find((b) => b.template === "plaza");
       if (!plaza) return;
       const cx = (plaza.lot.minX + plaza.lot.maxX) / 2, cz = (plaza.lot.minZ + plaza.lot.maxZ) / 2;
-      this.arena = { cx, cz, welle: 0, t: 2.5 };
-      G2.ui.msg("ARENA", "Verteidige die Plaza \u2014 5 Wellen", 3.2);
+      const zwang = ["laeufer", "sturm", "panzer"][Math.floor(Math.random() * 3)];
+      this.arena = { cx, cz, welle: 0, t: 2.5, zwang, meilenstein: false };
+      G2.ui.msg("ARENA \xB7 RUNDE DER " + KLASSEN[zwang].name + "-KLASSE", "Wellen-Lohn \xD71.5, wenn du " + KLASSEN[zwang].name + " pilotierst", 4);
     }
     arenaUpdate(dt3) {
       const A2 = this.arena;
       if (!A2) return;
       const G2 = this.G;
+      if (G2.player.dead) {
+        this.arenaBest = Math.max(this.arenaBest || 0, A2.welle - 1);
+        this.arena = null;
+        G2.ui.msg("ARENA VORBEI", "Best: " + (this.arenaBest || 0) + " Wellen", 3);
+        this.save();
+        return;
+      }
       const feinds = this.list.filter((f) => !f.cop && !f.dead && f.arena);
       if (!feinds.length) {
         A2.t -= dt3;
         if (A2.t <= 0) {
           A2.welle++;
-          if (A2.welle > 5) {
-            const bonus = 5e3;
-            this.pay(bonus);
+          const passt = G2.mechSys.mech && G2.mechSys.mech.piloted && !G2.mechSys.mech.wrecked && G2.mechSys.mech.klasse.id === A2.zwang;
+          const lohn = Math.round(KRIEG.reward.arenaWelle * (passt ? 1.5 : 1));
+          if (A2.welle === 6 && !A2.meilenstein) {
+            A2.meilenstein = true;
+            this.pay(5e3);
             this.arenaBest = Math.max(this.arenaBest || 0, 5);
-            G2.ui.msg("ARENA GESCHAFFT", "+5000 \u20AC \xB7 Best: " + (this.arenaBest || 0) + " Wellen", 4);
-            this.arena = null;
+            G2.ui.msg("ARENA \u2014 ENDLOS-MODUS", "Meilenstein +5000 \u20AC \xB7 jede weitere Welle zahlt", 4);
             this.save();
-            return;
+          } else {
+            this.pay(lohn);
+            if (A2.welle >= 3) this.radioFreischalten(1);
           }
-          this.pay(KRIEG.reward.arenaWelle);
-          for (let i = 0; i < 1 + A2.welle; i++) {
-            const a = i / (1 + A2.welle) * 6.283;
-            const f = this.spawnFeind(A2.cx + Math.sin(a) * 55, A2.cz + Math.cos(a) * 55, A2.welle >= 3 && i === 0 ? { tier: "artillery" } : {});
+          const n2 = 1 + Math.min(A2.welle, 8);
+          for (let i = 0; i < n2; i++) {
+            const a = i / n2 * 6.283;
+            const opts = A2.welle >= 3 && i === 0 ? { tier: "artillery", klasse: "panzer" } : { klasse: ["laeufer", "sturm", "panzer"][i % 3] };
+            if (A2.welle >= 4 && i % 3 === 2) opts.tier = "sprinter";
+            const f = this.spawnFeind(A2.cx + Math.sin(a) * 55, A2.cz + Math.cos(a) * 55, opts);
             f.arena = true;
           }
-          if (A2.welle >= 3) this.radioFreischalten(1);
           A2.t = 9;
-          G2.ui.msg("WELLE " + A2.welle + " / 5", "+" + geld(KRIEG.reward.arenaWelle) + " \xB7 N\xE4here dich nicht dem Ausgang", 2.6);
+          G2.ui.msg("WELLE " + A2.welle + (A2.welle <= 5 ? " / 5" : "") + (passt ? " \xB7 KLASSEN-BONUS \xD71.5" : ""), "+" + geld(lohn), 2.6);
         }
       }
     }
@@ -58531,7 +58575,7 @@ void main() {
   var UI = class {
     constructor(G2) {
       this.G = G2;
-      this.el = { hp: $("hpbar"), wname: $("wname"), wammo: $("wammo"), reload: $("reload"), speedo: $("speedo"), kmh: $("kmh"), gear: $("gear"), rpm: $("rpm").firstElementChild, vname: $("vname"), prompt: $("prompt"), msg: $("msg"), vign: $("vignette"), fade: $("fade"), wheel: $("wheel"), wheelName: $("wheel-name"), cross: $("cross"), hitmark: $("hitmark"), controls: $("controls"), kills: $("kills"), wrecks: $("wrecks"), fps: $("fps"), flash: $("flash"), wanted: $("wanted"), stars: Array.from($("stars").children), starsBox: $("stars"), wlabel: $("wlabel"), evade: $("evade").firstElementChild, dmgdir: $("dmgdir"), radio: $("radio"), radioSt: $("radio-st"), radioTt: $("radio-tt"), mmode: $("mmode"), marmour: $("marmour"), mwname: $("mwname"), mwstat: $("mwstat"), mheat: $("mheat"), mfuel: $("mfuel"), mkeys: $("mkeys"), mradio: $("mradio"), mradioSt: $("mradio-st"), mradioTt: $("mradio-tt"), money: $("money"), moneypop: $("moneypop"), shop: $("shop"), shopRows: $("shop-rows"), titan: $("titanbar"), titanLabel: $("titan-label"), arena: $("arena"), bounty: $("bounty"), settings: $("settings") };
+      this.el = { hp: $("hpbar"), wname: $("wname"), wammo: $("wammo"), reload: $("reload"), speedo: $("speedo"), kmh: $("kmh"), gear: $("gear"), rpm: $("rpm").firstElementChild, vname: $("vname"), prompt: $("prompt"), msg: $("msg"), vign: $("vignette"), fade: $("fade"), wheel: $("wheel"), wheelName: $("wheel-name"), cross: $("cross"), hitmark: $("hitmark"), controls: $("controls"), kills: $("kills"), wrecks: $("wrecks"), fps: $("fps"), flash: $("flash"), wanted: $("wanted"), stars: Array.from($("stars").children), starsBox: $("stars"), wlabel: $("wlabel"), evade: $("evade").firstElementChild, dmgdir: $("dmgdir"), radio: $("radio"), radioSt: $("radio-st"), radioTt: $("radio-tt"), mmode: $("mmode"), marmour: $("marmour"), mwname: $("mwname"), mwstat: $("mwstat"), mheat: $("mheat"), mfuel: $("mfuel"), mkeys: $("mkeys"), mradio: $("mradio"), mradioSt: $("mradio-st"), mradioTt: $("mradio-tt"), money: $("money"), moneypop: $("moneypop"), shop: $("shop"), shopRows: $("shop-rows"), titan: $("titanbar"), titanLabel: $("titan-label"), arena: $("arena"), bounty: $("bounty"), chaos: $("chaos"), settings: $("settings") };
       this.mm = $("mm");
       this.mctx = this.mm.getContext("2d");
       this.hurtT = 0;
@@ -58894,9 +58938,16 @@ void main() {
         this.el.titanLabel.textContent = "TITAN \xB7 " + Math.round(titan.hp) + " HP";
       } else if (this.el.titan.style.display !== "none") this.el.titan.style.display = "none";
       if (G2.krieg && G2.krieg.arena && this.el.arena) {
-        this.el.arena.textContent = "ARENA \xB7 WELLE " + G2.krieg.arena.welle + " / 5";
+        const A2 = G2.krieg.arena;
+        this.el.arena.textContent = "ARENA \xB7 WELLE " + A2.welle + (A2.welle <= 5 ? " / 5" : "+") + " \xB7 " + (KLASSEN[A2.zwang] ? KLASSEN[A2.zwang].name + "-BONUS" : "");
         this.el.arena.style.display = "block";
       } else if (this.el.arena) this.el.arena.style.display = "none";
+      if (G2.krieg && this.el.chaos) {
+        const C2 = G2.krieg.chaos;
+        const zeige = C2 && (C2.p > 0 || (G2.krieg.chaosBest || 0) > 0);
+        this.el.chaos.style.display = zeige ? "block" : "none";
+        if (zeige) this.el.chaos.textContent = "CHAOS \xD7" + C2.mult.toFixed(2).replace(/\.00$/, "") + " \xB7 " + C2.p.toLocaleString("de-DE") + " PKT" + ((G2.krieg.chaosBest || 0) > 0 ? " \xB7 REKORD " + G2.krieg.chaosBest.toLocaleString("de-DE") : "");
+      }
       if (G2.krieg && this.el.bounty) {
         const B2 = G2.krieg.bounty;
         this.el.bounty.textContent = B2 ? "BOUNTY: " + B2.text + (B2.rest !== void 0 ? " \xB7 " + Math.ceil(B2.rest) + "s" : "") : "";
