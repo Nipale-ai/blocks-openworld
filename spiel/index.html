@@ -183,6 +183,18 @@
 </head>
 <body>
 <canvas id="gl" tabindex="0"></canvas>
+  <style>
+    /* Runde 29: Foto-Modus — HUD aus, nur Bild + dezenter Hinweis */
+    body.foto #cross, body.foto #hitmark, body.foto #controls, body.foto #minimap, body.foto #msg,
+    body.foto #hp-wrap, body.foto #weapon-wrap, body.foto #speedo-wrap, body.foto #radio-wrap,
+    body.foto #mech-hud, body.foto #stats-top, body.foto #vignette, body.foto #kills, body.foto #wrecks,
+    body.foto #fps, body.foto #stars, body.foto #wanted, body.foto #arena, body.foto #bounty, body.foto #chaos,
+    body.foto #money, body.foto #moneypop, body.foto #prompt, body.foto #evade, body.foto #dmgdir,
+    body.foto #radio, body.foto #radio-st, body.foto #radio-tt, body.foto #fade { display: none !important; }
+    #foto-hinweis { display: none; position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%);
+      font: 700 11px var(--mono); letter-spacing: .16em; color: rgba(255,255,255,.55); }
+    body.foto #foto-hinweis { display: block; }
+  </style>
 <div id="hud">
   <div id="cross"><i></i><i></i><i></i><i></i></div>
   <div id="hitmark"></div>
@@ -224,6 +236,7 @@
   <div id="titanbar" style="display:none;position:absolute;left:50%;top:64px;transform:translateX(-50%);width:380px"><div id="titan-label" style="font:700 11px var(--mono);letter-spacing:.16em;color:var(--danger);text-align:center;margin-bottom:4px">TITAN</div><div style="height:8px;border-radius:4px;background:rgba(255,255,255,.14);overflow:hidden"><b style="display:block;height:100%;width:100%;background:linear-gradient(90deg,#ff8a7a,#ff4d3d)"></b></div></div>
   <div id="arena" style="display:none;position:absolute;left:50%;top:88px;transform:translateX(-50%);font:700 12px var(--mono);letter-spacing:.14em;color:var(--accent2)"></div>
   <div id="chaos" style="display:none;position:absolute;left:50%;top:110px;transform:translateX(-50%);font:800 13px var(--mono);letter-spacing:.12em;color:#ffb347;text-shadow:0 0 12px rgba(255,140,40,.45)"></div>
+  <div id="foto-hinweis">FOTO-MODUS — Y beendet · Zeitlupe aktiv</div>
   <div id="bounty" style="display:none;position:absolute;left:50%;bottom:44px;transform:translateX(-50%);font:600 11px var(--mono);letter-spacing:.1em;color:var(--accent)"></div>
   <div id="settings" style="display:none;position:absolute;left:50%;top:50%;transform:translateX(-50%);min-width:340px" class="panel">
     <h3 style="font:800 20px var(--sans);margin-bottom:12px">EINSTELLUNGEN<span style="color:var(--accent)">.</span><button class="mx" data-close style="float:right;background:none;border:none;color:var(--ink);font:700 16px var(--sans);cursor:pointer">✕</button></h3>
@@ -55248,6 +55261,19 @@ void main() {
           n2.root.rotation.set(0, n2.yaw, 0);
           continue;
         }
+        if (n2.dach && !n2.dead) {
+          if (dCam > 260) {
+            n2.dead = true;
+            continue;
+          }
+          n2.yaw = Math.atan2(P.pos.x - n2.pos.x, P.pos.z - n2.pos.z);
+          n2.root.position.copy(n2.pos);
+          n2.root.rotation.set(0, n2.yaw, 0);
+          const dP = Math.hypot(P.pos.x - n2.pos.x, P.pos.z - n2.pos.z);
+          if (!P.dead && dP < 70 && n2.hostile) this.shoot(n2, dt3, dP, [1.1, 2.2], 3, 0.3, 1.4);
+          if (dCam < 120) this.animate(n2, dt3);
+          continue;
+        }
         this.updateAlive(n2, dt3, dCam);
         if (dCam < 150) this.animate(n2, dt3);
         n2.root.position.copy(n2.pos);
@@ -58363,6 +58389,7 @@ void main() {
       this.chaosUpdate(dt3);
       this.schaetzeUpdate(dt3);
       this.eventsUpdate(dt3);
+      this.dachUpdate(dt3);
       this.stationen(dt3);
       this.dronesUpdate(dt3);
       this.comboT -= dt3;
@@ -58489,13 +58516,16 @@ void main() {
         { text: "3 Raub-Mechs abschalten", lohn: 900, brauch: { feind: 3 }, ist: (G3, B3) => G3.krieg.feilZaeler >= B3.brauch.feind + B3.startFeind },
         { text: "8 Streifenwagen verschrotten", lohn: 600, brauch: {}, ist: (G3, B3) => G3.krieg.wreckCopZaehler >= 8 + B3.startWreck },
         { text: "6 Cops abschalten", lohn: 500, brauch: {}, ist: (G3, B3) => G3.krieg.copKillZaehler >= 6 + B3.startCop },
-        { text: "Ein Geb\xE4ude einebnen", lohn: 400, brauch: {}, ist: (G3, B3) => G3.krieg.kollapsZaehler >= 1 + B3.startKollaps }
+        { text: "Ein Geb\xE4ude einebnen", lohn: 400, brauch: {}, ist: (G3, B3) => G3.krieg.kollapsZaehler >= 1 + B3.startKollaps },
+        { text: "ZEITATTACKE: 12 Fahrzeuge in 90 s", lohn: 1500, brauch: {}, zeit: 90, ist: (G3, B3) => (G3.stats.wrecks || 0) >= (B3.startWrecks || 0) + 12 }
+        // Runde 29
       ];
       const B2 = pool[Math.floor(Math.random() * pool.length)];
       B2.startFeind = this.feilZaeler || 0;
       B2.startWreck = this.wreckCopZaehler || 0;
       B2.startCop = this.copKillZaehler || 0;
       B2.startKollaps = this.kollapsZaehler || 0;
+      B2.startWrecks = this.G.stats.wrecks || 0;
       B2.rest = 240;
       this.bounty = B2;
       G2.ui.msg("BOUNTY", B2.text + " \xB7 +" + geld(B2.lohn), 3);
@@ -58549,6 +58579,27 @@ void main() {
           this.convoyT = 260;
           G2.ui.msg("CONVOY GESICHTET", "3 Panzer im Anmarsch \u2014 alle drei: 3000 \u20AC", 3.5);
         }
+      }
+    }
+    // Runde 29: Dach-Schützen — bewaffnete NPCs auf hohen Dächern, Schnellfeuer auf den Spieler
+    dachUpdate(dt3) {
+      const G2 = this.G;
+      this.dachT = (this.dachT ?? 60) - dt3;
+      const alive = this.dachListe = (this.dachListe || []).filter((n2) => !n2.dead && n2.dach);
+      if (this.dachT <= 0 && alive.length < 3) {
+        this.dachT = rand(70, 130);
+        const P = G2.player;
+        const hohe = G2.world.buildings.filter((b2) => b2.aabb && b2.aabb.maxY > 10 && Math.hypot((b2.aabb.minX + b2.aabb.maxX) / 2 - P.pos.x, (b2.aabb.minZ + b2.aabb.maxZ) / 2 - P.pos.z) < 130);
+        if (!hohe.length) return;
+        const b = hohe[Math.floor(Math.random() * hohe.length)];
+        const cx = (b.aabb.minX + b.aabb.maxX) / 2, cz = (b.aabb.minZ + b.aabb.maxZ) / 2;
+        const n2 = G2.npcs.spawn(cx, cz, { armed: true, hostile: true, weapon: "mg" });
+        n2.dach = true;
+        n2.pos.y = b.aabb.maxY + 0.1;
+        n2.state = "engage";
+        n2.root.position.copy(n2.pos);
+        alive.push(n2);
+        G2.ui.msg("DACH-SCH\xDCTZE", "Scharfsch\xFCtze auf einem Dach \u2014 Deckung!", 2.2);
       }
     }
     stationen(dt3) {
@@ -62506,6 +62557,13 @@ void main(){ float r = length( vUv - 0.5 ) * 2.0; float a = pow( max( 0.0, 1.0 -
           if (input.pressed("KeyK") && !weapons.wheelOpen) krieg.toggleShop();
           if (input.pressed("KeyN")) krieg.arenaToggle();
           if (input.pressed("KeyO")) ui.settingsToggle();
+          if (input.pressed("KeyY") && !krieg.shopOpen && !ui.settingsOpen && !ui.statsOpen) {
+            const an2 = !document.body.classList.contains("foto");
+            document.body.classList.toggle("foto", an2);
+            G.timeScale = an2 ? 0.18 : 1;
+            krieg._prevTs = 1;
+            ui.msg(an2 ? "FOTO-MODUS" : "FOTO-MODUS AUS", an2 ? "Zeitlupe \xB7 HUD aus" : "", 1.4);
+          }
           if (input.pressed("KeyZ")) ui.statsToggle();
           if (input.pressed("Escape")) {
             let zu = false;
